@@ -1,0 +1,31 @@
+name: 🚨 Pre-Commit Checks
+
+on:
+  # Run on every push to a branch
+  push:
+    branches:
+      - main
+      - dev
+  # Run when a Pull Request is opened or updated
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+        # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
+        with:
+          fetch-depth: 0
+
+      - name: 🏃 Run Pre-Commit Checks
+        uses: pre-commit/action@v3.0.1 # Use the official action
+        # The official action automatically handles:
+        # 1. Installing 'pre-commit'
+        # 2. Caching the hook environments
+        # 3. Running 'pre-commit run --all-files'
+        # It will fail the job if any hook fails.
