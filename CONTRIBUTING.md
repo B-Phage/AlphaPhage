@@ -35,7 +35,7 @@ make setup-all
 
 This command will:
 
-- Create all Conda environments in "/conda_envs/"
+- Create all Conda environments in _/conda_envs/_
 
 - Install each Python package in editable mode (`pip install -e packages/<module>`)
 
@@ -50,7 +50,7 @@ conda activate conda_envs/<environment_name>
 Replace `<environment_name>` with preprocessing, feature_engineering, training, or inference.
 
 ## 3. Repository Structure
-
+```
 repo/
 ├── packages/              # Python modules (preprocessing, feature_engineering, training, inference)
 ├── ml_assets/             # DVC-tracked data, models, experiments
@@ -60,12 +60,12 @@ repo/
 ├── Makefile               # Setup and pipeline commands
 ├── pyproject.toml         # Root project metadata (optional)
 └── .pre-commit-config.yaml
+```
+Place new code in _packages/<module_name>/_.
 
-Place new code in "packages/<module_name>/".
+Track datasets and models with DVC under _ml_assets/_.
 
-Track datasets and models with DVC under "ml_assets/".
-
-Add environment dependencies to "envs/<module>.yml".
+Add environment dependencies to _envs/<module>.yml_.
 
 ## 4. Coding Standards
 
@@ -149,13 +149,13 @@ All metric logging must go to ml_assets/experiments/ as configured in each pipel
 
 ## 8. Adding New Packages / Modules
 
-* 1. Create "packages/<module>/" folder.
+1. Create _packages/<module>/_ folder.
 
-* 2. Add pyproject.toml and a "__init__.py" folder structure.
+2. Add _pyproject.toml_ and a ___init__.py_ folder structure.
 
-* 3. Create a Conda environment file: "envs/<module>.yml" (include Python version, 3.10+ if required).
+3. Create a Conda environment file: _envs/<module>.yml_ (include Python version, 3.10+ if required).
 
-* 4. Add the package to Makefile targets:
+4. Add the package to _Makefile_ targets:
 
 ```makefile
 
@@ -164,7 +164,7 @@ setup-<module>:
         conda env update -f envs/<module>.yml -p $(CONDA_ROOT)/<module>
     conda run -p $(CONDA_ROOT)/<module> pip install -e packages/<module>
 ```
-* 5. Add pre-commit and DVC integration as needed.
+5. Add pre-commit and DVC integration as needed.
 
 ## 9. CI/CD Contributions
 
@@ -182,12 +182,12 @@ setup-<module>:
 
 ## 10. References & Resources
 
-* DVC Documentation
-* DVCLive Documentation
-* Black
-* isort
-* MyPy
-* Pre-commit
+* [DVC Documentation](https://dvc.org/doc)
+* [DVCLive Documentation](https://doc.dvc.org/dvclive)
+* [Black](https://black.readthedocs.io/en/stable/)
+* [isort](https://pycqa.github.io/isort/)
+* [MyPy](https://mypy-lang.org/)
+* [Pre-commit](https://pre-commit.com/)
 
 ## ⚡ Quick Commands Summary
 
