@@ -1,78 +1,201 @@
-# 🤝 Contributing to AlphaPhage
+# Contributing to AlphaPhage 🧪
 
-Welcome! AlphaPhage is a production-grade repository built on principles of reliability, reproducibility, and rigorous testing. This document serves as the guide for all development work, including setup, coding standards, and submission guidelines.
-
----
-
-## 🚀 1. Setup and Environment
-
-Before contributing, please ensure your development environment is correctly configured.
-
-* **Prerequisites:** List required software (e.g., Python version, Docker).
-* **Installation:**
-    1.  Clone the repository: `git clone [repository URL]`
-    2.  Set up the virtual environment (e.g., `conda create -n alphaphage python=3.x`).
-    3.  Install dependencies: `pip install -r requirements.txt`
-* **Pre-Commit Hooks:** We use pre-commit hooks to automatically check code for formatting and style issues before a commit is created.
-    * Install hooks: `pre-commit install`
-    * *Note: Your commit will fail if checks do not pass.*
+Thank you for contributing to **AlphaPhage**!
+This guide provides **all the instructions, standards, and best practices** to ensure code is reliable, reproducible, and production-ready.
 
 ---
 
-## 🛠 2. Coding Standards and Style
+## 1. Overview
 
-We enforce a strict style guide to ensure code is clean, maintainable, and readable by the entire team.
+AlphaPhage is a **production-grade ML repository**, focused on reproducibility, maintainability, and clean deployment.
+All contributions must adhere to the following principles:
 
-* **Style Guide:** We adhere to the [e.g., PEP 8 for Python]. We use the **Black** formatter and **Flake8** linter (configured in `pyproject.toml` or `.flake8`).
-* **Type Hinting:** All new functions and public methods must include **Python type hints**.
-* **Documentation and Docstrings:**
-    * Every function, class, and method must have a **comprehensive docstring** (e.g., following the NumPy or Google style).
-    * Code comments must be used judiciously to explain **why** code is written a certain way, not **what** the code does.
-* **Optimization:** Review performance impact, especially in model training or data processing loops. [Optional: Mention profiling tools to use].
+- ✅ **Reliability & Reproducibility:** Code and pipelines must be fully repeatable.
+- ✅ **Maintainability & Clarity:** Code should be clean, well-documented, and easy to understand.
+- ✅ **Production Readiness:** Any changes should not break CI/CD or pipeline execution.
 
 ---
 
-## 🧪 3. Testing and Quality Assurance
+## 2. Initial Setup
 
-Contributions will only be merged if they meet our stringent testing requirements.
+Follow these steps to get started with the repo:
 
-* **Test Coverage Goal:** **100% code coverage** is mandatory for all new logic.
-* **Unit Tests:** New features and bug fixes require corresponding unit tests using the **Unittest** framework. Tests must cover both success and expected failure paths.
-* **Running Tests:** Run the full test suite before submitting a pull request: `pytest` or `python -m unittest discover`.
-* **Data and Model Versioning (DVC):**
-    * Any changes to raw data, processed features, or trained models must be tracked via **DVC**.
-    * Ensure all experiments use **DVCLive** to log metrics for traceability.
+### Clone the repository
 
----
+```bash
+git clone <repo-url>
+cd <repo-name>
+```
 
-## 📦 4. Submission Guidelines
+### Setup environments, install packages, and pre-commit hooks
 
-Follow these steps for submitting your work for review.
+```bash
+make setup-all
+```
 
-1.  **Create a New Branch:** Base your work off the `main` branch: `git checkout -b feature/my-new-feature` or `git checkout -b fix/issue-123`.
-2.  **Commit Messages:** We use [e.g., Conventional Commits] for clear, automated versioning.
-    * Format: `<type>(<scope>): <description>` (e.g., `feat(model): add new loss function`).
-3.  **Create a Pull Request (PR):**
-    * PRs must target the `main` branch.
-    * The PR description should clearly summarize the changes and link to any relevant issues.
-    * Ensure all CI checks (tests, coverage, linting) pass before requesting a review.
+This command will:
 
----
+- Create all Conda environments in "/conda_envs/"
 
-### 🔑 Initial Setup: Enforcing Quality Standards
+- Install each Python package in editable mode (`pip install -e packages/<module>`)
 
-1.  **Create/Activate the Root Development Environment:**
-    ```bash
-    # Assuming you have a top-level environment.yml for dev tools
-    conda env create -f environment.yml
-    conda activate root-dev
-    ```
-    *Note: The root-dev environment must contain the 'pre-commit' package.*
+- Install pre-commit hooks
 
-2.  **Install the Git Hooks:**
-    ```bash
-    pre-commit install
-    ```
-    This command registers the hooks defined in `.pre-commit-config.yaml` with your local Git repository.
+- Pull DVC-tracked data and models
 
-**That's it!** From now on, every time you run `git commit`, the pre-commit framework will automatically run all checks against the files you've staged.
+### Activate an environment
+```bash
+conda activate conda_envs/<environment_name>
+```
+Replace `<environment_name>` with preprocessing, feature_engineering, training, or inference.
+
+## 3. Repository Structure
+
+repo/
+├── packages/              # Python modules (preprocessing, feature_engineering, training, inference)
+├── ml_assets/             # DVC-tracked data, models, experiments
+├── envs/                  # Conda environment definitions per module
+├── configs/               # YAML config files for pipeline stages
+├── dvc.yaml               # DVC pipeline
+├── Makefile               # Setup and pipeline commands
+├── pyproject.toml         # Root project metadata (optional)
+└── .pre-commit-config.yaml
+
+Place new code in "packages/<module_name>/".
+
+Track datasets and models with DVC under "ml_assets/".
+
+Add environment dependencies to "envs/<module>.yml".
+
+## 4. Coding Standards
+
+All code must adhere to production-grade coding standards:
+
+- Formatting: Black, isort
+
+- Linting: ruff / flake8
+
+- Type hints: MyPy
+
+- Docstrings: Google style
+
+- Tests: Unit and integration tests required
+
+Run checks locally:
+```bash
+conda activate <environment>
+pre-commit run --all-files
+pytest --cov=packages/<module>
+
+```
+
+## 5. Git Workflow
+
+* **Branch naming:**
+
+  * feature/<short-description>
+  * bugfix/<short-description>
+  * hotfix/<short-description>
+
+* **Commit messages:**
+
+  * Use imperative mood
+  * Include a short title (<50 chars) and optional detailed body
+
+**Example:**
+
+```pgsql
+Add preprocessing function for missing value imputation
+
+- Handles NaNs in numeric and categorical columns
+- Added unit tests for edge cases
+
+```
+* **Pull requests (PRs):**
+
+  * Run all tests before opening a PR
+  * Ensure pre-commit hooks pass
+  * CI/CD must pass before merging
+
+## 6. Testing
+
+Run tests per module:
+
+```bash
+conda activate <environment>
+pytest --cov=packages/<module>
+```
+Check code coverage:
+```bash
+pytest --cov=packages/<module> --cov-report term-missing
+```
+
+Integration tests should cover full pipeline stages with small test datasets.
+
+## 7. DVC and Pipeline
+
+* Pull data/models: `make dvc-pull`
+
+* Reproduce pipeline: `make dvc-repro`
+
+* Push outputs to remote: `make dvc-push`
+
+* View pipeline graph: `make dvc-dag`
+
+* Clean untracked outputs: `make dvc-clean`
+
+DVCLive metrics:
+All metric logging must go to ml_assets/experiments/ as configured in each pipeline stage.
+
+## 8. Adding New Packages / Modules
+
+* 1. Create "packages/<module>/" folder.
+
+* 2. Add pyproject.toml and a "__init__.py" folder structure.
+
+* 3. Create a Conda environment file: "envs/<module>.yml" (include Python version, 3.10+ if required).
+
+* 4. Add the package to Makefile targets:
+
+```makefile
+
+setup-<module>:
+    conda env create -f envs/<module>.yml -p $(CONDA_ROOT)/<module> || \
+        conda env update -f envs/<module>.yml -p $(CONDA_ROOT)/<module>
+    conda run -p $(CONDA_ROOT)/<module> pip install -e packages/<module>
+```
+* 5. Add pre-commit and DVC integration as needed.
+
+## 9. CI/CD Contributions
+
+* Ensure all CI checks pass locally before pushing.
+
+* The CI workflow includes:
+
+* Unit and integration tests
+
+* Code coverage
+
+* Pre-commit hook validation
+
+* DVC reproducibility check
+
+## 10. References & Resources
+
+* DVC Documentation
+* DVCLive Documentation
+* Black
+* isort
+* MyPy
+* Pre-commit
+
+## ⚡ Quick Commands Summary
+
+```bash
+make setup-all          # Setup environments, packages, pre-commit hooks, DVC pull
+make dvc-repro          # Run the full DVC pipeline
+make hooks-update       # Update pre-commit hooks
+make clean              # Remove all conda environments
+```
+
+Thank you for contributing to AlphaPhage! Your work helps maintain a robust, reliable, and production-ready ML system.

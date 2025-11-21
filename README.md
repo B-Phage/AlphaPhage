@@ -19,3 +19,20 @@ We maintain a strict definition of "production-grade" code, which is enforced vi
 
 Please see the **[CONTRIBUTING.md]** file for detailed setup instructions, the full code style guide, commit message conventions, and how to run tests locally.
 
+## ⚡ Quick Start
+
+```bash
+git clone <repo>
+cd <repo>
+make setup-all          # Sets up environments, packages, hooks, pulls DVC data
+make dvc-repro          # Run the pipeline
+```
+
+## 🗂 Repository Structure
+repo/
+├── packages/ # Python modules (preprocessing, training, etc.)
+├── ml_assets/ # Data, models, experiments tracked with DVC
+├── envs/ # Conda environment files
+├── configs/ # Configs for pipeline stages
+├── dvc.yaml
+└── Makefile # Setup & pipeline commands

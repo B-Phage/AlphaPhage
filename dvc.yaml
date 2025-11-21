@@ -1,0 +1,53 @@
+# dummy template for now
+stages:
+  preprocess:
+    cmd: python packages/preprocessing/run_preprocessing.py \
+            --config configs/preprocessing.yaml \
+            --input ml_assets/data/raw \
+            --output ml_assets/data/clean
+    deps:
+      - packages/preprocessing/
+      - ml_assets/data/raw
+      - configs/preprocessing.yaml
+    outs:
+      - ml_assets/data/clean
+
+  feature_engineering:
+    cmd: python packages/feature_engineering/run_feature_engineering.py \
+            --config configs/feature_engineering.yaml \
+            --input ml_assets/data/clean \
+            --output ml_assets/data/features
+    deps:
+      - packages/feature_engineering/
+      - ml_assets/data/clean
+      - configs/feature_engineering.yaml
+    outs:
+      - ml_assets/data/features
+
+  train_model:
+    cmd: python packages/training/train.py \
+            --config configs/training.yaml \
+            --data ml_assets/data/features \
+            --model_out ml_assets/models/model.pkl \
+            --live_dir ml_assets/experiments
+    deps:
+      - packages/training/
+      - ml_assets/data/features
+      - configs/training.yaml
+    outs:
+      - ml_assets/models/model.pkl
+
+  evaluate:
+    cmd: python packages/inference/evaluate.py \
+            --config configs/evaluation.yaml \
+            --model ml_assets/models/model.pkl \
+            --data ml_assets/data/features \
+            --live_dir ml_assets/experiments
+    deps:
+      - packages/inference/
+      - ml_assets/models/model.pkl
+      - ml_assets/data/features
+      - configs/evaluation.yaml
+    # DVCLive outputs directory
+    outs:
+      - ml_assets/experiments
