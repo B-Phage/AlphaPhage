@@ -29,3 +29,10 @@ jobs:
         # 2. Caching the hook environments
         # 3. Running 'pre-commit run --all-files'
         # It will fail the job if any hook fails.
+
+
+      # Temporary Debugging Step
+      - name: ❌🪲 Show modified files after hook runs
+        run: |
+          git status
+          git diff
