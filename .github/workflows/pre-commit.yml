@@ -30,9 +30,27 @@ jobs:
         # 3. Running 'pre-commit run --all-files'
         # It will fail the job if any hook fails.
 
+        id: run_hooks # Give the step an ID
+        continue-on-error: true
 
-      # Temporary Debugging Step
-      - name: ❌🪲 Show modified files after hook runs
+
+
+
+      # Temporary Debugging Steps
+      - name: ❌🪲 Show Modified Files and Differences
+        # We only run this debugging step if the previous step actually failed (i.e., modified files)
+        if: ${{ failure() }}
         run: |
-          git status
-          git diff
+          echo "Hooks failed because they modified these files:"
+          git status --porcelain # Shows list of modified files (in a machine-readable format)
+          echo "--- Full Git Diff ---"
+          git diff # Shows exactly what changes were made (missing newlines)
+
+      # FAILURE STEP (Optional, but good practice)
+      # If the debugging step passed, but the hooks failed, we fail the job here.
+      # You can skip this if you want the action to just run the hooks and always pass.
+      - name: Final Check (Fail Job if Hooks Modified Files)
+        if: ${{ failure() }}
+        run: |
+          echo "Failing job because pre-commit checks modified files."
+          exit 1
