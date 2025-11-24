@@ -21,6 +21,7 @@ stages:
       - packages/feature_engineering/
       - ml_assets/data/clean
       - configs/feature_engineering.yaml
+      - ${vocab.file}
     outs:
       - ml_assets/data/features
 

@@ -199,3 +199,10 @@ make clean              # Remove all conda environments
 ```
 
 Thank you for contributing to AlphaPhage! Your work helps maintain a robust, reliable, and production-ready ML system.
+
+## Setup the individual packages in the mono-repo
+
+```
+pip install -e ./packages/utils
+pip install -e ./packages/preprocessing
+```

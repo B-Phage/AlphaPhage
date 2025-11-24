@@ -128,6 +128,15 @@ dvc-clean:
 	dvc gc -w
 
 # =====================
+# Tests
+# =====================
+
+.PHONY: test
+
+test: ## Run unit tests with correct path
+	PYTHONPATH=./packages pytest tests/
+
+# =====================
 # Cleanup
 # =====================
 .PHONY: clean

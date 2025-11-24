@@ -1,0 +1,6 @@
+name: root_dev
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - pre_commit
