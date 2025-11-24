@@ -5,12 +5,12 @@ on:
   push:
     branches:
       - main
-      - dev
+      - mlops_setup
   # Run when a Pull Request is opened or updated
   pull_request:
     branches:
       - main
-      - dev
+      - mlops_setup
 
 jobs:
   pre-commit:
