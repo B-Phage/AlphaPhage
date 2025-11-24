@@ -22,6 +22,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 🐍 Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Match your target Python version
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install your main package in editable mode, including test dependencies
+          pip install -e ./packages/utils
+          pip install pytest pre_commit omegaconf # Add other test dependencies here
+
       - name: 🏃 Run Pre-Commit Checks
         uses: pre-commit/action@v3.0.1 # Use the official action
         # The official action automatically handles:
@@ -29,7 +41,6 @@ jobs:
         # 2. Caching the hook environments
         # 3. Running 'pre-commit run --all-files'
         # It will fail the job if any hook fails.
-
         id: run_hooks # Give the step an ID
         continue-on-error: true
 
