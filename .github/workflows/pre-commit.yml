@@ -39,7 +39,7 @@ jobs:
       # Temporary Debugging Steps
       - name: ❌🪲 Show Modified Files and Differences
         # We only run this debugging step if the previous step actually failed (i.e., modified files)
-        if: ${{ failure() }}
+        if: ${{ steps.run_hooks.outcome == 'failure' }}
         run: |
           echo "Hooks failed because they modified these files:"
           git status --porcelain # Shows list of modified files (in a machine-readable format)
@@ -50,7 +50,7 @@ jobs:
       # If the debugging step passed, but the hooks failed, we fail the job here.
       # You can skip this if you want the action to just run the hooks and always pass.
       - name: Final Check (Fail Job if Hooks Modified Files)
-        if: ${{ failure() }}
+        if: ${{ steps.run_hooks.outcome == 'failure' }}
         run: |
           echo "Failing job because pre-commit checks modified files."
           exit 1
