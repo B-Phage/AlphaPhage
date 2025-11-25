@@ -19,12 +19,10 @@ from omegaconf import OmegaConf
 PARAMS_PATH: Final[Path] = Path("params.yaml")
 
 
-# @lru_cache(maxsize=2) # add this if we want cashing
 def _load_params():
     return OmegaConf.load(PARAMS_PATH)
 
 
-# @lru_cache(maxsize=1)
 def _load_vocab_file(str_path: str):
     path = Path(str_path)
     if not path.exists():
@@ -34,6 +32,7 @@ def _load_vocab_file(str_path: str):
 
 
 # if we want to load a vocab in as a dict
+# this would then be a swap out for _load_vocab_file
 def _load_vocab_file_as_dict(str_path: str):
     path = Path(str_path)
     if not path.exists():

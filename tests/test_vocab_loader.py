@@ -63,10 +63,6 @@ class TestVocabLoader(unittest.TestCase):
 
         self.loader = vocab_loader
 
-        # Clear all LRU caches so each test starts clean
-        # self.loader._load_params.cache_clear()
-        # self.loader._load_vocab_file.cache_clear()
-
     def tearDown(self):
         self.temp_dir.cleanup()
 
@@ -100,40 +96,11 @@ class TestVocabLoader(unittest.TestCase):
         self.assertEqual(len(vocab.token_vocab), 2)
         self.assertEqual(len(vocab.label_vocab), 2)
 
-    # def test_multiple_vocab_sections_dict(self):
-    #     # testing future replacement option
-    #     vocab = self.loader._load_vocab_file_as_dict(self.params_file)
-    #     print(type(vocab['token_vocab']))
-    #     self.assertIsInstance(vocab['token_vocab'], dict)
-    #     self.assertIsInstance(vocab['label_vocab'], dict)
-    #     self.assertEqual(len(vocab['token_vocab']), 2)
-    #     self.assertEqual(len(vocab['label_vocab']), 2)
-
-    # def test_caching_behavior(self):
-    #     """Ensure LRU caching prevents multiple loads."""
-    #     # internal counters
-    #     original_load_params = self.loader._load_params
-    #     original_load_vocab = self.loader._load_vocab_file
-
-    #     with patch.object(self.loader, "_load_params", wraps=original_load_params) as mock_params, \
-    #          patch.object(self.loader, "_load_vocab_file", wraps=original_load_vocab) as mock_vocab:
-
-    #         # First call
-    #         self.loader.get_vocab()
-    #         # Second call (should use cache)
-    #         self.loader.get_vocab()
-
-    #     # _load_params called once
-    #     mock_params.assert_called_once()
-    #     # _load_vocab_file called once for the main vocab file
-    #     mock_vocab.assert_called_once()
-
     def test_missing_test_file(self):
         """Test mode should fail if no test_file configured."""
         # Rewrite params without test_file
         params_no_test = OmegaConf.create({"vocab": {"file": str(self.vocab_file)}})
         OmegaConf.save(params_no_test, self.params_file)
-        # self.loader._load_params.cache_clear()
 
         with self.assertRaises(ValueError):
             self.loader.get_vocab(test_mode=True)

@@ -1,4 +1,0 @@
-vocab:
-  path: ml_assets/vocab/vocab_tokens_v0.0.1.yaml
-
-# We can split vocabs by phage and host here as well
