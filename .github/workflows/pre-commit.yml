@@ -71,9 +71,8 @@ jobs:
         # to guarantee the test run even if other steps failed,
         # but generally, if linting fails, tests shouldn't run.
 
-      - name: 🗂️ Upload Coverage HTML Report (Optional)
-        uses: actions/upload-artifact@v4
+      - name: 🗂️ Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          name: coverage-report
-          # The directory created by the --cov-report=html option
-          path: htmlcov/
+          files: ./coverage.xml # Path to the generated XML report
+          fail_ci_if_error: true # Recommended
