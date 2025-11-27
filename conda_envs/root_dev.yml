@@ -6,3 +6,5 @@ dependencies:
   - pre_commit
   - pytest
   - omegaconf
+  - coverage
+  - pytest-cov
