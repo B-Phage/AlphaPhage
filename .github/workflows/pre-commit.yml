@@ -94,9 +94,9 @@ jobs:
           # Function to choose color
           badge_color() {
             local cov="$1"
-            if (( $(echo "$cov >= 90" | bc -l) )); then
+            if (( $(echo "$cov >= 95" | bc -l) )); then
               echo "green"
-            elif (( $(echo "$cov >= 75" | bc -l) )); then
+            elif (( $(echo "$cov >= 85" | bc -l) )); then
               echo "yellow"
             else
               echo "red"
