@@ -101,7 +101,7 @@ jobs:
           git checkout badges1 || git checkout -b badges1
 
           # Copy badge JSON file
-          cp badges1/coverage-${GITHUB_REF_NAME}.json .
+          cp badges/coverage-${GITHUB_REF_NAME}.json .
 
           git add coverage-${GITHUB_REF_NAME}.json
           git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes to commit"
