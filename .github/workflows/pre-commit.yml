@@ -82,19 +82,33 @@ jobs:
 
       - name: 🎖️ Generate SVG badge
         run: |
-          BRANCH_NAME="${GITHUB_REF_NAME}"
-          BADGE_FILE="coverage-${BRANCH_NAME}.svg"
           mkdir -p badges
-          COV=${{ steps.extract.outputs.coverage }}
 
-          # Set color based on thresholds
-          if (( $(echo "$COV >= 95" | bc -l) )); then COLOR="green"
-          elif (( $(echo "$COV >= 85" | bc -l) )); then COLOR="yellow"
-          else COLOR="red"
-          fi
+          # Determine safe branch name
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
 
-          # Minimal SVG badge template
-          cat <<EOF > badges/$BADGE_FILE
+          COV="${{ steps.extract.outputs.coverage }}"
+          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
+
+          # Function to choose color
+          badge_color() {
+            local cov="$1"
+            if (( $(echo "$cov >= 90" | bc -l) )); then
+              echo "green"
+            elif (( $(echo "$cov >= 75" | bc -l) )); then
+              echo "yellow"
+            else
+              echo "red"
+            fi
+          }
+
+          # Function to generate SVG
+          generate_svg() {
+            local label="$1"
+            local message="$2"
+            local color="$3"
+            cat <<EOF
           <svg xmlns="http://www.w3.org/2000/svg" width="110" height="20">
             <linearGradient id="b" x2="0" y2="100%">
               <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
@@ -105,18 +119,26 @@ jobs:
             </mask>
             <g mask="url(#a)">
               <rect width="60" height="20" fill="#555"/>
-              <rect x="60" width="50" height="20" fill="$COLOR"/>
+              <rect x="60" width="50" height="20" fill="$color"/>
               <rect width="110" height="20" fill="url(#b)"/>
             </g>
             <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-              <text x="30" y="14">coverage</text>
-              <text x="85" y="14">${COV}%</text>
+              <text x="30" y="14">$label</text>
+              <text x="85" y="14">$message%</text>
             </g>
           </svg>
           EOF
+              }
+
+          COLOR=$(badge_color "$COV")
+          generate_svg "coverage" "$COV" "$COLOR" > badges/$BADGE_FILE
 
       - name: ⬆️ Commit and push SVG badge
         run: |
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
+          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
@@ -124,39 +146,8 @@ jobs:
           git checkout badges2
           git reset --hard origin/badges2
 
-          cp badges/coverage-${GITHUB_REF_NAME}.svg .
+          cp badges/${BADGE_FILE}.svg .
 
-          git add coverage-${GITHUB_REF_NAME}.svg
-          git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
+          git add ${BADGE_FILE}
+          git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
           git push origin badges2 --force
-
-      # - name: 🏵️ Prepare badge JSON
-      #   run: |
-      #     BADGE_FILE="coverage-${GITHUB_REF_NAME}.json"
-      #     mkdir -p badges
-      #     printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}' \
-      #       "${{ steps.extract.outputs.coverage }}" \
-      #       "$( [ $(echo "${{ steps.extract.outputs.coverage }}"'>'90 | bc -l) ] && echo green || echo red )" \
-      #       > badges/$BADGE_FILE
-      #     echo "Badge JSON written to badges/$BADGE_FILE"
-
-      # - name: ⬆️ Commit and push badge
-      #   run: |
-      #     git config user.name "github-actions"
-      #     git config user.email "github-actions@github.com"
-
-      #     # Fetch badges branch
-      #     git fetch origin badges2
-      #     git checkout badges2
-      #     cp badges/coverage-${GITHUB_REF_NAME}.json .
-      #     git add coverage-${GITHUB_REF_NAME}.json
-      #     # Commit only if there are changes
-      #     if git diff --cached --exit-code; then
-      #       echo "No changes to commit. Exiting."
-      #     else
-      #       git commit -m "Update coverage data for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}"
-
-      #       # Push the commit using the GITHUB_TOKEN
-      #       # Use 'https://${{ github.token }}@github.com/${{ github.repository }}' for authentication
-      #       git push origin badges2
-      #     fi
