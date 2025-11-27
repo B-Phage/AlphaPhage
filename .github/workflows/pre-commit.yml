@@ -146,7 +146,7 @@ jobs:
           git checkout badges2
           git reset --hard origin/badges2
 
-          cp badges/${BADGE_FILE}.svg .
+          cp badges/${BADGE_FILE} .
 
           git add ${BADGE_FILE}
           git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
