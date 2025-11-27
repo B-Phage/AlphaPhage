@@ -88,8 +88,8 @@ jobs:
           COV=${{ steps.extract.outputs.coverage }}
 
           # Set color based on thresholds
-          if (( $(echo "$COV >= 90" | bc -l) )); then COLOR="green"
-          elif (( $(echo "$COV >= 75" | bc -l) )); then COLOR="yellow"
+          if (( $(echo "$COV >= 95" | bc -l) )); then COLOR="green"
+          elif (( $(echo "$COV >= 85" | bc -l) )); then COLOR="yellow"
           else COLOR="red"
           fi
 
