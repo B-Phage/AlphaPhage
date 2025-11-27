@@ -19,6 +19,8 @@ We maintain a strict definition of "production-grade" code, which is enforced vi
 
 Please see the **[CONTRIBUTING.md]** file for detailed setup instructions, the full code style guide, commit message conventions, and how to run tests locally.
 
+---
+
 ## ⚡ Quick Start
 
 ```bash
@@ -27,6 +29,13 @@ cd <repo>
 make setup-all          # Sets up environments, packages, hooks, pulls DVC data
 make dvc-repro          # Run the pipeline
 ```
+---
+
+## 🏵️ CI Test Badge
+
+![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/<USER>/<REPO>/badges/coverage-main.json)
+
+---
 
 ## 🗂 Repository Structure
 repo/
