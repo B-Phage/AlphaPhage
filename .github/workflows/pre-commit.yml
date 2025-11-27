@@ -105,4 +105,4 @@ jobs:
 
           git add coverage-${GITHUB_REF_NAME}.json
           git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes to commit"
-          git push origin badges
+          git push origin badges --force
