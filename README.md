@@ -1,5 +1,6 @@
 ![coverage main](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/B-Phage/AlphaPhage/badges1/coverage-main.json)
 ![coverage mlops_setup](https://img.shields.io/endpoint?url=https://github.com/B-Phage/AlphaPhage/blob/badges1/coverage-mlops_setup.json)
+![coverage mlops_setup](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FB-Phage%2FAlphaPhage%2Fbadges1%2Fcoverage-mlops_setup.json&label=coverage&query=$.totals.percent_covered&color=blue)
 # AlphaPhage: Production Machine Learning Model 🧪
 
 This repository houses the **production-grade** implementation of our most robust predictive model. It is engineered for **reliability, repeatability, and maintainability** to ensure successful, stable deployment.

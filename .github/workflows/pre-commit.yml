@@ -82,8 +82,7 @@ jobs:
 
       - name: 🏵️ Prepare badge JSON
         run: |
-          BRANCH_NAME="${GITHUB_REF_NAME}"
-          BADGE_FILE="coverage-${BRANCH_NAME}.json"
+          BADGE_FILE="coverage-${GITHUB_REF_NAME}.json"
           mkdir -p badges
           printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}' \
             "${{ steps.extract.outputs.coverage }}" \
@@ -99,7 +98,7 @@ jobs:
           # Fetch badges branch
           git fetch origin badges2
           git checkout badges2
-          cp ../badges/coverage-${GITHUB_REF_NAME}.json .
+          cp badges/coverage-${GITHUB_REF_NAME}.json .
           git add coverage-${GITHUB_REF_NAME}.json
           # Commit only if there are changes
           if git diff --cached --exit-code; then
