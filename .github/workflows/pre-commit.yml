@@ -97,9 +97,17 @@ jobs:
           git config user.email "github-actions@github.com"
 
           # Fetch badges branch
-          git clone --branch badges2 --single-branch https://github.com/B-Phage/AlphaPhage.git badges-temp
-          cd badges-temp
-          cp ../badges/coverage-${GITHUB_REF_NAME}.json .
+          git fetch origin badges2
+          git checkout badges2
+          cp ../coverage-${GITHUB_REF_NAME}.json .
           git add coverage-${GITHUB_REF_NAME}.json
-          git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}" || echo "No changes"
-          git push origin badges2 --force
+          # Commit only if there are changes
+          if git diff --cached --exit-code; then
+            echo "No changes to commit. Exiting."
+          else
+            git commit -m "Update coverage data for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}"
+
+            # Push the commit using the GITHUB_TOKEN
+            # Use 'https://${{ github.token }}@github.com/${{ github.repository }}' for authentication
+            git push origin badges2
+          fi
