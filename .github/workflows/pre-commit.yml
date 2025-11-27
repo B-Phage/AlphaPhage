@@ -103,32 +103,31 @@ jobs:
             fi
           }
 
-          # Function to generate SVG
           generate_svg() {
-            local label="$1"
+            local label="$1"   # now label can include branch name
             local message="$2"
             local color="$3"
             cat <<EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="110" height="20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="150" height="20">
             <linearGradient id="b" x2="0" y2="100%">
               <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
               <stop offset="1" stop-opacity=".1"/>
             </linearGradient>
             <mask id="a">
-              <rect width="110" height="20" rx="3" fill="#fff"/>
+              <rect width="150" height="20" rx="3" fill="#fff"/>
             </mask>
             <g mask="url(#a)">
-              <rect width="90" height="20" fill="#555"/>
-              <rect x="60" width="50" height="20" fill="$color"/>
-              <rect width="140" height="20" fill="url(#b)"/>
+              <rect width="80" height="20" fill="#555"/>
+              <rect x="80" width="70" height="20" fill="$color"/>
+              <rect width="150" height="20" fill="url(#b)"/>
             </g>
             <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-              <text x="30" y="14">$label</text>
-              <text x="85" y="14">$message%</text>
+              <text x="40" y="14">$label</text>
+              <text x="115" y="14">$message%</text>
             </g>
           </svg>
           EOF
-              }
+          }
 
           COLOR=$(badge_color "$COV")
           generate_svg "coverage ${BRANCH_SAFE}" "$COV" "$COLOR" > badges/$BADGE_FILE
