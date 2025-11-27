@@ -97,12 +97,24 @@ jobs:
           git config user.email "github-actions@github.com"
 
           # Fetch badges branch
-          git fetch origin badges1
-          git checkout badges1 || git checkout -b badges1
-
-          # Copy badge JSON file
-          cp badges/coverage-${GITHUB_REF_NAME}.json .
-
+          git clone --branch badges2 --single-branch https://github.com/B-Phage/AlphaPhage/badges2.git badges-temp
+          cd badges-temp
+          cp ../badges/coverage-${GITHUB_REF_NAME}.json .
           git add coverage-${GITHUB_REF_NAME}.json
-          git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes to commit"
-          git push origin badges1 --force
+          git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}" || echo "No changes"
+          git push origin badges2 --force
+
+
+
+
+
+
+# git fetch origin badges1
+# git checkout badges1 || git checkout -b badges1
+
+# # Copy badge JSON file
+# cp badges/coverage-${GITHUB_REF_NAME}.json .
+
+# git add coverage-${GITHUB_REF_NAME}.json
+# git commit -m "Update coverage badge for branch ${GITHUB_REF_NAME}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes to commit"
+# git push origin badges1 --force
