@@ -1,3 +1,5 @@
+![coverage main](https://raw.githubusercontent.com/B-Phage/AlphaPhage/badges/coverage-main.json)
+![coverage mlops_setup](https://raw.githubusercontent.com/B-Phage/AlphaPhage/badges/coverage-mlops_setup.json)
 # AlphaPhage: Production Machine Learning Model 🧪
 
 This repository houses the **production-grade** implementation of our most robust predictive model. It is engineered for **reliability, repeatability, and maintainability** to ensure successful, stable deployment.
@@ -29,12 +31,6 @@ cd <repo>
 make setup-all          # Sets up environments, packages, hooks, pulls DVC data
 make dvc-repro          # Run the pipeline
 ```
----
-
-## 🏵️ CI Test Badge
-
-![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/<USER>/<REPO>/badges/coverage-main.json)
-
 ---
 
 ## 🗂 Repository Structure
