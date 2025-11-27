@@ -99,7 +99,7 @@ jobs:
           # Fetch badges branch
           git fetch origin badges2
           git checkout badges2
-          cp ../coverage-${GITHUB_REF_NAME}.json .
+          cp ../badges/coverage-${GITHUB_REF_NAME}.json .
           git add coverage-${GITHUB_REF_NAME}.json
           # Commit only if there are changes
           if git diff --cached --exit-code; then
