@@ -69,3 +69,4 @@ artifacts/
 .coverage
 htmlcov/
 *.svg
+*.xml

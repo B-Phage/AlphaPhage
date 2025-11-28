@@ -102,7 +102,7 @@ jobs:
           BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
 
           # 5. Call the bash interface using its full relative path
-          "$BASH_SCRIPT_PATH" "${BRANCH_SAFE} coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
 
       - name: ⬆️ Commit and push SVG badge
         run: |
