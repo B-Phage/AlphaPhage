@@ -68,3 +68,4 @@ artifacts/
 # Testing and Coverage
 .coverage
 htmlcov/
+*.svg

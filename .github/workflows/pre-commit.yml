@@ -82,55 +82,27 @@ jobs:
 
       - name: 🎖️ Generate SVG badge
         run: |
+          # 1. Setup
           mkdir -p badges
 
-          # Determine safe branch name
+          # Change the path to the bash script
+          BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
+
+          # Make sure the script is executable
+          chmod +x "$BASH_SCRIPT_PATH"
+
+          # 2. Determine safe branch name
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"
 
+          # 3. Get Coverage value
           COV="${{ steps.extract.outputs.coverage }}"
-          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
 
-          # Function to choose color
-          badge_color() {
-            local cov="$1"
-            if (( $(echo "$cov >= 95" | bc -l) )); then
-              echo "green"
-            elif (( $(echo "$cov >= 85" | bc -l) )); then
-              echo "yellow"
-            else
-              echo "red"
-            fi
-          }
+          # 4. Define the output file path
+          BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
 
-          generate_svg() {
-            local label="$1"   # now label can include branch name
-            local message="$2"
-            local color="$3"
-            cat <<EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="150" height="20">
-            <linearGradient id="b" x2="0" y2="100%">
-              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-              <stop offset="1" stop-opacity=".1"/>
-            </linearGradient>
-            <mask id="a">
-              <rect width="190" height="20" rx="3" fill="#fff"/>
-            </mask>
-            <g mask="url(#a)">
-              <rect width="80" height="20" fill="#555"/>
-              <rect x="100" width="90" height="20" fill="$color"/>
-              <rect width="190" height="20" fill="url(#b)"/>
-            </g>
-            <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-              <text x="5s0" y="14">$label</text>
-              <text x="115" y="14">$message%</text>
-            </g>
-          </svg>
-          EOF
-          }
-
-          COLOR=$(badge_color "$COV")
-          generate_svg "coverage ${BRANCH_SAFE}" "$COV" "$COLOR" > badges/$BADGE_FILE
+          # 5. Call the bash interface using its full relative path
+          "$BASH_SCRIPT_PATH" "${BRANCH_SAFE} coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
 
       - name: ⬆️ Commit and push SVG badge
         run: |

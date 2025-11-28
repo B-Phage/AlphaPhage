@@ -1,4 +1,4 @@
-🥇 **main unit test** ![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈 **dev unit test** ![Coverage mlops_setup](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops_setup.svg)
+🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈![Coverage mlops_setup](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops_setup.svg)
 
 # AlphaPhage: Production Machine Learning Model 🧪
 
