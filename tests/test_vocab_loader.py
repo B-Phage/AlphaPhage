@@ -105,6 +105,34 @@ class TestVocabLoader(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.loader.get_vocab(test_mode=True)
 
+    def test_missing_file_raises_filenotfounderror(self):
+        """
+        Tests that calling _load_vocab_file with a non-existent path
+        correctly raises a FileNotFoundError.
+        """
+        # 1. Define the path of a file that certainly does not exist
+        missing_path = "/tmp/file/does/not/exist_123456789.yaml"
+
+        # Use a context manager to assert that the specific exception is raised
+        # We expect FileNotFoundError to be raised when called with the missing path.
+        with self.assertRaises(FileNotFoundError) as cm:
+            self.loader._load_vocab_file(missing_path)
+
+        # Verify the exception message/argument
+        # The exception object should contain the path that failed.
+        # Note: The FileNotFoundError in Python 3 accepts the path object itself
+        # as its argument, which is then often represented as a string in the message.
+
+        # Check the first argument passed to the exception constructor
+        raised_path = cm.exception.args[0]
+
+        # We need to compare the path used for the test with the path in the exception.
+        self.assertEqual(
+            str(raised_path),
+            missing_path,
+            "The FileNotFoundError should contain the path of the missing file.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main(exit=False)
