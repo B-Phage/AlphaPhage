@@ -31,6 +31,27 @@ def _load_vocab_file(str_path: str):
     return OmegaConf.load(path)
 
 
+def get_vocab(test_mode: bool = False, override_path: str | None = None):
+    """
+    Loads the vocabulary file referenced in params.yaml
+    and returns all vocabularies defined inside that file.
+
+    Supports multi-vocab YAML files (returns nested OmegaConf dict).
+    """
+    if override_path:
+        return _load_vocab_file(override_path)
+
+    params = _load_params()
+    vocab_cfg = params.vocab
+
+    if test_mode:
+        if "test_file" not in vocab_cfg:
+            raise ValueError("params.yaml missing vocab.test_file")
+        return _load_vocab_file(vocab_cfg.test_file)
+
+    return _load_vocab_file(vocab_cfg.file)
+
+
 # TODO: Test this functionality with the transformer archtecture
 # We might want to have the vocab as a dict rather than a DictConfig
 # if we want to load a vocab in as a dict
@@ -54,24 +75,3 @@ def _load_vocab_file(str_path: str):
 #         # Store the converted standard dict back into the new dictionary
 #         converted_vocab[key] = converted_value
 #     return converted_vocab
-
-
-def get_vocab(test_mode: bool = False, override_path: str | None = None):
-    """
-    Loads the vocabulary file referenced in params.yaml
-    and returns all vocabularies defined inside that file.
-
-    Supports multi-vocab YAML files (returns nested OmegaConf dict).
-    """
-    if override_path:
-        return _load_vocab_file(override_path)
-
-    params = _load_params()
-    vocab_cfg = params.vocab
-
-    if test_mode:
-        if "test_file" not in vocab_cfg:
-            raise ValueError("params.yaml missing vocab.test_file")
-        return _load_vocab_file(vocab_cfg.test_file)
-
-    return _load_vocab_file(vocab_cfg.file)

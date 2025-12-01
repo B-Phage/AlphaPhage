@@ -8,3 +8,5 @@ dependencies:
   - omegaconf
   - coverage
   - pytest-cov
+  - tqdm
+  - colorlog

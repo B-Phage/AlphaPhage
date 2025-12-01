@@ -6,7 +6,7 @@
 CONDA_ROOT = conda_envs
 
 # List of packages and their environments
-PACKAGES = preprocessing feature_engineering training inference
+PACKAGES = orchestration preprocessing feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -14,6 +14,7 @@ ENV_FE = feature_engineering
 ENV_TRAINING = training
 ENV_INFERENCE = inference
 ENV_DEV = root_dev
+ENV_ORCH = orchestration
 
 # =====================
 # Help
@@ -67,6 +68,11 @@ setup-inference:
 	conda env create -f envs/inference.yml -p $(CONDA_ROOT)/$(ENV_INFERENCE) || \
 		conda env update -f envs/inference.yml -p $(CONDA_ROOT)/$(ENV_INFERENCE)
 	conda run -p $(CONDA_ROOT)/$(ENV_INFERENCE) pip install -e packages/inference
+
+.PHONY: setup-orchestration
+setup-inference:
+	@echo "=== Setting up $(ENV_ORCH) ==="
+	conda run -p $(CONDA_ROOT)/$(ENV_DEV) pip install -e packages/orchestration
 
 # =====================
 # Pre-commit hooks
