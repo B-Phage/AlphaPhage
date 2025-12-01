@@ -7,7 +7,7 @@ name = "AlphaPhage"
 version = "0.0.1"
 description = "Mono-repo for the ML pipeline"
 readme = "README.md"
-license = { text = "PROPRIETARY, CONFIDENTIAL" }
+license = "LicenseRef-Proprietary"
 requires-python = ">=3.10,<3.15"
 dependencies = []
 

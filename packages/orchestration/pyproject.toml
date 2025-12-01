@@ -7,7 +7,7 @@ name = "orchestration"
 version = "0.0.1"
 description = "Orchestration module for preprocessing workflows"
 readme = "README_orch.md"
-license = { text = "PROPRIETARY, CONFIDENTIAL" }
+license = "LicenseRef-Proprietary"
 requires-python = ">=3.10,<3.15"
 dependencies = []
 
