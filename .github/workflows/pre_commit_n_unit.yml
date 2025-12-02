@@ -34,7 +34,7 @@ jobs:
           python -m pip install --upgrade pip
           # Install your main package in editable mode, including test dependencies
           pip install -e ./packages/utils
-          pip install pytest pre_commit omegaconf coverage pytest-cov
+          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
 
       - name: 🏃 Run Pre-Commit Checks
         uses: pre-commit/action@v3.0.1 # Use the official action
@@ -68,7 +68,7 @@ jobs:
      # Unit tests
       - name: 🧪 Run Unit Tests
         run: |
-          PYTHONPATH=./packages pytest tests/ --cov=utils --cov-report=xml --cov-report=term --cov-report=html
+          PYTHONPATH=./packages pytest tests/unit/ --cov=utils --cov-report=xml --cov-report=term --cov-report=html
           coverage json -o coverage.json
         # You could also use an 'id' and 'continue-on-error' if you want
         # to guarantee the test run even if other steps failed,

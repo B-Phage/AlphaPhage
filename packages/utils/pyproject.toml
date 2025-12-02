@@ -10,6 +10,7 @@ license = { text = "PROPRIETARY, CONFIDENTIAL" }
 requires-python = ">=3.10,<3.15"
 dependencies = []
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["utils"]
+[tool.setuptools]
+py-modules = ["consol_log", "vocab_loader"]
+
+# we use the root level pyproject.toml black and isort

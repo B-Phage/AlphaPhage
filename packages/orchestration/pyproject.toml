@@ -13,3 +13,5 @@ dependencies = []
 
 [tool.setuptools]
 # leave empty unless needed
+
+# we use the root level pyproject.toml black and isort
