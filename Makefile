@@ -6,7 +6,8 @@
 CONDA_ROOT = conda_envs
 
 # List of packages and their environments
-PACKAGES = orchestration preprocessing feature_engineering training inference
+# TODO: add the rest of the packages here
+PACKAGES = utils orchestration #preprocessing feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -14,7 +15,9 @@ ENV_FE = feature_engineering
 ENV_TRAINING = training
 ENV_INFERENCE = inference
 ENV_DEV = root_dev
-ENV_ORCH = orchestration
+
+# TODO: update this list as the packages are implemented
+ENV_LIST = $(ENV_DEV) #$(ENV_PREPROCESSING) $(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
 
 # =====================
 # Help
@@ -32,6 +35,19 @@ help:
 	@echo "  make clean           - Remove all conda environments"
 
 # =====================
+# Helper: Ensure conda env exists (create/update)
+# =====================
+define ensure_env
+	@if conda env list | grep -q "^$1"; then \
+		echo "=== Conda env '$1' exists, updating ==="; \
+		conda env update -f conda_envs/$1.yml -n $1; \
+	else \
+		echo "=== Creating conda env '$1' ==="; \
+		conda env create -f conda_envs/$1.yml -n $1; \
+	fi
+endef
+
+# =====================
 # Main Setup
 # =====================
 .PHONY: setup-all
@@ -41,73 +57,76 @@ setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks dvc-pull
 # =====================
 # Package-specific setups
 # =====================
+.PHONY: setup-utils
+setup-utils:
+	$(call ensure_env,$(ENV_DEV))
+	@echo "=== Installing utils package ==="
+	conda run -n $(ENV_DEV) pip install -e packages/utils
+
+.PHONY: setup-orchestration
+setup-orchestration:
+	$(call ensure_env,$(ENV_DEV))
+	@echo "=== Installing orchestration package ==="
+	conda run -n $(ENV_DEV) pip install -e packages/orchestration
+
+# TODO: Implement the remaining packages
 .PHONY: setup-preprocessing
 setup-preprocessing:
-	@echo "=== Setting up $(ENV_PREPROCESSING) ==="
-	conda env create -f envs/preprocessing.yml -p $(CONDA_ROOT)/$(ENV_PREPROCESSING) || \
-		conda env update -f envs/preprocessing.yml -p $(CONDA_ROOT)/$(ENV_PREPROCESSING)
-	conda run -p $(CONDA_ROOT)/$(ENV_PREPROCESSING) pip install -e packages/preprocessing
+# 	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing preprocessing package ==="
+# 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:
-	@echo "=== Setting up $(ENV_FE) ==="
-	conda env create -f envs/feature_engineering.yml -p $(CONDA_ROOT)/$(ENV_FE) || \
-		conda env update -f envs/feature_engineering.yml -p $(CONDA_ROOT)/$(ENV_FE)
-	conda run -p $(CONDA_ROOT)/$(ENV_FE) pip install -e packages/feature_engineering
+# 	$(call ensure_env,$(ENV_FE))
+	@echo "=== Installing feature_engineering package ==="
+# 	conda run -n $(ENV_FE) pip install -e packages/feature_engineering
 
 .PHONY: setup-training
 setup-training:
-	@echo "=== Setting up $(ENV_TRAINING) ==="
-	conda env create -f envs/training.yml -p $(CONDA_ROOT)/$(ENV_TRAINING) || \
-		conda env update -f envs/training.yml -p $(CONDA_ROOT)/$(ENV_TRAINING)
-	conda run -p $(CONDA_ROOT)/$(ENV_TRAINING) pip install -e packages/training
+# 	$(call ensure_env,$(ENV_TRAINING))
+	@echo "=== Installing training package ==="
+# 	conda run -n $(ENV_TRAINING) pip install -e packages/training
 
 .PHONY: setup-inference
 setup-inference:
-	@echo "=== Setting up $(ENV_INFERENCE) ==="
-	conda env create -f envs/inference.yml -p $(CONDA_ROOT)/$(ENV_INFERENCE) || \
-		conda env update -f envs/inference.yml -p $(CONDA_ROOT)/$(ENV_INFERENCE)
-	conda run -p $(CONDA_ROOT)/$(ENV_INFERENCE) pip install -e packages/inference
-
-.PHONY: setup-orchestration
-setup-inference:
-	@echo "=== Setting up $(ENV_ORCH) ==="
-	conda run -p $(CONDA_ROOT)/$(ENV_DEV) pip install -e packages/orchestration
+# 	$(call ensure_env,$(ENV_INFERENCE))
+	@echo "=== Installing inference package ==="
+# 	conda run -n $(ENV_INFERENCE) pip install -e packages/inference
 
 # =====================
 # Pre-commit hooks
 # =====================
 .PHONY: hooks
 hooks:
-	@echo "=== Installing pre-commit hooks ==="
-	# Install hooks in all environments where pre-commit is available
-	$(foreach env,$(PACKAGES),conda run -p $(CONDA_ROOT)/$(env) pre-commit install;)
+	@echo "=== Installing pre-commit hooks in all environments ==="
+	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
 	@echo "Pre-commit hooks installed successfully."
 
+.PHONY: hooks-update
+hooks-update:
+	@echo "=== Updating pre-commit hooks in all environments ==="
+	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit autoupdate;)
+	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
+	@echo "Pre-commit hooks updated successfully."
+
+# =====================
+# Detect secrets
+# =====================
 .PHONY: secrets-cli
 install-secrets-cli:
-	@echo "Installing detect-secrets CLI tool in $(ENV_DEV) environment..."
-	# Using standard Conda commands: activate environment, then run pip install
+	@echo "Installing detect-secrets CLI in $(ENV_DEV)..."
 	conda run -n $(ENV_DEV) pip install detect-secrets
 
 .PHONY: secrets-baseline
 init-secrets-baseline: install-secrets-cli
-	@echo "Scanning repository and generating .secrets.baseline file..."
-	# Using standard Conda commands: activate environment, then run the tool
+	@echo "Generating .secrets.baseline..."
 	conda run -n $(ENV_DEV) detect-secrets scan > .secrets.baseline
-	@echo "Baseline created. Please run 'git add .secrets.baseline' and commit it."
-
-.PHONY: hooks-update
-hooks-update:
-	@echo "=== Updating pre-commit hooks ==="
-	$(foreach env,$(PACKAGES),conda run -p $(CONDA_ROOT)/$(env) pre-commit autoupdate;)
-	$(foreach env,$(PACKAGES),conda run -p $(CONDA_ROOT)/$(env) pre-commit install;)
-	@echo "Pre-commit hooks updated successfully."
+	@echo "Baseline created. Add and commit .secrets.baseline"
 
 # =====================
 # DVC targets
 # =====================
-
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="
@@ -136,7 +155,6 @@ dvc-clean:
 # =====================
 # Tests
 # =====================
-
 .PHONY: test
 
 test: ## Run unit tests with correct path
@@ -147,6 +165,6 @@ test: ## Run unit tests with correct path
 # =====================
 .PHONY: clean
 clean:
-	@echo "=== Removing all conda environments in $(CONDA_ROOT) ==="
-	$(foreach env,$(PACKAGES),conda env remove -p $(CONDA_ROOT)/$(env) -y;)
+	@echo "=== Removing all conda environments ==="
+	$(foreach env,$(PACKAGES),conda env remove -n $(env) -y;)
 	@echo "Cleanup complete."
