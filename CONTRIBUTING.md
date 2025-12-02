@@ -110,6 +110,8 @@ pytest --cov=packages/<module>
   * bugfix/<short-description>
   * hotfix/<short-description>
 
+*Note*: The **_badges_** branch is a stand alone branch for storing coverage **_.svg_** images generated in the CI workflow. It is not intended to ever be merged into **_main_**
+
 * **Commit messages:**
 
   * Use imperative mood

@@ -17,7 +17,7 @@ ENV_INFERENCE = inference
 ENV_DEV = root_dev
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) #$(ENV_PREPROCESSING) $(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
 
 # =====================
 # Help
@@ -70,11 +70,15 @@ setup-orchestration:
 	conda run -n $(ENV_DEV) pip install -e packages/orchestration
 
 # TODO: Implement the remaining packages
+# manual conda env creation:
+#conda env create -f conda_envs/preprocessing.yml -n preprocessing
+# or
+#conda env update -f conda_envs/preprocessing.yml -n preprocessing
 .PHONY: setup-preprocessing
 setup-preprocessing:
-# 	$(call ensure_env,$(ENV_PREPROCESSING))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing preprocessing package ==="
-# 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:

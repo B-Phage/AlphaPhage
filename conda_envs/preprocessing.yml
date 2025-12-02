@@ -1,0 +1,16 @@
+name: preprocessing
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.11
+  - prodigal
+  - prodigal-gv
+  - tqdm
+  - omegaconf
+  - pre_commit
+  - pytest
+  - coverage
+  - pytest-cov
+  - tqdm
+  - colorlog

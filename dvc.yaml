@@ -1,5 +1,15 @@
 # dummy template for now
 stages:
+  prodigal_dataset1:
+    cmd: conda run -n preprocessing python workflows/run_prodigal.py --config ml_assets/configs/prodigal_ecoli_v0.0.1.yaml
+    deps:
+      - workflows/run_prodigal.py
+      - packages/orchestration/orchestrator.py
+      - configs/prodigal_dataset1.yaml
+      - params.yaml
+    outs:
+      - data/processed/proteins/dataset1
+
   preprocess:
     cmd: python packages/preprocessing/run_preprocessing.py \
             --config configs/preprocessing.yaml \

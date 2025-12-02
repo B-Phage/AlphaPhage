@@ -1,0 +1,38 @@
+name: 🪡 Integration Tests
+
+on:
+  push:
+    paths:
+      - "workflows/**"
+      - "packages/**"
+      - "tests/integration/**"
+      - ".github/workflows/integration-tests.yml"
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up micromamba
+        uses: mamba-org/provision-with-micromamba@v15
+        with:
+          environment-file: conda_envs/preprocessing.yml
+          environment-name: preprocessing
+          cache-downloads: true
+        #   cache-environment: true
+
+      - name: 🐍 Install Python deps (pytest, etc.)
+        # These install *inside* the micromamba environment
+        run: |
+          micromamba run -n preprocessing python -m pip install --upgrade pip
+          micromamba run -n preprocessing pip install pytest pytest-cov
+
+      - name: 🏃 Run integration tests
+        run: |
+          # Ensure the repo root and packages folder are importable
+          micromamba run -n preprocessing \
+            bash -c "PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v"

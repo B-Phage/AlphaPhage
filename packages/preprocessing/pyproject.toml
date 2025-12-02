@@ -7,21 +7,11 @@ name = "preprocessing"
 version = "0.1.0"
 description = "Preprocessing module for the ML pipeline"
 readme = "README.md"
-license = { text = "PROPRIETARY, CONFIDENTIAL" }
+license = "LicenseRef-Proprietary"
 
 # Python 3.10 requirement (Conda enforces it, but it's good to specify here also)
 requires-python = ">=3.10,<3.11"
 
-# Pip-installable dependencies (Conda deps go in env.yml, not here)
-dependencies = [
-  # "pandas>=1.5",
-  # "numpy>=1.23"
-]
-
 [tool.setuptools]
-# Optional: Use src/ layout if desired
-# package-dir = {"" = "src"}
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["preprocessing*"]
+# we use the root level pyproject.toml black and isort
