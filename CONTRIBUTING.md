@@ -52,15 +52,28 @@ Replace `<environment_name>` with preprocessing, feature_engineering, training, 
 ## 3. Repository Structure
 ```
 repo/
-├── packages/              # Python modules (preprocessing, feature_engineering, training, inference)
-├── ml_assets/             # DVC-tracked data, models, experiments
-├── envs/                  # Conda environment definitions per module
-├── configs/               # YAML config files for pipeline stages
-├── dvc.yaml               # DVC pipeline
-├── Makefile               # Setup and pipeline commands
-├── pyproject.toml         # Root project metadata (optional)
-└── .pre-commit-config.yaml
+├── packages/              # Source code directory containing all Python packages.
+│   ├── utils/             # Core utility functions (e.g., logging, common data manipulation).
+│   ├── orchestration/     # Custom mini-scheduler logic for sample discovery, parallel execution, and partial reruns.
+│   ├── preprocessing/     # Scripts for data cleaning and initial transformation.
+│   ├── feature_engineering/ # Logic for creating and selecting model features.
+│   ├── training/          # Model training, validation, and serialization logic.
+│   └── inference/         # Code for loading models and making predictions.
+├── ml_assets/             # Storage for Data Version Control (DVC) tracked files.
+│   ├── data/              # Raw and processed datasets (DVC remote storage pointer).
+│   ├── models/            # Trained models and checkpoints.
+│   ├── vocab/             # Transformer data vocabulary configuration versions
+│   └── experiments/       # DVC experiment results, metrics, and parameters.
+├── conda_envs/            # Environment definition files (.yml) for reproducibility.
+├── tests/                 # Unit, integration, and functional test suite for all packages.
+├── dvc.yaml               # Defines the coarse, stable pipeline stages and serves as the deployment engine for the workflow.
+├── Makefile               # Task runner for common operations: install, lint, test, format, and DVC pipeline execution.
+├── pyproject.toml         # Defines project metadata, and configurations for tools like Black and isort.
+├── .coveragerc            # Configuration file for Python code coverage (coverage.py).
+├── .secrets.baseline      # Security baseline file for tracking potential exposed secrets.
+└── .pre-commit-config.yaml # Configuration file for Git hooks (e.g., Black, isort, MyPy) to ensure code quality before commit.
 ```
+
 Place new code in _packages/<module_name>/_.
 
 Track datasets and models with DVC under _ml_assets/_.
