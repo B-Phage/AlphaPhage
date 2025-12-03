@@ -4,6 +4,7 @@ Run Prodigal gene/protein prediction using a specified configuration file.
 """
 
 import argparse
+import os
 import subprocess
 from pathlib import Path
 
@@ -81,6 +82,7 @@ else:
 # Run orchestrator
 # -----------------------------
 if __name__ == "__main__":
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     orch = Orchestrator(
         workflow_name=f"prodigal_{cfg.get('name', 'default')}",
         hash_store_dir=HASH_STORE_DIR,

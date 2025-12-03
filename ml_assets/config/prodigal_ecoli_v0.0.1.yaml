@@ -1,16 +1,16 @@
 prodigal_config:
-  lst_genomes: []        # optional whitelist of genomes
-  n_jobs: 8
-  code_version: "prodigal-gv-v1.0"
+  lst_genomes:      []        # optional whitelist of genomes
+  n_jobs:           4
+  code_version:     "prodigal-gv-v1.0"
 
   # from the ann_hmm snakemake config
-  checkpoint:   null
-  data_dir:     "../../../databases"
-  genome_dir:   "Gaborieau_Picard/coli_phage_interactions_2023-main/data/genomics/phages/FNA"
-  out_dir:      "process/ann_phage/Ecoli_GP"
+  checkpoint:      null
+  data_dir:         "../../../databases"
+  genome_dir:       "production/sequence_data/bacteria"
+  output_dir:       "process/bacteria"
 
-  hmm_multifile:    "pharokka_v1.4.0_databases/all_phrogs.h3m"
-  annotations:      "PHROG/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv"
-  hhm_scan_method:  "phrogs"
+  hmm_multifile:    "Pfam/Pfam-A.hmm"
+  annotations:      "Pfam/Pfam-A.hmm.dat"
+  hhm_scan_method:  "cogs"
   sql_tbl_sufix:    ""
   min_bit_score:    50

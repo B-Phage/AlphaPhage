@@ -64,6 +64,7 @@ repo/
 │   ├── models/            # Trained models and checkpoints.
 │   ├── vocab/             # Transformer data vocabulary configuration versions
 │   └── experiments/       # DVC experiment results, metrics, and parameters.
+├── workflows/             # Scripts for DVC. The scripts run a workflow using the orchestration package (snakemake replacements)
 ├── conda_envs/            # Environment definition files (.yml) for reproducibility.
 ├── tests/                 # Unit, integration, and functional test suite for all packages.
 ├── dvc.yaml               # Defines the coarse, stable pipeline stages and serves as the deployment engine for the workflow.

@@ -42,8 +42,8 @@ Thumbs.db        # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
-data/
-data/*
+# data/
+# data/*
 
 # Trained model artifacts
 models/
