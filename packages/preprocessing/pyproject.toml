@@ -10,7 +10,7 @@ readme = "README.md"
 license = "LicenseRef-Proprietary"
 
 # Python 3.10 requirement (Conda enforces it, but it's good to specify here also)
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10,<3.12"
 
 [tool.setuptools]
 

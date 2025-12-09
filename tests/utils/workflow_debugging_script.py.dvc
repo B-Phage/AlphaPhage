@@ -1,5 +1,0 @@
-outs:
-- md5: c238512dc0470bde9ec10738b747e365
-  size: 459
-  hash: md5
-  path: workflow_debugging_script.py

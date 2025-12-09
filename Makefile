@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration #preprocessing feature_engineering training inference
+PACKAGES = utils orchestration preprocessing #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -28,15 +28,15 @@ ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFE
 .PHONY: help
 help:
 	@echo "Usage:"
-	@echo "  make setup-all       - Setup all environments, install packages, and setup hooks"
-	@echo "  make setup-<pkg>     - Setup a single package environment and install it"
-	@echo "  make setup-dvc-config     		 - Setup the dvc OAuth"
-	@echo "  make hooks           - Install pre-commit hooks in the current environment"
-	@echo "  make secrets-cli     - Installing detect-secrets CLI tool"
-	@echo "  make secrets-baseline           - Scanning repository and generating .secrets.baseline file..."
-	@echo "  make hooks-update    - Update pre-commit hooks and reinstall"
-	@echo "  make dvc-<target>    - Run DVC commands (pull, repro, push, dag, clean)"
-	@echo "  make clean           - Remove all conda environments"
+	@echo "  make setup-all       		- Setup all environments, install packages, and setup hooks"
+	@echo "  make setup-<pkg>     		- Setup a single package environment and install it"
+	@echo "  make check-dvc-config     	- Check the dvc OAuth"
+	@echo "  make hooks           		- Install pre-commit hooks in the current environment"
+	@echo "  make secrets-cli     		- Installing detect-secrets CLI tool"
+	@echo "  make secrets-baseline      - Scanning repository and generating .secrets.baseline file..."
+	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
+	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
+	@echo "  make clean           		- Remove all conda environments"
 
 # =====================
 # Helper: Ensure conda env exists (create/update)
@@ -55,7 +55,7 @@ endef
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks setup-dvc-config dvc-pull
+setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull
 	@echo "All environments, packages, hooks, and DVC data are ready."
 
 # =====================
@@ -136,21 +136,24 @@ init-secrets-baseline: install-secrets-cli
 # DVC targets
 # =====================
 
-# Target to set up the DVC config
-.PHONY: setup-dvc-config
-setup-dvc-config:
-	@echo "Setting up local DVC config..."
-	@if [ -z "$(GDRIVE_CLIENT_ID)" ] || [ -z "$(GDRIVE_CLIENT_SECRET)" ]; then \
-		echo "ERROR: Missing GDRIVE_CLIENT_ID or GDRIVE_CLIENT_SECRET environment variables."; \
-		echo "Please set them before running this step."; \
+# Target to check the DVC authentication config
+.PHONY: check-dvc-config
+check-dvc-config:
+	@echo "Checking local DVC config..."
+	@if [ ! -f "$(DVC_CONFIG_LOCAL)" ]; then \
+		echo "ERROR: $(DVC_CONFIG_LOCAL) does not exist."; \
+		echo "Please create it and add your:"; \
+		echo "		gdrive_client_id"; \
+		echo "		gdrive_client_secret"; \
+		echo "See CONTRIBUTING.md -> 2.3. Configure DVC Data Authentication"; \
 		exit 1; \
 	fi
-
-	# Create the local config file and insert the sensitive keys
-	@echo "['remote \"gdrive_remote\"']" > $(DVC_CONFIG_LOCAL)
-	@echo "    gdrive_client_id = $(GDRIVE_CLIENT_ID)" >> $(DVC_CONFIG_LOCAL)
-	@echo "    gdrive_client_secret = $(GDRIVE_CLIENT_SECRET)" >> $(DVC_CONFIG_LOCAL)
-	@echo "Local DVC configuration created at $(DVC_CONFIG_LOCAL)."
+	@if ! grep -q "gdrive_client_id" "$(DVC_CONFIG_LOCAL)" || ! grep -q "gdrive_client_secret" "$(DVC_CONFIG_LOCAL)"; then \
+		echo "ERROR: $(DVC_CONFIG_LOCAL) is missing gdrive_client_id or gdrive_client_secret."; \
+		echo "Please add your OAuth client credentials to the file."; \
+		exit 1; \
+	fi
+	@echo "Local DVC config looks OK."
 
 .PHONY: dvc-pull
 dvc-pull:

@@ -1,0 +1,45 @@
+# This is a draft github action workflow meant to run a light weight
+# Continous Deployment test.
+# The purpose is to check that everything works together including:
+#     * Makefile setup
+#       * DVC Pull
+#       * Package Installs
+#     * dvc pipeline run `dvc repro`
+
+
+name: 💨🚨 DVC Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install DVC
+        run: pip install dvc[gdrive]
+
+      - name: Authenticate to Google Drive (Service Account)
+        # TODO:
+        #   * Google Cloud Console → IAM → Service Accounts → New
+        #   * Create a JSON key
+        #   * Share ONLY THE DVC REMOTE FOLDER with the service account
+        #   * Store the service account JSON in GitHub Secrets
+        #       * GDRIVE_CREDENTIALS_JSON
+        run: |
+          echo "$GDRIVE_CREDENTIALS_JSON" > sa.json
+          dvc remote modify origin gdrive_use_service_account true
+          dvc remote modify origin gdrive_service_account_json_file_path sa.json
+
+      - name: Pull test data
+        # TODO:
+        #   * save test data somewhere
+        #   * ensure that the dvc.yaml can be configured to use the test data only
+        run: dvc pull -r origin --targets tests/data/small_dataset
+
+      - name: Run pipeline
+        run: |
+          make all  # Or whatever your Makefile target is
+          dvc repro
