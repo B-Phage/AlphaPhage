@@ -1,8 +1,8 @@
 schema: '2.0'
 stages:
   prodigal_ecoli:
-    cmd: "conda init | conda activate preprocessing | python -u workflows/run_prodigal.py
-      --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml\n"
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
+      && python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'\n"
     deps:
     - path: ml_assets/config/prodigal_ecoli_v0.0.1.yaml
       hash: md5
@@ -15,16 +15,16 @@ stages:
       nfiles: 413
     - path: packages/orchestration/orchestrator.py
       hash: md5
-      md5: 20482c70497bc24f32aedcf91ba992bf
-      size: 6010
+      md5: f067bbf8b987760a9a9ce1827489b513
+      size: 5619
     - path: params.yaml
       hash: md5
       md5: 6ac52bb71ef5384cb26120a334698b16
       size: 405
     - path: workflows/run_prodigal.py
       hash: md5
-      md5: 8cbf50078b51ca5567ca3b5c7508ee31
-      size: 2618
+      md5: c2f3e5451bc3a853c2f34431a5f655e6
+      size: 2614
     outs:
     - path: ml_assets/data/processed/bacteria/proteins
       hash: md5
@@ -34,8 +34,8 @@ stages:
   test_output:
     cmd: "/bin/bash -c \"for i in {1..10}; do echo 'Line $i'; sleep 0.5; done\"\n"
   prodigal_phage:
-    cmd: "conda init | conda activate preprocessing | python -u workflows/run_prodigal.py
-      --config ml_assets/config/prodigal_phage_v0.0.1.yaml\n"
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
+      && python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
     deps:
     - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
       hash: md5
@@ -48,16 +48,16 @@ stages:
       nfiles: 133
     - path: packages/orchestration/orchestrator.py
       hash: md5
-      md5: 20482c70497bc24f32aedcf91ba992bf
-      size: 6010
+      md5: f067bbf8b987760a9a9ce1827489b513
+      size: 5619
     - path: params.yaml
       hash: md5
       md5: 6ac52bb71ef5384cb26120a334698b16
       size: 405
     - path: workflows/run_prodigal.py
       hash: md5
-      md5: 8cbf50078b51ca5567ca3b5c7508ee31
-      size: 2618
+      md5: c2f3e5451bc3a853c2f34431a5f655e6
+      size: 2614
     outs:
     - path: ml_assets/data/processed/phage/proteins
       hash: md5

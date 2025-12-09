@@ -13,9 +13,9 @@ stages:
     # If it is the first run you need to add two files to git as well:
     #   git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
     cmd: >
-      conda init |
-      conda activate preprocessing |
-      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'
     deps:
       - workflows/run_prodigal.py
       - packages/orchestration/orchestrator.py
@@ -30,9 +30,9 @@ stages:
     #   dvc add ../databases/production/sequence_data/phage --out ml_assets/data/sequence_data
     #   git add ml_assets/data/sequence_data/phage/.gitignore ml_assets/data/sequence_data/bacteria/phage.dvc
     cmd: >
-      conda init |
-      conda activate preprocessing |
-      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'
     deps:
       - workflows/run_prodigal.py
       - packages/orchestration/orchestrator.py
