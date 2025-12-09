@@ -1,4 +1,4 @@
-name: 🪡🚨 Integration Tests
+name: 🪡 🚨 Integration Tests
 
 on:
   push:
@@ -12,27 +12,34 @@ on:
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
 
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up micromamba
-        uses: mamba-org/provision-with-micromamba@v15
+      - name: Cache conda packages
+        uses: actions/cache@v4
         with:
-          environment-file: conda_envs/preprocessing.yml
-          environment-name: preprocessing
-          cache-downloads: true
-        #   cache-environment: true
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ hashFiles('conda_envs/preprocessing.yml') }}
 
-      - name: 🐍 Install Python deps (pytest, etc.)
-        # These install *inside* the micromamba environment
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.11                     # or your required version
+          environment-file: conda_envs/preprocessing.yml
+          activate-environment: preprocessing      # name of the env
+
+      - name: 🐍 Install additional Python deps (pytest, etc.)
         run: |
-          micromamba run -n preprocessing python -m pip install --upgrade pip
-          micromamba run -n preprocessing pip install pytest pytest-cov
+          conda activate preprocessing
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
 
       - name: 🏃 Run integration tests
         run: |
-          # Ensure the repo root and packages folder are importable
-          micromamba run -n preprocessing \
-            bash -c "PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v"
+          conda activate preprocessing
+          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v
