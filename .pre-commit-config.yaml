@@ -39,3 +39,4 @@ repos:
     hooks:
       - id: detect-secrets      # Scans for hardcoded passwords, keys, and tokens
         args: ['--baseline', '.secrets.baseline'] # Create this file to ignore false positives
+        exclude: ^ml_assets/data/workflow/hashes/prodigal_default.json|\.dvc$|^dvc\.lock$

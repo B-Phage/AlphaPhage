@@ -4,10 +4,10 @@ prodigal_config:
   code_version:     "prodigal-gv-v1.0"
 
   # from the ann_hmm snakemake config
-  checkpoint:      null
+  checkpoint:       null
   data_dir:         "../../../databases"
-  genome_dir:       "production/sequence_data/bacteria"
-  output_dir:       "process/bacteria"
+  genome_dir:       "../databases/production/sequence_data/bacteria"
+  output_dir:       "ml_assets/data/processed/bacteria/proteins"
 
   hmm_multifile:    "Pfam/Pfam-A.hmm"
   annotations:      "Pfam/Pfam-A.hmm.dat"

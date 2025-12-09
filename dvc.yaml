@@ -1,17 +1,46 @@
+# Run with
+# dvc update # this brings in the remote raw data
+# dvc repro  # this runs all changed piplines, see https://doc.dvc.org/command-reference/repro#options
+
+
 # preprocessing stage
 stages:
+
   prodigal_ecoli:
-    cmd: conda run -n preprocessing python workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml --force true
-    # required:
-    # git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
+    # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
+    # Example
+    #   dvc add ../databases/production/sequence_data/bacteria --out ml_assets/data/sequence_data
+    # If it is the first run you need to add two files to git as well:
+    #   git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
+    cmd: >
+      conda init |
+      conda activate preprocessing |
+      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml
     deps:
       - workflows/run_prodigal.py
       - packages/orchestration/orchestrator.py
-      - ml_assets/data/sequence_data/bacteria
+      - ml_assets/data/sequence_data/bacteria # see NOTE above
       - params.yaml
       - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
     outs:
       - ml_assets/data/processed/bacteria/proteins
+
+  prodigal_phage:
+    # required:
+    #   dvc add ../databases/production/sequence_data/phage --out ml_assets/data/sequence_data
+    #   git add ml_assets/data/sequence_data/phage/.gitignore ml_assets/data/sequence_data/bacteria/phage.dvc
+    cmd: >
+      conda init |
+      conda activate preprocessing |
+      python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml
+    deps:
+      - workflows/run_prodigal.py
+      - packages/orchestration/orchestrator.py
+      - ml_assets/data/sequence_data/phage
+      - params.yaml
+      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+    outs:
+      - ml_assets/data/processed/phage/proteins
 
 # Hashing the next stages out for now
 # will bring them in systematically as the code is implemented

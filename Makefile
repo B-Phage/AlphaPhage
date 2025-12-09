@@ -16,6 +16,9 @@ ENV_TRAINING = training
 ENV_INFERENCE = inference
 ENV_DEV = root_dev
 
+# Define the config file path
+DVC_CONFIG_LOCAL = .dvc/config.local
+
 # TODO: update this list as the packages are implemented
 ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
 
@@ -27,6 +30,7 @@ help:
 	@echo "Usage:"
 	@echo "  make setup-all       - Setup all environments, install packages, and setup hooks"
 	@echo "  make setup-<pkg>     - Setup a single package environment and install it"
+	@echo "  make setup-dvc-config     		 - Setup the dvc OAuth"
 	@echo "  make hooks           - Install pre-commit hooks in the current environment"
 	@echo "  make secrets-cli     - Installing detect-secrets CLI tool"
 	@echo "  make secrets-baseline           - Scanning repository and generating .secrets.baseline file..."
@@ -51,7 +55,7 @@ endef
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks dvc-pull
+setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks setup-dvc-config dvc-pull
 	@echo "All environments, packages, hooks, and DVC data are ready."
 
 # =====================
@@ -131,6 +135,23 @@ init-secrets-baseline: install-secrets-cli
 # =====================
 # DVC targets
 # =====================
+
+# Target to set up the DVC config
+.PHONY: setup-dvc-config
+setup-dvc-config:
+	@echo "Setting up local DVC config..."
+	@if [ -z "$(GDRIVE_CLIENT_ID)" ] || [ -z "$(GDRIVE_CLIENT_SECRET)" ]; then \
+		echo "ERROR: Missing GDRIVE_CLIENT_ID or GDRIVE_CLIENT_SECRET environment variables."; \
+		echo "Please set them before running this step."; \
+		exit 1; \
+	fi
+
+	# Create the local config file and insert the sensitive keys
+	@echo "['remote \"gdrive_remote\"']" > $(DVC_CONFIG_LOCAL)
+	@echo "    gdrive_client_id = $(GDRIVE_CLIENT_ID)" >> $(DVC_CONFIG_LOCAL)
+	@echo "    gdrive_client_secret = $(GDRIVE_CLIENT_SECRET)" >> $(DVC_CONFIG_LOCAL)
+	@echo "Local DVC configuration created at $(DVC_CONFIG_LOCAL)."
+
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="

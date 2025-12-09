@@ -16,4 +16,10 @@
         "./packages"
     ],
 
+    // Special file formats
+    "files.associations": {
+    "*.dvc": "yaml",
+    ".dvc/config": "ini"
+    },
+
 }

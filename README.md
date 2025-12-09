@@ -25,8 +25,14 @@ Please see the **[CONTRIBUTING.md](CONTRIBUTING.md)** file for detailed setup in
 
 ## ⚡ Quick Start
 
+### Set up DVC Data Authentication (REQUIRED) 🔑
+This step grants access to the large data files tracked by DVC.
+Follow the instructions in **[CONTRIBUTING.md](CONTRIBUTING.md)**, Section 2.3,  to generate your Client ID and Secret.
+
+### Checkout Code, Install Dependencies, DVC Pull & Run Pipeline
+
 ```bash
-git clone <repo>
+git clone <repo>        # checkout code
 cd <repo>
 make setup-all          # Sets up environments, packages, hooks, pulls DVC data
 make dvc-repro          # Run the pipeline
@@ -39,6 +45,7 @@ repo/
 ├── packages/       # Python modules (preprocessing, training, etc.)
 ├── ml_assets/      # Data, models, experiments tracked with DVC
 ├── conda_envs/     # Conda environment files
+├── workflows/
 ├── tests/          # Unit and Integration test
 ├── dvc.yaml
 └── Makefile # Setup & pipeline commands

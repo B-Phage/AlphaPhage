@@ -1,0 +1,66 @@
+schema: '2.0'
+stages:
+  prodigal_ecoli:
+    cmd: "conda init | conda activate preprocessing | python -u workflows/run_prodigal.py
+      --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml\n"
+    deps:
+    - path: ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      hash: md5
+      md5: 8c47fd33bf634371b0d3bbd034e5bd01
+      size: 533
+    - path: ml_assets/data/sequence_data/bacteria
+      hash: md5
+      md5: 464d00624ad60abb734122ef2f38a455.dir
+      size: 2108196224
+      nfiles: 413
+    - path: packages/orchestration/orchestrator.py
+      hash: md5
+      md5: 20482c70497bc24f32aedcf91ba992bf
+      size: 6010
+    - path: params.yaml
+      hash: md5
+      md5: 6ac52bb71ef5384cb26120a334698b16
+      size: 405
+    - path: workflows/run_prodigal.py
+      hash: md5
+      md5: 8cbf50078b51ca5567ca3b5c7508ee31
+      size: 2618
+    outs:
+    - path: ml_assets/data/processed/bacteria/proteins
+      hash: md5
+      md5: 14d283dab996e9546e5a951ca045b57f.dir
+      size: 936098836
+      nfiles: 413
+  test_output:
+    cmd: "/bin/bash -c \"for i in {1..10}; do echo 'Line $i'; sleep 0.5; done\"\n"
+  prodigal_phage:
+    cmd: "conda init | conda activate preprocessing | python -u workflows/run_prodigal.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml\n"
+    deps:
+    - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
+      hash: md5
+      md5: 6e918c295866741129d15773e03de950
+      size: 585
+    - path: ml_assets/data/sequence_data/phage
+      hash: md5
+      md5: 686a6064256b03e97b3a8553f70643f8.dir
+      size: 10699034
+      nfiles: 133
+    - path: packages/orchestration/orchestrator.py
+      hash: md5
+      md5: 20482c70497bc24f32aedcf91ba992bf
+      size: 6010
+    - path: params.yaml
+      hash: md5
+      md5: 6ac52bb71ef5384cb26120a334698b16
+      size: 405
+    - path: workflows/run_prodigal.py
+      hash: md5
+      md5: 8cbf50078b51ca5567ca3b5c7508ee31
+      size: 2618
+    outs:
+    - path: ml_assets/data/processed/phage/proteins
+      hash: md5
+      md5: 875f7b1e53e944d2dd3390cc8f172398.dir
+      size: 5439150
+      nfiles: 132

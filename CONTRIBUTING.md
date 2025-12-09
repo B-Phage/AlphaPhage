@@ -20,14 +20,59 @@ All contributions must adhere to the following principles:
 
 Follow these steps to get started with the repo:
 
-### Clone the repository
+### 2.1. Configure SSH for Git Access (Optional but Recommended)
+
+### 2.2. Clone the repository
 
 ```bash
 git clone <repo-url>
 cd <repo-name>
 ```
 
-### Setup environments, install packages, and pre-commit hooks
+### 2.3. Configure DVC Data Authentication (Google Drive)
+
+This step grants access to the project's large data files tracked by DVC.
+
+Before you can authenticate, you need to create the application credentials (Client ID and Secret) used for DVC's OAuth flow.
+
+1. **Access Google Cloud Console:** Navigate to the [alphaphage-dvc](https://console.cloud.google.com/apis/api/drive.googleapis.com/metrics?project=alphaphage-dvc)
+2. **Go to __Credentials__:** In the left navigation menu, go to **APIs & Services** $\rightarrow$ **Credentials**.
+3. **Create OAuth Client ID:**
+   * Click **+ CREATE CREDENTIALS** and select **OAuth client ID**.
+   * Set **Application type** to **Desktop app**.
+   * Give it a memorable name.
+   * Click **CREATE**.
+4. **Copy Credentials:** A modal window will appear displaying your new **Client ID** and **Client Secret**.
+5. **Update Config:** Copy both values and paste them into your `config.local` file, replacing the placeholders. Since _.dvc/config.local_ is not committed, each user needs one.
+  * Copy the template:
+```
+cp .dvc/config.local.template .dvc/config.local
+```
+  * Edit _.dvc/config.local_:
+```
+['remote "gdrive_remote"']
+    gdrive_client_id = <YOUR_CLIENT_ID>
+    gdrive_client_secret = <YOUR_CLIENT_SECRET>
+```
+Use the client ID/secret for the OAuth project you’ve enabled:
+[alphaphage-dvc](https://console.cloud.google.com/apis/api/drive.googleapis.com/metrics?project=alphaphage-dvc)
+
+
+### 2.4. Authenticate with Google OAuth
+`dvc pull`
+
+
+Browser will open asking you to log in.
+
+Log in with your Google account.
+
+Google may ask for permissions; if the OAuth project is already verified/enabled, it should succeed.
+
+After successful login, DVC caches the token locally (~~/.config/dvc/cred.json) → no need to repeat.
+
+Each user must authenticate once per machine.
+
+### 2.5. Setup environments, install packages, and pre-commit hooks
 
 ```bash
 make setup-all
@@ -43,7 +88,7 @@ This command will:
 
 - Pull DVC-tracked data and models
 
-### Activate an environment
+### 2.6. Activate an environment
 ```bash
 conda activate conda_envs/<environment_name>
 ```

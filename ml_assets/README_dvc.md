@@ -23,6 +23,12 @@ conda install -c conda-forge dvc-gdrive
 
 Must have dvc-gdrive installed to access Google Drive.
 
+3️⃣ Generate Google Drive OAuth Credentials ☁️Before you can authenticate, you need to create the application credentials (Client ID and Secret) used for DVC's OAuth flow.Access Google Cloud Console: Navigate to the [alphaphage-dvc] project link provided above: https://console.cloud.google.com/apis/api/drive.googleapis.com/metrics?project=alphaphage-dvc.Go to Credentials: In the left navigation menu, go to APIs & Services $\rightarrow$ Credentials.Create OAuth Client ID:Click + CREATE CREDENTIALS and select OAuth client ID.Set Application type to Desktop app.Give it a memorable name (e.g., dvc-dev-machine).Click CREATE.Copy Credentials: A modal window will appear displaying your new Client ID and Client Secret.Update Config: Copy both values and paste them into your local config file, replacing the placeholders:Ini, TOML# In .dvc/config.local
+['remote "gdrive_remote"']
+    gdrive_client_id = <YOUR_CLIENT_ID>
+    gdrive_client_secret = <YOUR_CLIENT_SECRET>
+This step only needs to be done once per DVC project/team and provides the shared application credentials. The subsequent "Authenticate with Google OAuth" step uses these to generate the unique per-user token.
+
 ## 3️⃣ Create a local config for OAuth credentials
 
 Since _.dvc/config.local_ is not committed, each user needs one.
@@ -86,9 +92,25 @@ _.dvc/config.local_ ensures that credentials remain private per user and are ign
 To add data that is stored outside of the repo, use the `--external` option:
 ```
 mkdir -p ml_assets/data/sequence_data/bacteria
-dvc add ../databases/production/sequence_data/bacteria --out ml_assets/data/sequence_data/bacteria
+dvc import-url --to-remote ../databases/production/sequence_data/bacteria* ml_assets/data/sequence_data  # for remote
+# dvc add ../databases/production/sequence_data/bacteria --out ml_assets/data/sequence_data # for duplicated
 
 git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
+git add ml_assets/data/sequence_data/bacteria.dvc ml_assets/data/sequence_data/.gitignore
+dvc config core.autostage true # auto stage .dvc, dvc.yaml
+for mistakes:
+dvc remove ml_assets/data/sequence_data/bacteria.dvc
+
+# Phage sources
+dvc import-url --to-remote ../databases/production/sequence_data/phage ml_assets/data/sequence_data
+
+dvc upda
+
+```
+Setting up the local cache:
+```
+dvc config cache.dir ../databases/production
+dvc config cache.type symlink
 ```
 
 

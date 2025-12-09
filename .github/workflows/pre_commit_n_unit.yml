@@ -1,4 +1,4 @@
-name: 🚨 Pre-Commit Checks
+name: 🧩🚨 Unit Tests & Pre-Commit Checks
 
 on:
   # Run on every push to a branch
