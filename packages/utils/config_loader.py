@@ -64,7 +64,7 @@ def get_prodigal_config(override_path: str | None = None):
 
     params = OmegaConf.load(cfg_path)
     if "prodigal_config" not in params:
-        raise KeyError("prodigal_config section missing in config file")
+        raise KeyError(f"prodigal_config section missing in config file {params}")
 
     return params.prodigal_config
 

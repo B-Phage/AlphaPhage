@@ -133,6 +133,18 @@ class TestVocabLoader(unittest.TestCase):
             "The FileNotFoundError should contain the path of the missing file.",
         )
 
+    def test_prodigal_config_loading(self):
+        conf = self.loader.get_prodigal_config("ml_assets/config/prodigal_phage_v0.0.1.yaml")
+
+        self.assertEqual(conf.lst_genomes, [])
+        self.assertEqual(conf.n_jobs, 4)
+
+        with self.assertRaises(FileNotFoundError):
+            conf = self.loader.get_prodigal_config("ml_assets/config/missing.yaml")
+
+        with self.assertRaises(KeyError):
+            conf = self.loader.get_prodigal_config("params.yaml")
+
 
 if __name__ == "__main__":
     unittest.main(exit=False)
