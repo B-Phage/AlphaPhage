@@ -13,8 +13,6 @@ from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
 
-PROJECT_ROOT = Path(os.getcwd())
-
 
 class TestVocabLoader(unittest.TestCase):
 
@@ -136,9 +134,7 @@ class TestVocabLoader(unittest.TestCase):
         )
 
     def test_prodigal_config_loading(self):
-        conf = self.loader.get_prodigal_config(
-            os.path.join(PROJECT_ROOT, "ml_assets/config/prodigal_phage_v0.0.1.yaml")
-        )
+        conf = self.loader.get_prodigal_config("ml_assets/config/prodigal_ecoli_v0.0.1.yaml")
 
         self.assertEqual(conf.lst_genomes, [])
         self.assertEqual(conf.n_jobs, 4)
