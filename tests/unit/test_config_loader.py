@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
 
-TEST_DIR = Path(__file__).parent
-PROJECT_ROOT = TEST_DIR.parent.parent
+CURRENT_FILE_PATH = Path(__file__).resolve()
+PROJECT_ROOT = CURRENT_FILE_PATH.parents[2]
 
 
 class TestVocabLoader(unittest.TestCase):
