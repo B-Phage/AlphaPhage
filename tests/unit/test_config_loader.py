@@ -13,8 +13,7 @@ from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
 
-CURRENT_FILE_PATH = Path(__file__).resolve()
-PROJECT_ROOT = CURRENT_FILE_PATH.parents[2]
+PROJECT_ROOT = Path(os.getcwd())
 
 
 class TestVocabLoader(unittest.TestCase):
