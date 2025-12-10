@@ -13,6 +13,9 @@ from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
 
+TEST_DIR = Path(__file__).parent
+PROJECT_ROOT = TEST_DIR.parent.parent
+
 
 class TestVocabLoader(unittest.TestCase):
 
@@ -134,13 +137,15 @@ class TestVocabLoader(unittest.TestCase):
         )
 
     def test_prodigal_config_loading(self):
-        conf = self.loader.get_prodigal_config("ml_assets/config/prodigal_phage_v0.0.1.yaml")
+        conf = self.loader.get_prodigal_config(
+            os.path.join(PROJECT_ROOT, "ml_assets/config/prodigal_phage_v0.0.1.yaml")
+        )
 
         self.assertEqual(conf.lst_genomes, [])
         self.assertEqual(conf.n_jobs, 4)
 
         with self.assertRaises(FileNotFoundError):
-            conf = self.loader.get_prodigal_config("ml_assets/config/missing.yaml")
+            conf = self.loader.get_prodigal_config("missing.yaml")
 
         with self.assertRaises(KeyError):
             conf = self.loader.get_prodigal_config("params.yaml")
