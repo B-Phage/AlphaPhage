@@ -1,7 +1,7 @@
-# tests/utils/test_vocab_loader.py
+# tests/utils/test_config_loader.py
 """
 To get the correct installed packages
-python -m unittest tests.test_vocab_loader
+python -m unittest tests.test_config_loader
 PYTHONPATH=./packages pytest tests/
 """
 
@@ -52,16 +52,16 @@ class TestVocabLoader(unittest.TestCase):
         )
         OmegaConf.save(params_content, self.params_file)
 
-        # Patch the PARAMS_PATH inside vocab_loader so it uses our temp copy
-        patcher = patch("utils.vocab_loader.PARAMS_PATH", self.params_file)
+        # Patch the PARAMS_PATH inside config_loader so it uses our temp copy
+        patcher = patch("utils.config_loader.PARAMS_PATH", self.params_file)
         self.addCleanup(patcher.stop)
         self.mock_params_path = patcher.start()
 
         # Import *after* mocking to ensure loader picks up test paths
-        global vocab_loader
-        from utils import vocab_loader
+        global config_loader
+        from utils import config_loader
 
-        self.loader = vocab_loader
+        self.loader = config_loader
 
     def tearDown(self):
         self.temp_dir.cleanup()
