@@ -1,3 +1,5 @@
+🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈![Coverage mlops_setup](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops_setup.svg)
+
 # AlphaPhage: Production Machine Learning Model 🧪
 
 This repository houses the **production-grade** implementation of our most robust predictive model. It is engineered for **reliability, repeatability, and maintainability** to ensure successful, stable deployment.
@@ -17,5 +19,45 @@ We maintain a strict definition of "production-grade" code, which is enforced vi
 
 ## 🛠 Getting Started
 
-Please see the **[CONTRIBUTING.md]** file for detailed setup instructions, the full code style guide, commit message conventions, and how to run tests locally.
+Please see the **[CONTRIBUTING.md](CONTRIBUTING.md)** file for detailed setup instructions, the full code style guide, commit message conventions, and how to run tests locally.
 
+---
+
+## ⚡ Quick Start
+
+### Set up DVC Data Authentication (REQUIRED) 🔑
+This step grants access to the large data files tracked by DVC.
+Follow the instructions in **[CONTRIBUTING.md](CONTRIBUTING.md)**, Section 2.3,  to generate your Client ID and Secret.
+
+### Checkout Code, Install Dependencies, DVC Pull & Run Pipeline
+
+```bash
+git clone <repo>        # checkout code
+cd <repo>
+make setup-all          # Sets up environments, packages, hooks, pulls DVC data
+make dvc-repro          # Run the pipeline
+```
+---
+
+## 🗂 Repository Structure
+```
+repo/
+├── packages/       # Python modules (preprocessing, training, etc.)
+├── ml_assets/      # Data, models, experiments tracked with DVC
+├── conda_envs/     # Conda environment files
+├── workflows/
+├── tests/          # Unit and Integration test
+├── dvc.yaml
+└── Makefile # Setup & pipeline commands
+```
+
+## 📦 Packages and Modules
+
+All production code is located within the `packages/` directory. Each package contains a dedicated `README.md` for a targeted overview of its role, contents, and dependencies. They are installed through the `Makefile`, see instrucitons in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+| Package | Description | Details |
+| :--- | :--- | :--- |
+| `packages/orchestration` | **Workflow Management:** Custom mini-scheduler responsible for dynamic per-file processing, parallel execution, and state checking, called by the coarse DVC stages. | [Read Package README](packages/orchestration/README.md) |
+| `packages/utils` | **Core Utilities:** Common code for logging, file handling, and shared data structures. | [Read Package README](packages/utils/README.md) |
+| `packages/preprocessing` | Scripts for data cleaning, quality control, and initial transformation steps. | [Read Package README](packages/preprocessing/README.md) |
+| *(... and so on for the rest of our packages)* | | |

@@ -1,0 +1,16 @@
+prodigal_config:
+  lst_genomes:      []        # optional whitelist of genomes
+  n_jobs:           4
+  code_version:     "prodigal-gv-v1.0"
+
+  # from the ann_hmm snakemake config
+  checkpoint:       null
+  data_dir:         "../../../databases"
+  genome_dir:       "../databases/production/sequence_data/phage"
+  output_dir:       "ml_assets/data/processed/phage/proteins"
+
+  hmm_multifile:    "pharokka_v1.4.0_databases/all_phrogs.h3m"
+  annotations:      "PHROG/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv"
+  hhm_scan_method:  "phrogs"
+  sql_tbl_sufix:    ""
+  min_bit_score:    50

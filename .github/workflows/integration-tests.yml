@@ -1,0 +1,45 @@
+name: 🪡 🚨 Integration Tests
+
+on:
+  push:
+    paths:
+      - "workflows/**"
+      - "packages/**"
+      - "tests/integration/**"
+      - ".github/workflows/integration-tests.yml"
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache conda packages
+        uses: actions/cache@v4
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ hashFiles('conda_envs/preprocessing.yml') }}
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.11                     # or your required version
+          environment-file: conda_envs/preprocessing.yml
+          activate-environment: preprocessing      # name of the env
+
+      - name: 🐍 Install additional Python deps (pytest, etc.)
+        run: |
+          conda activate preprocessing
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+
+      - name: 🏃 Run integration tests
+        run: |
+          conda activate preprocessing
+          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v

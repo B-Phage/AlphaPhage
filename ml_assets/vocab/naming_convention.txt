@@ -1,0 +1,16 @@
+vocab_<domain>_v<MAJOR>.<MINOR>.<PATCH>.yaml
+
+Examples:
+    vocab_phage_tokens_v1.0.0.yaml
+    vocab_host_tokens_v2.1.0.yaml
+    vocab_joint_v0.3.2.yaml
+    vocab_kmer_6mer_v1.4.0.yaml
+
+Why semantic versioning?
+    Because vocab breaking changes matter.
+
+Change	                                                    | Semantic bump
+____________________________________________________________|_______________
+Add a new token that breaks downstream compatibility	    |  MAJOR
+Add new tokens but backward compatible	                    |  MINOR
+Fix ordering, metadata, or formatting with no model effect	|  PATCH

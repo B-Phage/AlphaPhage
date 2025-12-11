@@ -1,0 +1,42 @@
+# .pre-commit-config.yaml
+
+# Controls which files are checked (all files)
+default_stages: [pre-commit]
+
+repos:
+  # 1. Repository Hygiene Checks (General File Cleanup)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0 # Use a stable, recent version
+    hooks:
+      - id: trailing-whitespace  # Removes extra spaces at the end of lines
+      - id: end-of-file-fixer    # Ensures files end with a single newline
+      - id: fix-byte-order-marker
+      - id: check-case-conflict
+      - id: check-added-large-files # Prevents accidentally committing very large files (e.g., models or data)
+      - id: check-merge-conflict
+      - id: check-yaml           # CRITICAL: Ensures YAML files (like this one, DVC, or CI config) are syntactically valid
+
+  # 2. Python Formatting and Import Sorting
+  - repo: https://github.com/psf/black
+    rev: 25.11.0 # Use the latest stable release
+    hooks:
+      - id: black                # Enforces consistent, modern Python formatting (handles many PEP8 concerns automatically)
+
+  - repo: https://github.com/pycqa/isort
+    rev: 7.0.0 # Use the latest stable release
+    hooks:
+      - id: isort                # Sorts and groups Python imports cleanly
+
+  # 3. Static Type Checking (Crucial for Production Code)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2 # Use the latest stable release
+    hooks:
+      - id: mypy                # Checks for errors related to Python type hints
+
+  # 4. Security Check
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0 # Use the latest stable release
+    hooks:
+      - id: detect-secrets      # Scans for hardcoded passwords, keys, and tokens
+        args: ['--baseline', '.secrets.baseline'] # Create this file to ignore false positives
+        exclude: ^ml_assets/data/workflow/hashes/prodigal_default.json|\.dvc$|^dvc\.lock$

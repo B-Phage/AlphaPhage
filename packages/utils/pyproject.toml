@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utils"
+version = "0.0.1"
+description = "Utils module for the ML pipeline"
+license = "LicenseRef-Proprietary"
+requires-python = ">=3.10,<3.15"
+dependencies = []
+
+[tool.setuptools]
+py-modules = ["consol_log", "config_loader"]
+
+# we use the root level pyproject.toml black and isort

@@ -1,0 +1,22 @@
+# DVC pipeline parameters
+
+# These vocab settings are the single source of truth for the rest of the code base.
+vocab:
+  version: "v0.0.1"
+  file: "ml_assets/vocab/vocab_phage_tokens_v0.0.1.yaml"
+
+preprocess:
+  prodigal_file: "ml_assets/config/prodigal_v0.0.1.yaml"
+
+feature_engineering:
+  method: "default"
+
+training:
+  epochs: 20
+  lr: 1e-4
+
+model:
+  name: "transformer_v3"
+
+inference:
+  batch_size: 64

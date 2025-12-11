@@ -1,0 +1,15 @@
+name: root_dev
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - pre_commit
+  - pytest
+  - omegaconf
+  - coverage
+  - pytest-cov
+  - tqdm
+  - colorlog
+  - "dvc[gdrive]"
+  - dvc-gdrive
+  - funcy

@@ -1,0 +1,72 @@
+# ----------------------------------------------------------------------
+# 1. PYTHON AND ENVIRONMENT ARTIFACTS
+# ----------------------------------------------------------------------
+
+# Compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution and packaging
+dist/
+build/
+*.egg-info/
+
+# Conda/Virtual Environment folders (regardless of location)
+.venv/
+venv/
+env/
+.conda/
+
+# Installer logs/files
+pip-log.txt
+pip-delete-this-arg.txt
+
+# ----------------------------------------------------------------------
+# 2. IDE AND OS FILES
+# ----------------------------------------------------------------------
+
+# IDE/Editor folders (customize as needed)
+.vscode/         # Visual Studio Code
+.idea/           # PyCharm/IntelliJ
+*.swp            # Vim/NeoVim
+
+# Operating System files
+.DS_Store        # macOS
+Thumbs.db        # Windows
+
+# ----------------------------------------------------------------------
+# 3. DATA AND MODEL ASSETS (DVC-MANAGED)
+# CRITICAL: These directories contain large files and are managed by DVC.
+# Git must ignore their contents, but track the small DVC pointer files (e.g., data.dvc).
+# ----------------------------------------------------------------------
+
+# Data folders
+# data/
+# data/*
+
+# Trained model artifacts
+models/
+models/*
+
+# ----------------------------------------------------------------------
+# 4. EXPERIMENTS, CACHING, AND RESULTS
+# ----------------------------------------------------------------------
+
+# Ignore temporary DVC cache folders (local-only storage)
+.dvc/cache
+
+# Ignore DVCLive internal state folder (often used for plotting)
+.dvclive/
+
+# Temporary log files, results, and profiling data
+*.log
+*.tmp
+results/
+artifacts/
+
+# Testing and Coverage
+.coverage
+htmlcov/
+*.svg
+*.xml
