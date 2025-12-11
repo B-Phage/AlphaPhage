@@ -58,6 +58,10 @@ models/*
 # Ignore temporary DVC cache folders (local-only storage)
 .dvc/cache
 
+# Ignore personal .dcv config file and template file
+.dvc/config.local
+.dvc/config.local.template
+
 # Ignore DVCLive internal state folder (often used for plotting)
 .dvclive/
 
