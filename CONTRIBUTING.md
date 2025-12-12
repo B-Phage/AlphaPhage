@@ -124,7 +124,7 @@ Place new code in _packages/<module_name>/_.
 
 Track datasets and models with DVC under _ml_assets/_.
 
-Add environment dependencies to conda_envs/<module>.yml_.
+Add environment dependencies to _conda_envs/<module>.yml_.
 
 ## 4. Coding Standards
 
