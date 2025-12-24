@@ -233,13 +233,13 @@ setup-<module>:
 
 * The CI workflow includes:
 
-* Unit and integration tests
+  * Unit and integration tests
 
-* Code coverage
+  * Code coverage
 
-* Pre-commit hook validation
+  * Pre-commit hook validation
 
-* DVC reproducibility check
+  * DVC reproducibility check
 
 ## 10. References & Resources
 

@@ -32,10 +32,21 @@ pip-delete-this-arg.txt
 *.swp            # Vim/NeoVim
 
 # Operating System files
-.DS_Store        # macOS
-*.DS_Store       # macOS
-*/.DS_Store      # macOS
-Thumbs.db        # Windows
+#ml_assets/.DS_Store                 # macOS
+#packages/.DS_Store                  # macOS
+#tests/.DS_Store                     # macOS
+#ml_assets/data/.DS_Store            # macOS
+#packages/orchestration/.DS_Store    # macOS
+#packages/preprocessing/.DS_Store    # macOS
+#packages/training/.DS_Store         # macOS
+#packages/utils/.DS_Store            # macOS
+#ml_assets/data/processed/.DS_Store  # macOS
+.DS_Store                           # macOS
+*/.DS_Store                         # macOS
+*/*/.DS_Store                       # macOS
+*/*/*/.DS_Store                     # macOS
+*/*/*/*/.DS_Store                   # macOS
+Thumbs.db                           # Windows
 
 # ----------------------------------------------------------------------
 # 3. DATA AND MODEL ASSETS (DVC-MANAGED)
@@ -44,6 +55,8 @@ Thumbs.db        # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
+outputs/
+outputs/*
 # data/
 # data/*
 

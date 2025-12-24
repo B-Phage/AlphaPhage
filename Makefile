@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing training #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -20,7 +20,7 @@ ENV_DEV = root_dev
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
 
 # =====================
 # Help
@@ -92,9 +92,9 @@ setup-feature_engineering:
 
 .PHONY: setup-training
 setup-training:
-# 	$(call ensure_env,$(ENV_TRAINING))
+	$(call ensure_env,$(ENV_TRAINING))
 	@echo "=== Installing training package ==="
-# 	conda run -n $(ENV_TRAINING) pip install -e packages/training
+	conda run -n $(ENV_TRAINING) pip install -e packages/training
 
 .PHONY: setup-inference
 setup-inference:
