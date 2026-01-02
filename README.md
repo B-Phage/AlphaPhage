@@ -1,4 +1,4 @@
-🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈![Coverage mlops_setup](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops_setup.svg)
+🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈![Coverage feature_hmm_annot](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_hmm_annot.svg)
 
 # AlphaPhage: Production Machine Learning Model 🧪
 
