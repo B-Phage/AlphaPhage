@@ -17,3 +17,6 @@ dependencies:
   - "dvc[gdrive]"
   - dvc-gdrive
   - funcy
+  - "duckdb>=1.1.0"
+  - pandas
+  - pyarrow # Essential for high-performance Parquet handling (duckdb)
