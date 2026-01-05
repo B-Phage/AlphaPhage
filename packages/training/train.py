@@ -17,7 +17,7 @@ logger = log.get_logger(level=log.ERROR)  # logger object to be used by all func
 
 
 config_path = "../../tests/unit/data"
-config_name = "config_test_1"
+config_name = "config_test_2"
 
 
 @hydra.main(config_path=config_path, config_name=config_name, version_base="1.3")
@@ -35,6 +35,7 @@ def main(cfg: DictConfig):
 
     # Set the logging directory based on Hydra's output
     log_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+
     logger.warning(f"Writing logs at {log_dir}")
     os.makedirs(os.path.join(log_dir, "checkpoints"), exist_ok=True)
 
@@ -83,11 +84,44 @@ def main(cfg: DictConfig):
     # ----------------------------------------------------
     # D. Initialize Trainer (The Engineering Code)
     # ----------------------------------------------------
+    # logger_method = 'CSVLogger'
+    # logger_method = 'TensorBoardLogger'
+    # logger_method = 'WandbLogger'
+
+    if cfg.trainer.logger_method == "CSVLogger":
+        logger_object = pl.loggers.CSVLogger(log_dir)
+    elif cfg.trainer.logger_method == "WandbLogger":
+        logger_object = pl.loggers.WandbLogger(
+            project=cfg.trainer.project,
+            name=cfg.trainer.run_name,
+            save_dir=log_dir,
+        )
+    elif cfg.trainer.logger_method == "TensorBoardLogger":
+        logger_object = pl.loggers.TensorBoardLogger(log_dir, name=cfg.trainer.run_name)
+    elif cfg.trainer.logger_method == "MLFlowLogger":
+        if cfg.trainer.mlflow_tracking_uri is not None:
+            # Requires a localhost e.g. http://localhost:5000 or
+            # a remote server e.g. http://<IP_ADDRESS>:5000
+            logger_object = pl.loggers.MLFlowLogger(
+                experiment_name=cfg.trainer.run_name, tracking_uri=cfg.trainer.mlflow_tracking_uri
+            )
+        else:
+            from pathlib import Path
+
+            # writes to local file system inside hydra logging directory
+            logger_object = pl.loggers.MLFlowLogger(
+                experiment_name=cfg.trainer.run_name,
+                tracking_uri=Path(os.path.join(log_dir, "mlrun")).as_uri(),
+            )
+
+    else:
+        raise ValueError(f"Unknown logger method: {cfg.trainer.logger_method}")
+
     trainer = pl.Trainer(
         max_epochs=cfg.trainer.epochs,
         accelerator=cfg.trainer.accelerator,  # e.g., 'gpu', 'cpu'
         devices=cfg.trainer.devices,  # e.g., 1 or [0, 1]
-        logger=pl.loggers.CSVLogger(log_dir),
+        logger=logger_object,
         callbacks=[checkpoint_callback, early_stop_callback],
         # Precision setting is important for modern hardware
         precision=cfg.trainer.precision,
