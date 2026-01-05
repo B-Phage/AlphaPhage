@@ -3,9 +3,10 @@ name: 🧩🚨 Unit Tests & Pre-Commit Checks
 on:
   # Run on every push to a branch
   push:
-    branches:
-      - main
-      - mlops_setup
+    # Use branches-ignore to exclude specific branches
+    branches-ignore:
+      - 'archive'          # Example: Ignore a specific archive branch
+      - 'badges2'           # Tests should never be merged into badges anyway
   # Run when a Pull Request is opened or updated
   pull_request:
     branches:
