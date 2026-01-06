@@ -46,6 +46,7 @@ class TestConsolLog(unittest.TestCase):
         Should run once at destruction / out of scope
         """
         sys.stdout = sys.__stdout__
+        assert cls.TestLogObj is not None
         cls.TestLogObj.removeHandler(cls.TestLogObj.handlers[0])
         return super().tearDownClass()
 
@@ -119,6 +120,7 @@ class TestConsolLog(unittest.TestCase):
     def test_change_level_error(self):
         # Test if the level is set to error that error and warning messages
         # are logged. Assuming everthing else works
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.ERROR)
 
         msg = "This is a warning message"
@@ -134,6 +136,7 @@ class TestConsolLog(unittest.TestCase):
     def test_change_level_debug(self):
         # Test that debug messages can be sent
 
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.DEBUG)
 
         msg = "This is a debug message"
@@ -145,6 +148,8 @@ class TestConsolLog(unittest.TestCase):
         """
         Test case: Logger level equals print level (INFO <= INFO). Should print.
         """
+
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.INFO)
         test_message = "Message at INFO level."
 
@@ -157,6 +162,8 @@ class TestConsolLog(unittest.TestCase):
         """
         Test case: Logger level is lower than print level (DEBUG <= INFO). Should print.
         """
+
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.DEBUG)
         test_message = "RAW: Message at INFO level with DEBUG logger."
 
@@ -169,6 +176,8 @@ class TestConsolLog(unittest.TestCase):
         """
         Test case: Logger level is higher than print level (WARNING > INFO). Should NOT print.
         """
+
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.WARNING)  # Logger only shows WARNING and above
         test_message = "RAW: This message should be suppressed."
 
@@ -184,6 +193,8 @@ class TestConsolLog(unittest.TestCase):
         Test case: NOTSET (0) is the lowest level.
         If logger level is NOTSET, it should always print (unless print level is also NOTSET).
         """
+
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.NOTSET)
         test_message_debug = "Always prints at DEBUG."
         test_message_info = "Always prints at INFO."
@@ -199,6 +210,8 @@ class TestConsolLog(unittest.TestCase):
         """
         Test case: Logger set to CRITICAL. Only CRITICAL prints should show.
         """
+
+        assert self.TestLogObj is not None
         log.set_level(self.TestLogObj, log_level=log.CRITICAL)
 
         # Should be suppressed

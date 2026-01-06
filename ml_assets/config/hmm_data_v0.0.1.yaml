@@ -1,0 +1,36 @@
+# This config file specifies the source of the current set of HMMs used for protein annotation
+
+# For the bacteria proteins we are using PFAM
+- name: Pfam-A.hmm.dat # the models' annotation data
+  source_url: https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam38.0/Pfam-A.hmm.dat.gz
+  dest_dir: ../databases/hmm/pfam/v38.0
+  final_sha256: a2d738544f61a5ec37bcbf2012e0c9f5a168379e8ef23bc4f43d83a55fb52c0a
+  source_sha256: fc984ce44fca3d72004b1521a1e57ba650fa4202482f5969fb3c87679f42c1de
+  source_format: gz
+  inner_path: Pfam-A.hmm.dat
+
+- name: Pfam-A.hmm # the actual PFAM models
+  source_url: https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam38.0/Pfam-A.hmm.gz
+  dest_dir: ../databases/hmm/pfam/v38.0
+  final_sha256: 222b83312b2fc27b933cb4f9de4252fc4c6a98b268c95339d01ab609eb21421c
+  source_sha256: 2a974cbf81eadf4882a93c8a577aba0952e035064fc8ba2cf39706f12833e73d
+  source_format: gz
+  inner_path: Pfam-A.hmm
+  can_split: true
+
+# For the phage proteins we are using the frogs from pharokka
+- name: phrogs
+  source_url: https://zenodo.org/records/8267900/files/pharokka_v1.4.0_databases.tar.gz?download=1
+  dest_dir: ../databases/hmm/pharokka_v1.4.0_databases
+  final_sha256: 9876543210fedcba...
+  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c
+  source_format: tar
+  inner_path: pharokka/all_phrogs.h3m
+  can_split: true
+
+#  There are backups on google drive, incase the sources get changed
+# HMM_PHROG_NAME = pharokka_v1.4.0_databases
+# HMM_PHROG_GDRIVE_URL = https://drive.google.com/drive/folders/1NwDk6s--Pb381uOBRrpXj4dtsh4_XFZO
+
+# HMM_PFAM_NAME := PFAM
+# HMM_PFAM_GDRIVE_URL := https://drive.google.com/drive/folders/1xMg4v_2KL1ORqP3WGFIpzqLQjpLT5jOA

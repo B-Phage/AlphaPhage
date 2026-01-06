@@ -7,10 +7,11 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing hmm setup_workflows #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
+ENV_HMM = hmmr_env
 ENV_FE = feature_engineering
 ENV_TRAINING = training
 ENV_INFERENCE = inference
@@ -20,7 +21,12 @@ ENV_DEV = root_dev
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_HMM) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+
+# HMM Data
+HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
+PYTHON := $(shell which python)  # uses the environment's python
+
 
 # =====================
 # Help
@@ -36,6 +42,7 @@ help:
 	@echo "  make secrets-baseline      - Scanning repository and generating .secrets.baseline file..."
 	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
 	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
+	@echo "  make setup-hmm-data		- Pull the HMM data from Google Drive and extract"
 	@echo "  make clean           		- Remove all conda environments"
 
 # =====================
@@ -55,7 +62,7 @@ endef
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull
+setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull setup-hmm-data
 	@echo "All environments, packages, hooks, and DVC data are ready."
 
 # =====================
@@ -83,6 +90,18 @@ setup-preprocessing:
 	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing preprocessing package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
+
+.PHONY: setup-hmm
+setup-hmm:
+	$(call ensure_env,$(ENV_HMM))
+	@echo "=== Installing hmm preprocessing package ==="
+	conda run -n $(ENV_HMM) pip install -e packages/hmm
+
+.PHONY: setup-setup_workflows
+setup-setup_workflows:
+	$(call ensure_env,$(ENV_HMM))
+	@echo "=== Installing worflow setup package ==="
+	conda run -n $(ENV_HMM) pip install -e packages/setup_workflows
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:
@@ -131,6 +150,24 @@ init-secrets-baseline: install-secrets-cli
 	@echo "Generating .secrets.baseline..."
 	conda run -n $(ENV_DEV) detect-secrets scan > .secrets.baseline
 	@echo "Baseline created. Add and commit .secrets.baseline"
+
+# =====================
+# Raw Google Drive Data
+# =====================
+
+# .PHONY: setup-hmm-data
+# setup-hmm-data: setup-hmm setup-setup_workflows # dependencies
+# 	@echo "Setting up HMM reference data..."
+# 	python -m setup_workflows.hmm_data_setup \
+# 		--hmm-name $(HMM_PHROG_NAME) \
+# 		--gdrive-url $(HMM_PHROG_GDRIVE_URL) \
+# 		--dest-dir $(HMM_PHROG_DEST_DIR) \
+# 		--expected-sha256 $(HMM_PHROG_SHA256)
+
+.PHONY: setup-hmm-data
+setup-hmm-data: setup-hmm setup-setup_workflows # dependencies
+	@echo "Setting up HMM reference data YAML config: $(HMM_YAML)"
+	python -m setup_workflows.hmm_data_setup --yaml-registry $(HMM_YAML)
 
 # =====================
 # DVC targets

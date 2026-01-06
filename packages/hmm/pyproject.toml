@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hmm"
+version = "0.1.0"
+description = "Preprocessing hmm module for the ML pipeline"
+readme = "README_hmm.md"
+license = "LicenseRef-Proprietary"
+
+# Python 3.10 requirement (Conda enforces it, but it's good to specify here also)
+requires-python = ">=3.10,<3.12"
+
+[tool.setuptools]
+# Add your new filename (without the .py extension) to this list
+py-modules = ["io", "persist", "postprocess", "search", "types"]
+
+# we use the root level pyproject.toml black and isort

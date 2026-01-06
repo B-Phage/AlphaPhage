@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setup_workflows"
+version = "0.1.0"
+description = "Setup workflow module for the ML pipeline"
+readme = "README_wf.md"
+license = "LicenseRef-Proprietary"
+
+# Python 3.10 requirement (Conda enforces it, but it's good to specify here also)
+requires-python = ">=3.10,<3.12"
+
+[tool.setuptools]
+# Add your new filename (without the .py extension) to this list
+py-modules = ["hmm_data_setup"]
+
+# we use the root level pyproject.toml black and isort

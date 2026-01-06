@@ -1,0 +1,24 @@
+name: hmmr_env
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pyrodigal
+  - pyhmmer
+  - pandas
+  - snakemake
+  - colorlog
+  - matplotlib
+  - seaborn
+  # duplicates from root_dev
+  - pre_commit
+  - pytest
+  - omegaconf
+  - coverage
+  - pytest-cov
+  - tqdm
+  - "dvc[gdrive]"
+  - dvc-gdrive
+  - funcy
+  - "duckdb>=1.1.0"
