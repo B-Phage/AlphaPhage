@@ -1,6 +1,22 @@
-# Training
+# Notes on this the AlphaPhage trainer
 
-...
+AlphaPhage provides concise and MLOps-standard access to advanced AI methods for
+predicting host-phage interactions, whether you have access to large cloud GPU
+infrastructure, and requires sharding, or only have access to a laptop, making it
+a flexible solution for phage therapy of the future in hospitals or research.
+It was also developed with the disk space and speed constraints in mind by smart
+data packaging technology and the h5 data format. Several innovations make the
+AlphaPhage training framework extremely scalable. Data is pre-tokenised during
+preprocessing, allowing for speed, and avoiding unneccessary compute of the same
+strain during training. Host and phage are separately packaged in the h5 format,
+and stored alongside pair keys and classes (infect/non-infect) that maps between
+host and phage. During training and inference, host-phage paired samples are
+reconstructed during each step in a memory-smart manner, and using the latest in
+pytorch-lightning, following MLOps. This avoids an explosion of both the disk space
+and memory required during training. Read access through this method using the
+.hdf5 format is remarkably space efficient and fast. Futher, you get access to
+the most widely used output formats and dashboards used in modern AI.
+
 
 ### Considerations before choosing a model
 
@@ -10,7 +26,12 @@ implements alignment of features through bioinformatics workflows, and primarily
 through genome annotation using profile-hidden markov models (PHMMs) - see
 preprocessing. Alignment has a strong positive impact on predictive accuracy.
 
-2. Encoding type.
+2. Encoding type. Data type currently is tokens. With models to be released, other
+types of encoding will become available.
+
+3. Data packing. The "reader_mode" sets the type of packing. using "binary_pairkey"
+uses the AlphaPhage memory-smart dynamic sample building scheme.
+
 
 ### Models currently in AlphaPhage
 
