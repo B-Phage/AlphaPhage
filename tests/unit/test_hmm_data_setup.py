@@ -2,7 +2,10 @@
 import gzip
 import hashlib
 import io
+import os
 import shutil
+import subprocess
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -56,7 +59,7 @@ def small_zip_file(tmp_dir, small_text_file):
 # ---------------------------
 # Utility function tests
 # ---------------------------
-def test_compute_and_verify_checksum(tmp_dir, small_text_file):
+def test_compute_and_verify_checksum(small_text_file):
     expected = hashlib.sha256(small_text_file.read_bytes()).hexdigest()
     assert hms.compute_sha256(small_text_file) == expected
 
@@ -68,9 +71,11 @@ def test_compute_and_verify_checksum(tmp_dir, small_text_file):
         hms.verify_checksum(small_text_file, "wronghash")
 
 
-def test_final_artifact_is_valid(tmp_dir, small_text_file):
+def test_final_artifact_is_valid(small_text_file):
     expected_sha = hashlib.sha256(small_text_file.read_bytes()).hexdigest()
     assert hms.final_artifact_is_valid(small_text_file, expected_sha)
+    # missmatched checksum should return false
+    assert not hms.final_artifact_is_valid(small_text_file, "nonsense")
     # delete file, should return False
     small_text_file.unlink()
     assert not hms.final_artifact_is_valid(small_text_file, expected_sha)
@@ -89,6 +94,19 @@ def test_extract_from_tar(tmp_dir, small_text_file, small_tar_file):
     out_path = tmp_dir / "out.txt"
     hms.extract_from_tar(small_tar_file, "file.txt", out_path)
     assert out_path.read_bytes() == small_text_file.read_bytes()
+
+    # attempt to extract a file which isn't a tar should raise an error
+    archive = tmp_dir / "test.tar"
+    dest = tmp_dir / "out"
+
+    # Create a real tar containing a directory
+    with tarfile.open(archive, "w") as tar:
+        folder = tarfile.TarInfo("my_folder")
+        folder.type = tarfile.DIRTYPE  # This makes it a folder, not a file
+        tar.addfile(folder)
+
+    with pytest.raises(ValueError, match="not a regular file"):
+        hms.extract_from_tar(archive, "my_folder", dest)
 
 
 def test_extract_from_zip(tmp_dir, small_text_file, small_zip_file):
@@ -122,6 +140,10 @@ def test_materialize_hmm_artifact(tmp_dir, small_text_file, small_gz_file):
     hms.materialize_hmm_artifact(zip_path, dest, "zip", inner_path="file.txt")
     assert dest.read_bytes() == small_text_file.read_bytes()
 
+    # unknown
+    with pytest.raises(ValueError, match="Unsupported source format:"):
+        hms.materialize_hmm_artifact(zip_path, dest, "other", inner_path="file.txt")
+
 
 # ---------------------------
 # Core workflow tests
@@ -142,12 +164,33 @@ def test_fetch_and_split_hmm(mock_download, mock_split, tmp_dir, small_text_file
         source_url="http://example.com/file",
         dest_dir=tmp_dir,
         final_sha256=final_sha256,
+        source_sha256=final_sha256,
         source_format="raw",
         can_split=True,
     )
 
     assert result.exists()
     mock_split.assert_called_once()
+
+    # check that a repeated call still works
+    result_repeat = hms.fetch_and_split_hmm(
+        hmm_name="test",
+        source_url="http://example.com/file",
+        dest_dir=tmp_dir,
+        final_sha256=final_sha256,
+        source_format="raw",
+        can_split=True,
+    )
+
+    assert result_repeat.exists()
+    assert result_repeat == result
+
+    with pytest.raises(TypeError):
+        result_repeat = hms.fetch_and_split_hmm(
+            hmm_name="test",
+            source_url="http://example.com/file",
+            dest_dir=tmp_dir,
+        )  # type: ignore
 
 
 # ---------------------------
@@ -212,6 +255,31 @@ def test_cli_single(mock_single, tmp_dir, monkeypatch):
             mock_dl.return_value = tmp_dir / "test"
             hms.main()
             mock_single.assert_called()
+
+
+def test_main_parser_error_on_incomplete_args(capsys):
+    # We provide some args, but not ALL required ones (missing --final-sha256)
+    test_args = [
+        "prog_name",
+        "--hmm-name",
+        "test_hmm",
+        "--source-url",
+        "http://gdrive.com/file",
+        "--dest-dir",
+        "./data",
+    ]
+
+    with patch("sys.argv", test_args):
+        # 1. Assert that it triggers a SystemExit
+        with pytest.raises(SystemExit) as cm:
+            hms.main()
+
+        # 2. Check exit code (argparse defaults to 2 for errors)
+        assert cm.value.code == 2
+
+    # 3. Check the specific error message in stderr
+    captured = capsys.readouterr()
+    assert "Must provide either --yaml_registry or all single HMM arguments" in captured.err
 
 
 # ---------------------------

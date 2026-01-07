@@ -1,4 +1,7 @@
 # This config file specifies the source of the current set of HMMs used for protein annotation
+# NOTE:
+#       If you change any of these sha256 checksums because of new versions you will likely need to run:
+#           `detect-secrets scan > .secrets.baseline`
 
 # For the bacteria proteins we are using PFAM
 - name: Pfam-A.hmm.dat # the models' annotation data
@@ -19,13 +22,13 @@
   can_split: true
 
 # For the phage proteins we are using the frogs from pharokka
-- name: phrogs
+- name: all_phrogs.h3m
   source_url: https://zenodo.org/records/8267900/files/pharokka_v1.4.0_databases.tar.gz?download=1
   dest_dir: ../databases/hmm/pharokka_v1.4.0_databases
-  final_sha256: 9876543210fedcba...
+  final_sha256: 7f63b5f7ac05c95abf74ee824647613136970f78b4df539b40e2b3accec07dcd
   source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c
   source_format: tar
-  inner_path: pharokka/all_phrogs.h3m
+  inner_path: pharokka_v1.4.0_databases/all_phrogs.h3m
   can_split: true
 
 #  There are backups on google drive, incase the sources get changed

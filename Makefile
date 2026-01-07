@@ -155,17 +155,9 @@ init-secrets-baseline: install-secrets-cli
 # Raw Google Drive Data
 # =====================
 
-# .PHONY: setup-hmm-data
-# setup-hmm-data: setup-hmm setup-setup_workflows # dependencies
-# 	@echo "Setting up HMM reference data..."
-# 	python -m setup_workflows.hmm_data_setup \
-# 		--hmm-name $(HMM_PHROG_NAME) \
-# 		--gdrive-url $(HMM_PHROG_GDRIVE_URL) \
-# 		--dest-dir $(HMM_PHROG_DEST_DIR) \
-# 		--expected-sha256 $(HMM_PHROG_SHA256)
-
 .PHONY: setup-hmm-data
-setup-hmm-data: setup-hmm setup-setup_workflows # dependencies
+setup-hmm-data:
+	@echo "WARNING: This setup will only work if the dependencies: setup-utils, setup-hmm and setup-setup_workflows have already run"
 	@echo "Setting up HMM reference data YAML config: $(HMM_YAML)"
 	python -m setup_workflows.hmm_data_setup --yaml-registry $(HMM_YAML)
 

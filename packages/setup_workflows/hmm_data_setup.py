@@ -25,8 +25,11 @@ import zipfile
 from pathlib import Path
 from typing import Union
 
+import utils.consol_log as log
 import yaml  # type: ignore[import-untyped]
 from hmm.io import split_hmms
+
+logger = log.get_logger(level=log.INFO)
 
 
 # -----------------------------
@@ -43,11 +46,14 @@ def compute_sha256(file_path: Path) -> str:
 def verify_checksum(file_path: Path, expected_sha256: str) -> None:
     file_hash = compute_sha256(file_path)
     if file_hash != expected_sha256:
-        raise ValueError(
-            f"[ERROR] Checksum mismatch for {file_path} "
-            f"(expected {expected_sha256}, got {file_hash})"
+        logger.error(
+            f"Integrity check failed for {file_path}. Expected: {expected_sha256}, Actual: {file_hash}. "
+            "Action required: Clear cache and retry download, or verify checksum version."
         )
-    print(f"[INFO] Checksum verified for {file_path}")
+        raise ValueError(
+            f"Checksum mismatch for '{file_path}'. " f"Expected {expected_sha256}, got {file_hash}."
+        )
+    logger.info(f"Checksum verified for {file_path}")
 
 
 def final_artifact_is_valid(final_path: Path, expected_sha256: str) -> bool:
@@ -63,9 +69,9 @@ def final_artifact_is_valid(final_path: Path, expected_sha256: str) -> bool:
 def download_file(url: str, dest_path: Path) -> Path:
     """Download a file if missing."""
     if dest_path.exists():
-        print(f"[INFO] {dest_path} already exists, skipping download.")
+        logger.info(f"{dest_path} already exists, skipping download.")
         return dest_path
-    print(f"[INFO] Downloading from {url} to {dest_path}")
+    logger.info(f"Downloading from {url} to {dest_path}")
     with urllib.request.urlopen(url) as r, dest_path.open("wb") as f:
         shutil.copyfileobj(r, f)
     return dest_path
@@ -96,7 +102,7 @@ def extract_from_gz(archive_path: Path, dest_path: Path) -> None:
     """Decompress a single .gz file to dest_path."""
     with gzip.open(archive_path, "rb") as src, dest_path.open("wb") as dst:
         shutil.copyfileobj(src, dst)
-    print(f"[INFO] Extracted {archive_path} -> {dest_path}")
+    logger.info(f"Extracted {archive_path} -> {dest_path}")
 
 
 def materialize_hmm_artifact(
@@ -105,7 +111,7 @@ def materialize_hmm_artifact(
     source_format: str,
     inner_path: str | None = None,
 ) -> None:
-    """Produce the canonical HMM artifact from any source."""
+    """Produce the canonical HMM artifact from an array of sources."""
     if source_format == "raw":
         shutil.copyfile(source_path, artifact_path)
     elif source_format == "gz":
@@ -119,7 +125,7 @@ def materialize_hmm_artifact(
     else:
         raise ValueError(f"Unsupported source format: {source_format}")
 
-    print(f"[INFO] Artifact materialized at {artifact_path}")
+    logger.info(f"Artifact materialized at {artifact_path}")
 
 
 # -----------------------------
@@ -146,7 +152,7 @@ def fetch_and_split_hmm(
 
     # Step 1: Skip if final artifact exists and valid
     if final_artifact_is_valid(artifact_path, final_sha256):
-        print(f"[INFO] Artifact {artifact_path} already exists and is valid.")
+        logger.info(f"Artifact {artifact_path} already exists and is valid.")
     else:
         # Step 2: Download raw/archive if needed
         source_path = dest_dir / f"{hmm_name}_source"
@@ -162,11 +168,14 @@ def fetch_and_split_hmm(
         # Step 5: Verify final artifact checksum
         verify_checksum(artifact_path, final_sha256)
 
-        # Step 6: Split into individual HMMs
-        if can_split:
-            split_dir.mkdir(exist_ok=True)
-            split_hmms(str(artifact_path), str(split_dir))
-            print(f"[INFO] HMM setup complete. Individual HMMs are in {split_dir}")
+    # Step 6: Split into individual HMMs
+    if can_split:
+        logger.info(f"Splitting {hmm_name} into individual models, saving to {split_dir}")
+        split_dir.mkdir(exist_ok=True)
+        split_hmms(str(artifact_path), str(split_dir))
+        logger.info(f"HMM {hmm_name} splitting complete.")
+
+    logger.info(f"HMM {hmm_name} setup complete.")
 
     return split_dir
 
