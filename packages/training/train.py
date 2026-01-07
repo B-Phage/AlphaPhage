@@ -75,6 +75,7 @@ def main(cfg: DictConfig):
 
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
+        # from arc.TransformerX import TransformerXClassifier
         from arc.TransformerX import TransformerX
 
         model = TransformerX(cfg, num_tokens, vocab_size_out, length_padded)
@@ -84,9 +85,6 @@ def main(cfg: DictConfig):
     # ----------------------------------------------------
     # D. Initialize Trainer (The Engineering Code)
     # ----------------------------------------------------
-    # logger_method = 'CSVLogger'
-    # logger_method = 'TensorBoardLogger'
-    # logger_method = 'WandbLogger'
 
     if cfg.trainer.logger_method == "CSVLogger":
         logger_object = pl.loggers.CSVLogger(log_dir)
