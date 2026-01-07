@@ -12,6 +12,7 @@ import torch.nn.functional as F
 import utils.consol_log as log
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn
+from training.embeddings import RotaryPositionalEmbeddings
 
 logger = log.get_logger(level=log.WARNING)
 
@@ -281,7 +282,7 @@ class TransformerXClassifier(nn.Module):
         logger.info(f"building attention layers...")
 
         if self.positional_encoding == "rope":
-            from embeddings import RotaryPositionalEmbeddings
+            # from embeddings import RotaryPositionalEmbeddings
 
             self.rope_encoding = RotaryPositionalEmbeddings(
                 dim=self.dim, max_seq_len=self.length_padded
@@ -574,6 +575,7 @@ class TransformerX(pl.LightningModule):
         self.save_hyperparameters(hparams)
 
         # from arc.TransformerX import TransformerXClassifier
+        # from embeddings import RotaryPositionalEmbeddings
 
         self.model = TransformerXClassifier(
             archspecs=archspecs,

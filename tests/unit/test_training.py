@@ -5,19 +5,11 @@ python -m unittest tests.test_config_loader
 PYTHONPATH=./packages pytest tests/
 """
 
-# import os
-# import tempfile
-# import unittest
-# from pathlib import Path
-# from unittest.mock import patch
-# from omegaconf import DictConfig, OmegaConf
 import sys
 import unittest
 
 import torch
 from omegaconf import OmegaConf
-
-# from training.arc.TransformerX import TransformerXClassifier
 from training.arc.TransformerX import TransformerX
 
 # from training.dataloaders.dataloaders import BinaryPairkeyDataModule
@@ -26,29 +18,9 @@ from training.arc.TransformerX import TransformerX
 class TestTransformerX(unittest.TestCase):
     def setUp(self):
         """Set up a mock configuration similar to your config_test_2.yaml"""
-        # self.cfg = OmegaConf.create({
-        #     "hyp": {
-        #         "vocab_size_out": 10,
-        #         "embedding_dim": 32,
-        #         "nhead": 4,
-        #         "num_layers": 2
-        #     },
-        #     "trainer": {
-        #         "learning_rate": 0.001
-        #     },
-        #     # Add other necessary config keys that TransformerX expects
-        # })
-
         self.num_tokens = 20
         self.vocab_size_out = 2
         self.length_padded = 128
-
-        # self.model = TransformerX(
-        #     self.cfg,
-        #     self.num_tokens,
-        #     self.vocab_size_out,
-        #     self.length_padded
-        # )
 
         self.cfg = OmegaConf.create(
             {
@@ -144,6 +116,56 @@ class TestTransformerX(unittest.TestCase):
         updated_weight = self.model.state_dict()["model.embed.weight"]
 
         self.assertFalse(torch.equal(initial_weight, updated_weight))
+
+    def test_training_step_all_arcspecs(self):
+        """Test if training_step computes a loss for all archspec settings."""
+        batch = (
+            torch.randint(0, self.num_tokens, (4, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (4,)),
+        )
+        archspec_list = [
+            "rope_tt_normpostl_view",
+            "rope_tt_normpostl_sum",
+            "rope_tt_nonormpostl_view",
+            "rope_tt_nonormpostl_sum",
+            "rope_nt_normpostl_view",
+            "rope_nt_normpostl_sum",
+            "rope_nt_nonormpostl_view",
+            "rope_nt_nonormpostl_sum",
+            "nope_tt_normpostl_view",
+            "nope_tt_normpostl_sum",
+            "nope_tt_nonormpostl_view",
+            "nope_tt_nonormpostl_sum",
+            "nope_nt_normpostl_view",
+            "nope_nt_normpostl_sum",
+            "nope_nt_nonormpostl_view",
+            "nope_nt_nonormpostl_sum",
+        ]
+        archspec2_list = [
+            "L4_bn",
+            "L4_ln",
+            "L4_nn",
+            "L3_bn",
+            "L3_ln",
+            "L3_nn",
+            "L2_bn",
+            "L2_ln",
+            "L2_nn",
+            "L1_nn",
+        ]
+        for archspec in archspec_list:
+            for archspec2 in archspec2_list:
+                with self.subTest(archspec=archspec, archspec2=archspec2):
+                    # print(f'archspec: {archspec} archspec2: {archspec2}')
+                    self.cfg.hyp.archspec = archspec
+                    self.cfg.hyp.archspec2 = archspec2
+                    self.model = TransformerX(
+                        self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
+                    )
+                    loss = self.model.training_step(batch, 0)
+
+                    self.assertIsInstance(loss, torch.Tensor)
+                    self.assertFalse(torch.isnan(loss))
 
 
 if __name__ == "__main__":

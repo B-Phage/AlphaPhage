@@ -30,7 +30,7 @@ trainer:
   val_fraction : 0.15
 
 hyp:
-  archspec : "nope_nt_nonormpostl_sum"
+  archspec : "rope_nt_nonormpostl_sum"
   archspec2 : "L4_bn"
   dim : 8
   lcom : 30

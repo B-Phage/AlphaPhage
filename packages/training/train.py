@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from torch.utils.data import DataLoader, IterableDataset
 from train_utils import get_token_basics
 
-logger = log.get_logger(level=log.ERROR)  # logger object to be used by all functions in this file.
+logger = log.get_logger(level=log.ERROR)
 
 
 config_path = "../../tests/unit/data"
@@ -75,8 +75,7 @@ def main(cfg: DictConfig):
 
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
-        # from arc.TransformerX import TransformerXClassifier
-        from arc.TransformerX import TransformerX
+        from arc.TransformerX import TransformerX, TransformerXClassifier
 
         model = TransformerX(cfg, num_tokens, vocab_size_out, length_padded)
     else:
