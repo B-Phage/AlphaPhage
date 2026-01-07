@@ -573,7 +573,7 @@ class TransformerX(pl.LightningModule):
             hparams = cfg
         self.save_hyperparameters(hparams)
 
-        from arc.TransformerX import TransformerXClassifier
+        # from arc.TransformerX import TransformerXClassifier
 
         self.model = TransformerXClassifier(
             archspecs=archspecs,
