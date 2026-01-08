@@ -3,19 +3,19 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 from hmm.duckdb_io import write_hmm_results_with_sequences
+from hmm.types import Protein
 
 
-class FakeProtein:
+class FakeProtein(Protein):
     def __init__(self, name: str, sequence: str):
-        self._name = name
+        self.name = name.encode()
         self._sequence = sequence
 
-    @property
-    def name(self):
-        return self._name.encode()
-
     def textize(self):
-        return MagicMock(sequence=self._sequence)
+        class Seq:
+            sequence = self._sequence
+
+        return Seq()
 
 
 @pytest.fixture

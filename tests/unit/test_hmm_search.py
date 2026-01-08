@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from hmm import annotations as ann
 from hmm import search
+from hmm.types import HMMHit
 
 # -----------------------------
 # Fixtures

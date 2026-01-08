@@ -42,4 +42,5 @@ jobs:
       - name: 🏃 Run integration tests
         run: |
           conda activate preprocessing
-          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v
+          export COVERAGE_PROCESS_START=pyproject.toml
+          PYTHONPATH=.:./packages pytest tests/integration -v

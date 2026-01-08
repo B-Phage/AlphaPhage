@@ -13,6 +13,7 @@ This script contains no domain logic.
 #!/usr/bin/env python3
 import argparse
 import os
+from typing import Iterable, cast
 
 import pyhmmer
 import utils.consol_log as log
@@ -23,6 +24,7 @@ from hmm.io import (
     load_single_hmm_per_file,
 )
 from hmm.search import run_hmm_search
+from hmm.types import Protein
 from utils.duckdb_client import DuckDBClient
 
 logger = log.get_logger()
@@ -96,11 +98,11 @@ def main_cli():
     if os.path.isdir(path):
         logger.info(f"Processing directory: {path}")
         # List files in directory
-        hmms = list(load_single_hmm_per_file(args.hmm_dir, "*.hmm"))
+        hmms = list(load_single_hmm_per_file(path, "*.hmm"))
     elif os.path.isfile(path):
         logger.info(f"Processing single hmm file: {path}")
         # Process the individual file
-        hmms = list(load_hmms_from_file(args.hmm_file))
+        hmms = list(load_hmms_from_file(path))
     else:
         logger.error(f"--hmm-path: '{path}' is neither a file nor a directory")
         raise ValueError("HMMs path format unknown")
@@ -108,7 +110,8 @@ def main_cli():
     # Load proteins
     aa = pyhmmer.easel.Alphabet.amino()
     with pyhmmer.easel.SequenceFile(args.in_fasta, digital=True, alphabet=aa) as seqs_file:
-        proteins = seqs_file.read_block()
+        proteins_block = seqs_file.read_block()
+        proteins = cast(Iterable[Protein], proteins_block)
 
     organism_name = os.path.splitext(os.path.basename(args.in_fasta))[0]
 
@@ -117,7 +120,7 @@ def main_cli():
 
     # Run HMM search
     df_results = run_hmm_search(
-        proteins=proteins,
+        proteins=proteins_block,
         hmms=hmms,
         annotations=annotations,
         organism_name=organism_name,
@@ -127,10 +130,10 @@ def main_cli():
     # Write output
     if len(df_results) == 0:
         logger.info("No hits found.")
-        with open(args.out_hmm_scan, "w") as f:
+        with open(args.out_csv, "w") as f:
             f.write("")
     else:
-        df_results.to_csv(args.out_hmm_scan, sep=",", index=False)
+        df_results.to_csv(args.out_csv, sep=",", index=False)
 
     # Optionally write to DuckDB
     if args.out_database:
@@ -138,7 +141,12 @@ def main_cli():
         logger.info(f"Writing HMM hits to table {sql_table_name} in {args.out_database}")
 
         db = DuckDBClient(args.out_database)
-        write_hmm_results_with_sequences(df_results, proteins, db, sql_table_name)
+        write_hmm_results_with_sequences(
+            df_results,
+            proteins,
+            db,
+            sql_table_name,
+        )
 
 
 if __name__ == "__main__":

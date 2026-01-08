@@ -22,16 +22,21 @@ already been performed and that input data is provided in tabular
 """
 
 from pathlib import Path
+from typing import Iterable
 
 import pandas as pd
 import utils.consol_log as log
+from hmm.types import Protein
 from utils.duckdb_client import DuckDBClient
 
 logger = log.get_logger(level=log.DEBUG)
 
 
 def write_hmm_results_with_sequences(
-    hmm_scan_df: pd.DataFrame, protein_py_easel_obj, db: DuckDBClient, sql_table_name: str
+    hmm_scan_df: pd.DataFrame,
+    protein_py_easel_obj: Iterable[Protein],
+    db: DuckDBClient,
+    sql_table_name: str,
 ):
     """
     Write HMM scan results and associated protein sequences to a DuckDB table.
@@ -94,6 +99,10 @@ def write_hmm_results_with_sequences(
     intended as an I/O boundary between HMM scanning and downstream workflows
     such as multiple sequence alignment (MSA).
     """
+    if hmm_scan_df.empty:
+        # No hits: just exit
+        logger.warning(f"No HMM hits to insert")
+        return
 
     col_from_hmm_scan = [
         "protein_name",
@@ -116,23 +125,24 @@ def write_hmm_results_with_sequences(
         logger.warning(f"Creating {sql_table_name}")
         db.con.execute(
             f"""
-        CREATE TABLE {sql_table_name} (
-            protein_name VARCHAR PRIMARY KEY,
-            organism_name VARCHAR PRIMARY KEY,
-            hmm_domain_name VARCHAR PRIMARY KEY,
-            annot VARCHAR,
-            evalue FLOAT,
-            score FLOAT,
-            bias VARCHAR,
-            length INTEGER,
-            top_hmm_domain_hit_on_prot VARCHAR,
-            top_protein_match_for_hmm VARCHAR,
-            best_dom_env_start INTEGER,
-            best_dom_env_end INTEGER,
-            best_dom_env_length INTEGER,
-            sequence VARCHAR
-        )
-        """
+            CREATE TABLE IF NOT EXISTS {sql_table_name} (
+                protein_name VARCHAR,
+                organism_name VARCHAR,
+                hmm_domain_name VARCHAR,
+                annot VARCHAR,
+                evalue FLOAT,
+                score FLOAT,
+                bias VARCHAR,
+                length INTEGER,
+                top_hmm_domain_hit_on_prot VARCHAR,
+                top_protein_match_for_hmm VARCHAR,
+                best_dom_env_start INTEGER,
+                best_dom_env_end INTEGER,
+                best_dom_env_length INTEGER,
+                sequence VARCHAR,
+                PRIMARY KEY (protein_name, organism_name, hmm_domain_name)
+            )
+            """
         )
     df_for_sql = hmm_scan_df[col_from_hmm_scan]
     query_prot = []
