@@ -151,10 +151,10 @@ class DuckDBClient:
         The operation is a no-op if the DataFrame is empty.
 
         Args:
-            table_name: Name of the target table.
-            df: Pandas DataFrame containing rows to insert.
-            primary_keys: Optional iterable of column names defining the conflict
-                target. If omitted, the table's primary keys are used (if any).
+            table_name:     Name of the target table.
+            df:             Pandas DataFrame containing rows to insert.
+            primary_keys:   Optional iterable of column names defining the conflict
+                            target. If omitted, the table's primary keys are used (if any).
         """
         if df.empty:
             return
