@@ -54,6 +54,15 @@ show_missing = true
 # Ignore the boilerplate entry point in coverage percentage calculations
 exclude_lines = [
     "pragma: no cover",
-    "if __name__ == .__main__.:",
-    "raise NotImplementedError"
+    "if __name__ == .__main__.:",   # cli entry point
+    "raise NotImplementedError",
+    "pass",                         # abstract method
+    "def .*@abstractmethod"
 ]
+
+# Dead code tests (unused and unnecessary)
+[tool.vulture]
+exclude = ["tests"]
+#Eg:
+#   vulture packages/hmm/io.py
+#

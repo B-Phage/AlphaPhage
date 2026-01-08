@@ -13,3 +13,4 @@ dependencies:
   - "dvc[gdrive]"
   - dvc-gdrive
   - funcy
+  - vulture # dead code checks
