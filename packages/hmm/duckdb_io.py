@@ -1,36 +1,100 @@
 """
-SQLite base HMM to MSA functions
- Relies on existing SQLite DB tables with sequences and HMM annotations.
+DuckDB I/O utilities for HMM-based annotation pipelines.
+
+This module provides functions for persisting HMM scan results and
+associated protein sequences into DuckDB tables. It acts as an I/O
+boundary between HMM analysis (e.g. pyhmmer scans) and downstream
+processing steps such as multiple sequence alignment (MSA).
+
+Responsibilities:
+- Writing HMM scan outputs to DuckDB
+- Joining HMM hits with protein sequence data
+- Creating tables on demand when they do not yet exist
+
+Non-responsibilities:
+- Performing HMM scans
+- Running multiple sequence alignments
+- Implementing biological domain logic
+
+The functions in this module assume that upstream HMM analysis has
+already been performed and that input data is provided in tabular
+(pandas DataFrame) and pyhmmer easel formats.
 """
 
-import os
-import sys
+from pathlib import Path
 
 import pandas as pd
-
-# import data_utils.sqlite3_utils as sql_utils
-import pyhmmer
 import utils.consol_log as log
 from utils.duckdb_client import DuckDBClient
 
 logger = log.get_logger(level=log.DEBUG)
 
 
-def append_hmm_to_tbl(
-    hmm_scan_df: pd.DataFrame, protein_py_easel_obj, db_path: str, sql_table_name: str
+def write_hmm_results_with_sequences(
+    hmm_scan_df: pd.DataFrame, protein_py_easel_obj, db: DuckDBClient, sql_table_name: str
 ):
     """
-    Append core hmm scan results to a sql table alongside the sequence string.
-    If the gene did not get any HMM hits, the table to append will still contain
-    the gene because an outer join of prodigal-gv genes and HMM hit results is used
+    Write HMM scan results and associated protein sequences to a DuckDB table.
 
-    Inputs
-        hmm_scan_df:    outputs of HMM scanning
-        protein_py_easel_obj: block read from pyhmmer.easel.SequenceFile
-        db_file:        path to SQLite DB
-        sql_table_name: table in DB (new or existing from same process)
+    This function persists the core outputs of an HMM scan by combining:
+    1) tabular HMM hit results (as a pandas DataFrame), and
+    2) protein sequences obtained from a pyhmmer easel SequenceFile block.
+
+    Protein sequences are outer-joined to the HMM results on `protein_name`,
+    ensuring that proteins with no HMM hits are still written to the table.
+
+    If the target table does not already exist, it will be created with a
+    predefined schema. Data is inserted using a composite primary key
+    (`protein_name`, `organism_name`, `hmm_domain_name`) to support idempotent
+    or incremental writes.
+
+    Parameters
+    ----------
+    hmm_scan_df : pandas.DataFrame
+        DataFrame containing HMM scan results. Must include the following
+        columns:
+            - protein_name
+            - organism_name
+            - hmm_domain_name
+            - annot
+            - evalue
+            - score
+            - bias
+            - length
+            - top_hmm_domain_hit_on_prot
+            - top_protein_match_for_hmm
+            - best_dom_env_start
+            - best_dom_env_end
+            - best_dom_env_length
+
+    protein_py_easel_obj : iterable
+        Iterable of pyhmmer easel sequence objects (e.g. a block returned by
+        `pyhmmer.easel.SequenceFile.read_block()`), providing protein names and
+        amino acid sequences.
+
+    db_path : str
+        Path to the DuckDB database file.
+
+    sql_table_name : str
+        Name of the DuckDB table to create or append to.
+
+    Returns
+    -------
+    None
+
+    Side Effects
+    ------------
+    - Creates a DuckDB table if it does not already exist.
+    - Inserts or upserts rows into the specified table.
+
+    Notes
+    -----
+    This function performs no validation or filtering of HMM results and
+    assumes all upstream HMM analysis has already been completed. It is
+    intended as an I/O boundary between HMM scanning and downstream workflows
+    such as multiple sequence alignment (MSA).
     """
-    db = DuckDBClient(db_path)
+
     col_from_hmm_scan = [
         "protein_name",
         "organism_name",
@@ -91,12 +155,47 @@ def append_hmm_to_tbl(
     )
 
 
-# def get_hmm_list(db_table_name,
+def read_hmm_list(
+    db: DuckDBClient,
+    db_table_name: str,
+    min_bit_score: float = 0,  # the score is always > 0, so default to no score filter
+):
+    """
+    TODO: Get the list of unique/distinct HMM annotations in the table where the min_bit_score is
+    greater than the given value or the HMM is the best hit for a given protein.
+    """
+    raise NotImplementedError
+
+
+def extract_hmm_sequences_for_msa(
+    hmm_annotation: str,
+    db: DuckDBClient,
+    db_table_name: str,
+    out_folder_path: str,
+    min_bit_score=0,  # the score is always > 0, so default to no score filter
+    out_file_extension: str = "fa",
+):
+    """
+    TODO: Extract sequences matching a specific HMM for MSA generation.
+    """
+    raise NotImplementedError
+
+
+def extract_combined_summary(
+    db: DuckDBClient, db_table_name: str, out_folder_path: Path, min_bit_score=0
+):
+    """
+    TODO: Extract the combined hmm annotations across multiple organisms in the db.
+    """
+    raise NotImplementedError
+
+
+# def read_hmm_list(db_table_name,
 #                  db_file_path,
 #                  min_bit_score=0):
 #     """
 #     Get the list of unique/distinct HMM annotations in the table where the min_bit_score is
-#     greater than the given value or the HMM is the best hit for a given gene.
+#     greater than the given value or the HMM is the best hit for a given protein.
 #     """
 #     this_file_dir = os.path.dirname(os.path.abspath(__file__))
 #     logger.info(f'The table to query for hmm hits is {db_table_name}')
@@ -114,7 +213,7 @@ def append_hmm_to_tbl(
 #     return hmm_list
 
 
-# def extract_hmm_annot_sequences_to_file(hmm_annotation: str,
+# def extract_hmm_sequences_for_msa(hmm_annotation: str,
 #                                            db_file_path: str,
 #                                            db_table_name: str,
 #                                            out_folder_path: str,
@@ -151,36 +250,8 @@ def append_hmm_to_tbl(
 #             hmm_fasta_file.write(f'>{query_genome};{query_prot}\n')
 #             hmm_fasta_file.write(f'{sequence}\n')
 
-# def make_msa(hmm_seq_hits_file: str, #
-#              hmm_file_path,
-#              out_folder_path: str):
-#     '''
-#     Given a file of sequences that match an HMM, and the associated HMM file
-#     create an MSA file.
-#     '''
-#     _ , ext = os.path.splitext(out_folder_path)
-#     if ext != '.csa':
-#         logger.error(f'Expecting an output file with extension ".csa" but got "{ext}"')
-#         sys.exit()
 
-#     lst_count_msa_length=[]
-#     with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file: #Note: Needs to be hmmer3 format - phrogs format does not work
-#             hmm = hmm_file.read()
-#     hmm_name=hmm.name.decode()
-#     in_fasta = hmm_seq_hits_file
-#     with pyhmmer.easel.SequenceFile(in_fasta, digital=True) as seqs_file:
-#         proteins = seqs_file.read_block()
-#         msa = pyhmmer.hmmer.hmmalign(hmm, proteins, trim=False, digitize=False, all_consensus_cols=True)
-
-#         for sequence in msa.alignment:
-#             lst_count_msa_length.append(len(sequence))
-#             break
-
-#         with open(out_folder_path,'w') as h_hmm_msa:
-#             for name,sequence in zip(msa.names, msa.alignment):
-#                 h_hmm_msa.write(f'{sequence},{name.decode()}\n') #header: '>'+query_genome+' '+protein_name
-
-# def extract_combined_hmm_summaries(db_file_path: str,
+# def extract_combined_summary(db_file_path: str,
 #                                     db_table_name: str,
 #                                     out_folder_path: str,
 #                                     min_bit_score=0):

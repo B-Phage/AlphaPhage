@@ -14,16 +14,16 @@ This script contains no domain logic.
 import argparse
 import os
 
-import pandas as pd
 import pyhmmer
 import utils.consol_log as log
 from hmm.annotations import AnnotationProvider
-from hmm.duckdb_io import append_hmm_to_tbl
+from hmm.duckdb_io import write_hmm_results_with_sequences
 from hmm.io import (
     load_hmms_from_file,
     load_single_hmm_per_file,
 )
 from hmm.search import run_hmm_search
+from utils.duckdb_client import DuckDBClient
 
 logger = log.get_logger()
 
@@ -136,7 +136,9 @@ def main_cli():
     if args.out_database:
         sql_table_name = f"hmm_{args.method}_annotations{args.out_db_tbl_suffix}"
         logger.info(f"Writing HMM hits to table {sql_table_name} in {args.out_database}")
-        append_hmm_to_tbl(df_results, proteins, args.out_database, sql_table_name)
+
+        db = DuckDBClient(args.out_database)
+        write_hmm_results_with_sequences(df_results, proteins, db, sql_table_name)
 
 
 if __name__ == "__main__":
