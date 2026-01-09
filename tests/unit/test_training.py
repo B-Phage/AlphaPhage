@@ -29,6 +29,8 @@ class TestTransformerX(unittest.TestCase):
                 # "debug_mode" : False,
                 # "train_features_path" : "../../bp/AlphaX/proc/sim_data/Tests/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
                 # "train_labels_path" : "../../bp/AlphaX/proc/sim_data/Tests/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
+                # "train_features_path" : "tests/data/x_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5",
+                # "train_labels_path" : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5",
                 # "debug_features_path" : "",
                 # "debug_labels_path" : "",
                 # "pair_indices_name" : "pair_indices",
