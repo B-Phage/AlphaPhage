@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.fixture
-def small_test_data(tmp_path):
+def small_phrog_test_data(tmp_path):
     """Integration fixture: tiny FASTA, real HMM, and annotation CSV."""
 
     # FASTA file
@@ -32,24 +32,42 @@ def small_test_data(tmp_path):
     }
 
 
-def test_cli_runs_successfully(small_test_data, tmp_path):
+@pytest.fixture
+def small_pfam_test_data(tmp_path):
+    """Integration fixture: tiny FASTA, real HMM, and annotation CSV."""
+
+    # Use real HMM file from fixtures
+    hmm_file = Path("tests/fixtures/DUF1244.hmm")
+    fasta_file = Path("tests/fixtures/DUF1244.fa")
+
+    # Annotation CSV matching the HMM domain
+    # annotation_file = tmp_path / "annotations.csv"
+    # annotation_file.write_text("hmm_domain_name,annot\nPHROG_126,TestAnnotation\n")
+    annotation_file = Path("../databases/hmm/pfam/v38.0/Pfam-A.hmm.dat")
+
+    return {
+        "fasta": fasta_file,
+        "hmm": hmm_file,
+        "annotation": annotation_file,
+        "out_csv": tmp_path / "results.csv",
+        "out_db": tmp_path / "results.duckdb",
+    }
+
+
+def test_cli_runs_successfully_for_phrogs(small_phrog_test_data, tmp_path):
     """Integration test: run CLI on tiny test dataset using a real HMM file."""
+    # fmt: off
     cmd = [
         sys.executable,
         "workflows/cli/hmm_scan.py",
-        "-f",
-        str(small_test_data["fasta"]),
-        "-hp",
-        str(small_test_data["hmm"]),
-        "-a",
-        str(small_test_data["annotation"]),
-        "-m",
-        "phrogs",
-        "-o",
-        str(small_test_data["out_csv"]),
-        "-db",
-        str(small_test_data["out_db"]),
+        "-f", str(small_phrog_test_data["fasta"]),
+        "-hp", str(small_phrog_test_data["hmm"]),
+        "-a", str(small_phrog_test_data["annotation"]),
+        "-m", "pfam",
+        "-o", str(small_phrog_test_data["out_csv"]),
+        "-db", str(small_phrog_test_data["out_db"]),
     ]
+    # fmt: on
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     print(result.stdout)
@@ -59,7 +77,35 @@ def test_cli_runs_successfully(small_test_data, tmp_path):
     assert result.returncode == 0
 
     # CSV results should exist and have expected columns
-    assert small_test_data["out_csv"].exists()
-    df = pd.read_csv(small_test_data["out_csv"])
+    assert small_phrog_test_data["out_csv"].exists()
+    df = pd.read_csv(small_phrog_test_data["out_csv"])
+    assert "protein_name" in df.columns
+    assert "hmm_domain_name" in df.columns
+
+
+def test_cli_runs_successfully_for_pfam(small_pfam_test_data, tmp_path):
+    """Integration test: run CLI on tiny test dataset using a real HMM file."""
+    # fmt: off
+    cmd = [
+        sys.executable,
+        "workflows/cli/hmm_scan.py",
+        "-f", str(small_pfam_test_data["fasta"]),
+        "-hp", str(small_pfam_test_data["hmm"]),
+        "-a", str(small_pfam_test_data["annotation"]),
+        "-m", "phrogs",
+        "-o", str(small_pfam_test_data["out_csv"]),
+        "-db", str(small_pfam_test_data["out_db"]),
+    ]
+    # fmt: off
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    print(result.stdout)
+    print(result.stderr)
+
+    # CLI should complete successfully
+    assert result.returncode == 0
+
+    # CSV results should exist and have expected columns
+    assert small_pfam_test_data["out_csv"].exists()
+    df = pd.read_csv(small_pfam_test_data["out_csv"])
     assert "protein_name" in df.columns
     assert "hmm_domain_name" in df.columns

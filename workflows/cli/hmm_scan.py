@@ -53,7 +53,7 @@ def main_cli():
     parser.add_argument(
         "-m",
         "--method",
-        choices=["phrogs", "cogs", "ncbi"],
+        choices=["phrogs", "pfam"],
         default="phrogs",
         help="Annotation method",
     )
