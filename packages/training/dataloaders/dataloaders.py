@@ -125,7 +125,7 @@ class BinaryPairkeyFeatureDataset(Dataset):
         self.num_phages_mock = None
 
         # Pre-calculate length
-        if not self.is_unittest:
+        if not self.is_mockunittest:
             # Open briefly just to get the length, then close (do lazy loading) to
             # accommodate h5 and Mac.
             with h5py.File(self.labels_path, "r") as f_y:

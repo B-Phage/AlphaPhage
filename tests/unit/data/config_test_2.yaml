@@ -3,8 +3,12 @@ verboselevel : "ERROR"
 debug_mode : false
 
 
-train_features_path : "../../bp/AlphaX/proc/sim_data/Tests/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
-train_labels_path : "../../bp/AlphaX/proc/sim_data/Tests/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+# train_features_path : "../../bp/AlphaX/proc/sim_data/Tests/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+# train_labels_path : "../../bp/AlphaX/proc/sim_data/Tests/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+train_features_path : "tests/data/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+train_labels_path : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+# train_features_path : "tests/data/x_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5"
+# train_labels_path : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5"
 debug_features_path : ""
 debug_labels_path : ""
 
@@ -19,7 +23,7 @@ trainer:
   logger_method : "MLFlowLogger"
   project : "AlphaPhage_Testing"
   run_name : "test_run_2"
-  mlflow_tracking_uri : null
+  mlflow_tracking_uri : "http://localhost:5000"
   epochs : 300
   accelerator : "cpu"
   devices : 1
