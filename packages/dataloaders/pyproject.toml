@@ -13,7 +13,9 @@ dependencies = [
     "h5py",
     "torch",
     "pytorch-lightning",
-    "numpy"]
+    "numpy",
+    "scikit-learn",
+    ]
 
 [tool.setuptools]
 # leave empty unless needed
