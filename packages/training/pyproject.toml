@@ -9,7 +9,10 @@ description = "Training module for host-phage interaction."
 readme = "README_training.md"
 license = "LicenseRef-Proprietary"
 requires-python = ">=3.10,<3.15"
-dependencies = []
+dependencies = [
+    "torch",
+    "pytorch-lightning",
+    "numpy"]
 
 [tool.setuptools]
 # leave empty unless needed
