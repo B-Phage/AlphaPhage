@@ -87,14 +87,27 @@ def main(cfg: DictConfig):
 
     if cfg.trainer.logger_method == "CSVLogger":
         logger_object = pl.loggers.CSVLogger(log_dir)
+
     elif cfg.trainer.logger_method == "WandbLogger":
         logger_object = pl.loggers.WandbLogger(
             project=cfg.trainer.project,
             name=cfg.trainer.run_name,
             save_dir=log_dir,
         )
+
     elif cfg.trainer.logger_method == "TensorBoardLogger":
         logger_object = pl.loggers.TensorBoardLogger(log_dir, name=cfg.trainer.run_name)
+
+    elif cfg.trainer.logger_method == "DVCLiveLogger":
+        from pathlib import Path
+
+        from dvclive.lightning import DVCLiveLogger
+
+        logger_object = DVCLiveLogger(
+            dir=Path(os.path.join(log_dir, "mlrun")),
+            log_model=False,  # Optionally log model checkpoints as DVC artifacts
+        )
+
     elif cfg.trainer.logger_method == "MLFlowLogger":
         if cfg.trainer.mlflow_tracking_uri is not None:
             # Requires a localhost e.g. http://localhost:5000 or
