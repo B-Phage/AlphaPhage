@@ -17,3 +17,7 @@ dependencies:
   - "dvc[gdrive]"
   - dvc-gdrive
   - funcy
+  #
+  - h5py
+  - torch
+  - numpy
