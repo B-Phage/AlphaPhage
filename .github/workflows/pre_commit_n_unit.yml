@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.10' # Match your target Python version
 
-      - name: Install Dependencies
+      - name: Check Environment (before install)
         run: |
           echo "--- Python Location ---"
           which python
@@ -38,6 +38,9 @@ jobs:
           python -c "import sys; print('\n'.join(sys.path))"
           echo "--- Installed Packages ---"
           pip list
+
+      - name: Install Dependencies
+        run: |
           python -m pip install --upgrade pip
           # Install your main package in editable mode, including test dependencies
           pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
@@ -45,6 +48,16 @@ jobs:
           pip install -e ./packages/orchestration
           pip install -e ./packages/preprocessing
           pip install -e ./packages/training
+          pip install -e ./packages/dataloaders
+
+      - name: Check Environment (after install)
+        run: |
+          echo "--- Python Location ---"
+          which python
+          echo "--- Python Path ---"
+          python -c "import sys; print('\n'.join(sys.path))"
+          echo "--- Installed Packages ---"
+          pip list
 
       - name: 🏃 Run Pre-Commit Checks
         uses: pre-commit/action@v3.0.1 # Use the official action
