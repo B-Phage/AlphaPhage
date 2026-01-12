@@ -19,10 +19,7 @@ import pyhmmer
 import utils.consol_log as log
 from hmm.annotations import AnnotationProvider
 from hmm.duckdb_io import write_hmm_results_with_sequences
-from hmm.io import (
-    load_hmms_from_file,
-    load_single_hmm_per_file,
-)
+from hmm.io import load_hmms_from_file, load_single_hmm_per_file, write_hmm_scan_summary
 from hmm.search import run_hmm_search
 from hmm.types import Protein
 from utils.duckdb_client import DuckDBClient
@@ -69,8 +66,9 @@ def main_cli():
         "-db",
         "--out-database",
         dest="out_database",
+        required=True,
         type=str,
-        help="Optional SQLite database file to append results",
+        help="DuckDB database file to append results",
     )
     parser.add_argument(
         "-dbt",
@@ -78,7 +76,7 @@ def main_cli():
         dest="out_db_tbl_suffix",
         default="",
         type=str,
-        help="Optional suffix for SQL table name",
+        help="Optional suffix for SQL table name. Use if you do not want to write to the default table",
     )
     parser.add_argument(
         "-ec",
@@ -127,15 +125,16 @@ def main_cli():
         evalue_cutoff=args.evalue_cutoff,
     )
 
-    # Write output
+    # Write summary output for tracking
     if len(df_results) == 0:
         logger.info("No hits found.")
         with open(args.out_csv, "w") as f:
             f.write("")
     else:
+        write_hmm_scan_summary(df_results, args.out_csv, unique_cols=("hmm_domain_name",))
         df_results.to_csv(args.out_csv, sep=",", index=False)
 
-    # Optionally write to DuckDB
+    # Write everything to DuckDB
     if args.out_database:
         sql_table_name = f"hmm_{args.method}_annotations{args.out_db_tbl_suffix}"
         logger.info(f"Writing HMM hits to table {sql_table_name} in {args.out_database}")

@@ -72,17 +72,10 @@ def run_hmm_search(
                     "organism_name": organism_name,  # "query_genome" in RnD
                     "hmm_domain_name": domain_name,  # "domain" in RnD
                     "score": hit.score,
-                    "accession": hit.accession,
                     "bias": hit.bias,
-                    "description": hit.description,
-                    "dropped": hit.dropped,
-                    "duplicate": hit.duplicate,
                     "evalue": hit.evalue,
-                    "hits": hit.hits,
-                    "included": hit.included,
                     "length": hit.length,
                     "name": hit.name,
-                    "new": hit.new,
                     "best_dom_env_start": hit.best_domain.env_from,
                     "best_dom_env_end": hit.best_domain.env_to,
                     "best_dom_env_length": hit.best_domain.env_to - hit.best_domain.env_from,
@@ -92,7 +85,6 @@ def run_hmm_search(
                     "best_dom_ali_length": hit.best_domain.alignment.hmm_length,
                     "pre_score": hit.pre_score,
                     "pvalue": hit.pvalue,
-                    "reported": hit.reported,
                     "sum_score": hit.sum_score,
                     "annot": annot,
                 }

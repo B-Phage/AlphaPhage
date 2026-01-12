@@ -22,7 +22,7 @@ class Orchestrator:
     def __init__(
         self,
         workflow_name: str,
-        hash_store_dir: str = "ml_assets/data/workflow/hashes",
+        hash_store_dir: Path = Path("ml_assets/data/workflow/hashes"),
         logger_name: Optional[str] = None,
         log_level=log.INFO,
     ):

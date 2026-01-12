@@ -21,7 +21,7 @@ ENV_DEV = root_dev
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_HMM) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
 
 # HMM Data
 HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
@@ -39,7 +39,7 @@ help:
 	@echo "  make check-dvc-config     	- Check the dvc OAuth"
 	@echo "  make hooks           		- Install pre-commit hooks in the current environment"
 	@echo "  make secrets-cli     		- Installing detect-secrets CLI tool"
-	@echo "  make secrets-baseline      - Scanning repository and generating .secrets.baseline file..."
+	@echo "  make secrets-baseline      	- Scanning repository and generating .secrets.baseline file..."
 	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
 	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
 	@echo "  make setup-hmm-data		- Pull the HMM data from Google Drive and extract"
@@ -93,15 +93,15 @@ setup-preprocessing:
 
 .PHONY: setup-hmm
 setup-hmm:
-	$(call ensure_env,$(ENV_HMM))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing hmm preprocessing package ==="
-	conda run -n $(ENV_HMM) pip install -e packages/hmm
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/hmm
 
 .PHONY: setup-setup_workflows
 setup-setup_workflows:
-	$(call ensure_env,$(ENV_HMM))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing worflow setup package ==="
-	conda run -n $(ENV_HMM) pip install -e packages/setup_workflows
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/setup_workflows
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:

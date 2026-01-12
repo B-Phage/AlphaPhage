@@ -11,7 +11,10 @@ No domain logic or search logic is implemented here.
 
 import glob
 import os
+from pathlib import Path
+from typing import Union
 
+import pandas as pd
 import pyhmmer
 import pyhmmer.plan7
 import utils.consol_log as log
@@ -94,3 +97,32 @@ def load_pressed_hmms(hmm_pressed_file):
         else:
             hmms = hmm_file.optimized_profiles()
             return hmms
+
+
+def write_hmm_scan_summary(
+    df: pd.DataFrame,
+    out_csv: str | Path,
+    unique_cols: tuple[str, ...] = (),
+    max_unique_preview: int = 20,
+) -> None:
+    """
+    Writes a tiny CSV summary suitable for pipeline tracking.
+    """
+
+    summary: dict[str, Union[int, str]] = {
+        "n_rows": df.shape[0],
+        "n_columns": df.shape[1],
+    }
+
+    for col in unique_cols:
+        s = df[col]
+        nunique = s.nunique(dropna=True)
+        summary[f"{col}_nunique"] = nunique
+
+        # Preview only if small
+        if nunique <= max_unique_preview:
+            summary[f"{col}_unique_preview"] = ",".join(map(str, s.dropna().unique()))
+        else:
+            summary[f"{col}_unique_preview"] = f">{max_unique_preview}"
+
+    pd.DataFrame([summary]).to_csv(out_csv, index=False)
