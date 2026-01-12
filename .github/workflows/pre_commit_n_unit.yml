@@ -38,6 +38,7 @@ jobs:
           pip install -e ./packages/utils
           pip install -e ./packages/orchestration
           pip install -e ./packages/preprocessing
+          pip install -e ./packages/training
 
       - name: 🏃 Run Pre-Commit Checks
         uses: pre-commit/action@v3.0.1 # Use the official action
