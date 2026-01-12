@@ -9,10 +9,8 @@ import sys
 import unittest
 
 import torch
+from arc.TransformerX import TransformerX
 from omegaconf import OmegaConf
-from training.arc.TransformerX import TransformerX
-
-# from training.dataloaders.dataloaders import BinaryPairkeyDataModule
 
 
 class TestTransformerX(unittest.TestCase):

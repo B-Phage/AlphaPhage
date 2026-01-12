@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import torch
+from dataloaders.dataloaders import BinaryPairkeyDataModule, BinaryPairkeyFeatureDataset
 from omegaconf import OmegaConf
-from training.dataloaders.dataloaders import BinaryPairkeyDataModule, BinaryPairkeyFeatureDataset
 
 
 class TestBinaryPairkeyDataModule(unittest.TestCase):
