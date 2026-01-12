@@ -18,6 +18,6 @@ dependencies:
   - dvc-gdrive
   - funcy
   #
-  - h5py
-  - torch
-  - numpy
+  # - h5py
+  # - torch
+  # - numpy
