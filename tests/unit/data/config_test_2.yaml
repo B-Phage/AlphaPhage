@@ -20,10 +20,10 @@ architecture : "TransformerX"
 num_workers : 0
 
 trainer:
-  logger_method : "MLFlowLogger"
+  logger_method : "DVCLiveLogger"
   project : "AlphaPhage_Testing"
   run_name : "test_run_2"
-  mlflow_tracking_uri : "http://localhost:5000"
+  mlflow_tracking_uri : null
   epochs : 300
   accelerator : "cpu"
   devices : 1
