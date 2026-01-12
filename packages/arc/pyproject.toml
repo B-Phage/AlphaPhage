@@ -13,5 +13,6 @@ dependencies = []
 
 [tool.setuptools]
 # leave empty unless needed
+py-modules = ["TransformerX"]
 
 # we use the root level pyproject.toml black and isort
