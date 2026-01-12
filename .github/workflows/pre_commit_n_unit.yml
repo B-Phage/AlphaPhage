@@ -32,6 +32,12 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          echo "--- Python Location ---"
+          which python
+          echo "--- Python Path ---"
+          python -c "import sys; print('\n'.join(sys.path))"
+          echo "--- Installed Packages ---"
+          pip list
           python -m pip install --upgrade pip
           # Install your main package in editable mode, including test dependencies
           pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
