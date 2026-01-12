@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -145,3 +146,48 @@ def test_primary_keys_are_correct(hmm_scan_df, protein_block):
         "organism_name",
         "hmm_domain_name",
     ]
+
+
+def test_write_hmm_results_with_sequences_empty_dataframe(caplog):
+    # GIVEN an empty HMM scan DataFrame
+    empty_df = pd.DataFrame(
+        columns=[
+            "protein_name",
+            "organism_name",
+            "hmm_domain_name",
+            "annot",
+            "evalue",
+            "score",
+            "bias",
+            "length",
+            "top_hmm_domain_hit_on_prot",
+            "top_protein_match_for_hmm",
+            "best_dom_env_start",
+            "best_dom_env_end",
+            "best_dom_env_length",
+        ]
+    )
+
+    # Mock protein iterable (can be empty)
+    mock_protein_iter = []
+
+    # Mock DuckDBClient
+    mock_db = MagicMock()
+    mock_db.table_exists.return_value = False
+    mock_db.insert_dataframe = MagicMock()
+
+    # Capture logs
+    with caplog.at_level(logging.WARNING):
+        write_hmm_results_with_sequences(
+            hmm_scan_df=empty_df,
+            protein_py_easel_obj=mock_protein_iter,
+            db=mock_db,
+            sql_table_name="test_table",
+        )
+
+    # THEN: a warning about no hits is logged
+    assert any("No HMM hits to insert" in record.message for record in caplog.records)
+
+    # AND: no DB methods are called
+    mock_db.table_exists.assert_not_called()
+    mock_db.insert_dataframe.assert_not_called()

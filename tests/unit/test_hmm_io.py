@@ -1,7 +1,10 @@
+from pathlib import Path
+from typing import Union
 from unittest.mock import MagicMock, patch
 
 # Adjust this import to match your project structure
 import hmm.io as hmm_io
+import pandas as pd
 import pytest
 
 # ---------------------------------------------------------------------
@@ -176,3 +179,60 @@ def test_load_pressed_hmms_not_pressed():
             hmm_io.load_pressed_hmms("/tmp/not_pressed.hmm")
 
         mock_logger.error.assert_called_once()
+
+
+def test_write_hmm_scan_summary(tmp_path):
+    # 1. Setup Mock Data
+    data = {
+        "gene": ["A", "B", "C", "A"],  # 3 unique
+        "score": [10, 20, 30, 40],  # 4 unique
+        "large_col": [f"val_{i}" for i in range(25)],  # 25 unique
+    }
+    # Adjusting data length to match the longest column
+    df = pd.DataFrame(
+        {
+            "gene": ["A", "B", "C", "A"] + [None] * 21,
+            "score": list(range(25)),
+            "large_col": [f"val_{i}" for i in range(25)],
+        }
+    )
+
+    out_file = tmp_path / "summary.csv"
+    unique_cols = ("gene", "large_col")
+
+    # 2. Execute
+    hmm_io.write_hmm_scan_summary(
+        df, out_csv=out_file, unique_cols=unique_cols, max_unique_preview=10
+    )
+
+    # 3. Assertions
+    assert out_file.exists()
+    result_df = pd.read_csv(out_file)
+
+    # Check shape metrics
+    assert result_df.loc[0, "n_rows"] == 25
+    assert result_df.loc[0, "n_columns"] == 3
+
+    # Check gene column (Under threshold)
+    # Note: nunique(dropna=True) should be 3 (A, B, C)
+    assert result_df.loc[0, "gene_nunique"] == 3
+    # Check preview contains the expected strings (order might vary, so we check set)
+    raw_preview = str(result_df.loc[0, "gene_unique_preview"])
+    preview_values = set(raw_preview.split(","))
+    assert preview_values == {"A", "B", "C"}
+
+    # Check large_col (Over threshold)
+    assert result_df.loc[0, "large_col_nunique"] == 25
+    assert result_df.loc[0, "large_col_unique_preview"] == ">10"
+
+
+def test_write_hmm_scan_summary_empty_cols(tmp_path):
+    """Test behavior when no unique_cols are provided."""
+    df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    out_file = tmp_path / "empty_summary.csv"
+
+    hmm_io.write_hmm_scan_summary(df, out_file)
+
+    result_df = pd.read_csv(out_file)
+    assert list(result_df.columns) == ["n_rows", "n_columns"]
+    assert result_df.loc[0, "n_rows"] == 2
