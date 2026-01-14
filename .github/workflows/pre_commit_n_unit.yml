@@ -19,6 +19,17 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
+
+      - name: 🔥 Free up disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo apt-get clean
+          docker system prune -af
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /var/lib/docker
+
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
         # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
