@@ -20,15 +20,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: 🔥 Free up disk space
-        run: |
-          sudo rm -rf /usr/local/lib/android
-          sudo apt-get clean
-          docker system prune -af
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /var/lib/docker
+      # - name: 🔥 Free up disk space
+      #   run: |
+      #     sudo rm -rf /usr/local/lib/android
+      #     sudo apt-get clean
+      #     docker system prune -af
+      #     sudo rm -rf /opt/ghc
+      #     sudo rm -rf /opt/hostedtoolcache
+      #     sudo rm -rf /usr/share/dotnet
+      #     sudo rm -rf /var/lib/docker
+
+      - name: 🚀 Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
 
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
@@ -107,6 +118,13 @@ jobs:
         # You could also use an 'id' and 'continue-on-error' if you want
         # to guarantee the test run even if other steps failed,
         # but generally, if linting fails, tests shouldn't run.
+
+      # NEW: Upload the HTML report so you can actually see it!
+      - name: ⬆️ Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-coverage-report
+          path: htmlcov/
 
       - name: 💯 Extract total coverage
         id: extract
