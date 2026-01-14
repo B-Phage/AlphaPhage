@@ -64,136 +64,136 @@ jobs:
       #     remove-codeql: 'true'
       #     remove-docker-images: 'true'
 
-    #   - name: ⬇️ Checkout Repository
-    #     uses: actions/checkout@v4
-    #     # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
-    #     with:
-    #       fetch-depth: 0
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+        # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
+        with:
+          fetch-depth: 0
 
-    #   - name: 🐍 Set up Python Environment
-    #     uses: actions/setup-python@v5
-    #     with:
-    #       python-version: '3.10' # Match your target Python version
+      - name: 🐍 Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Match your target Python version
 
-    #   - name: Check Environment (before install)
-    #     run: |
-    #       echo "--- Python Location ---"
-    #       which python
-    #       echo "--- Python Path ---"
-    #       python -c "import sys; print('\n'.join(sys.path))"
-    #       echo "--- Installed Packages ---"
-    #       pip list
+      - name: Check Environment (before install)
+        run: |
+          echo "--- Python Location ---"
+          which python
+          echo "--- Python Path ---"
+          python -c "import sys; print('\n'.join(sys.path))"
+          echo "--- Installed Packages ---"
+          pip list
 
-    #   - name: Install Dependencies
-    #     run: |
-    #       python -m pip install --upgrade pip
-    #       # Install your main package in editable mode, including test dependencies
-    #       pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
-    #       pip install -e ./packages/utils
-    #       pip install -e ./packages/orchestration
-    #       pip install -e ./packages/preprocessing
-    #       pip install -e ./packages/training
-    #       pip install -e ./packages/dataloaders
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install your main package in editable mode, including test dependencies
+          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
+          pip install -e ./packages/utils
+          pip install -e ./packages/orchestration
+          pip install -e ./packages/preprocessing
+          pip install -e ./packages/training
+          pip install -e ./packages/dataloaders
 
-    #   - name: Check Environment (after install)
-    #     run: |
-    #       echo "--- Python Location ---"
-    #       which python
-    #       echo "--- Python Path ---"
-    #       python -c "import sys; print('\n'.join(sys.path))"
-    #       echo "--- Installed Packages ---"
-    #       pip list
+      - name: Check Environment (after install)
+        run: |
+          echo "--- Python Location ---"
+          which python
+          echo "--- Python Path ---"
+          python -c "import sys; print('\n'.join(sys.path))"
+          echo "--- Installed Packages ---"
+          pip list
 
-    #   - name: 🏃 Run Pre-Commit Checks
-    #     uses: pre-commit/action@v3.0.1 # Use the official action
-    #     # The official action automatically handles:
-    #     # 1. Installing 'pre-commit'
-    #     # 2. Caching the hook environments
-    #     # 3. Running 'pre-commit run --all-files'
-    #     # It will fail the job if any hook fails.
-    #     id: run_hooks # Give the step an ID
-    #     continue-on-error: true
+      - name: 🏃 Run Pre-Commit Checks
+        uses: pre-commit/action@v3.0.1 # Use the official action
+        # The official action automatically handles:
+        # 1. Installing 'pre-commit'
+        # 2. Caching the hook environments
+        # 3. Running 'pre-commit run --all-files'
+        # It will fail the job if any hook fails.
+        id: run_hooks # Give the step an ID
+        continue-on-error: true
 
-    #   # Debugging Steps
-    #   - name: ❌🪲 Show Modified Files and Differences
-    #     # We only run this debugging step if the previous step actually failed (i.e., modified files)
-    #     if: ${{ steps.run_hooks.outcome == 'failure' }}
-    #     run: |
-    #       echo "Hooks failed because they modified these files:"
-    #       git status --porcelain # Shows list of modified files (in a machine-readable format)
-    #       echo "--- Full Git Diff ---"
-    #       git diff # Shows exactly what changes were made (missing newlines)
+      # Debugging Steps
+      - name: ❌🪲 Show Modified Files and Differences
+        # We only run this debugging step if the previous step actually failed (i.e., modified files)
+        if: ${{ steps.run_hooks.outcome == 'failure' }}
+        run: |
+          echo "Hooks failed because they modified these files:"
+          git status --porcelain # Shows list of modified files (in a machine-readable format)
+          echo "--- Full Git Diff ---"
+          git diff # Shows exactly what changes were made (missing newlines)
 
-    #   # FAILURE STEP (Optional, but good practice)
-    #   # If the debugging step passed, but the hooks failed, we fail the job here.
-    #   # You can skip this if you want the action to just run the hooks and always pass.
-    #   - name: ☠️ Check (Fail Job if Hooks Modified Files)
-    #     if: ${{ steps.run_hooks.outcome == 'failure' }}
-    #     run: |
-    #       echo "Failing job because pre-commit checks modified files."
-    #       exit 1
+      # FAILURE STEP (Optional, but good practice)
+      # If the debugging step passed, but the hooks failed, we fail the job here.
+      # You can skip this if you want the action to just run the hooks and always pass.
+      - name: ☠️ Check (Fail Job if Hooks Modified Files)
+        if: ${{ steps.run_hooks.outcome == 'failure' }}
+        run: |
+          echo "Failing job because pre-commit checks modified files."
+          exit 1
 
-    #  # Unit tests
-    #   - name: 🧪 Run Unit Tests
-    #     run: |
-    #       PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
-    #       coverage json -o coverage.json
-    #     # You could also use an 'id' and 'continue-on-error' if you want
-    #     # to guarantee the test run even if other steps failed,
-    #     # but generally, if linting fails, tests shouldn't run.
+     # Unit tests
+      - name: 🧪 Run Unit Tests
+        run: |
+          PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
+          coverage json -o coverage.json
+        # You could also use an 'id' and 'continue-on-error' if you want
+        # to guarantee the test run even if other steps failed,
+        # but generally, if linting fails, tests shouldn't run.
 
-    #   # NEW: Upload the HTML report so you can actually see it!
-    #   - name: ⬆️ Upload Coverage Report
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: html-coverage-report
-    #       path: htmlcov/
+      # NEW: Upload the HTML report so you can actually see it!
+      - name: ⬆️ Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-coverage-report
+          path: htmlcov/
 
-    #   - name: 💯 Extract total coverage
-    #     id: extract
-    #     run: |
-    #       COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-    #       echo "coverage=$COV" >> $GITHUB_OUTPUT
+      - name: 💯 Extract total coverage
+        id: extract
+        run: |
+          COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "coverage=$COV" >> $GITHUB_OUTPUT
 
-    #   - name: 🎖️ Generate SVG badge
-    #     run: |
-    #       # 1. Setup
-    #       mkdir -p badges
+      - name: 🎖️ Generate SVG badge
+        run: |
+          # 1. Setup
+          mkdir -p badges
 
-    #       # Change the path to the bash script
-    #       BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
+          # Change the path to the bash script
+          BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
 
-    #       # Make sure the script is executable
-    #       chmod +x "$BASH_SCRIPT_PATH"
+          # Make sure the script is executable
+          chmod +x "$BASH_SCRIPT_PATH"
 
-    #       # 2. Determine safe branch name
-    #       BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-    #       BRANCH_SAFE="${BRANCH_SAFE//\//_}"
+          # 2. Determine safe branch name
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"
 
-    #       # 3. Get Coverage value
-    #       COV="${{ steps.extract.outputs.coverage }}"
+          # 3. Get Coverage value
+          COV="${{ steps.extract.outputs.coverage }}"
 
-    #       # 4. Define the output file path
-    #       BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
+          # 4. Define the output file path
+          BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
 
-    #       # 5. Call the bash interface using its full relative path
-    #       "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
+          # 5. Call the bash interface using its full relative path
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
 
-    #   - name: ⬆️ Commit and push SVG badge
-    #     run: |
-    #       BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-    #       BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
-    #       BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
+      - name: ⬆️ Commit and push SVG badge
+        run: |
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
+          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
 
-    #       git config user.name "github-actions"
-    #       git config user.email "github-actions@github.com"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-    #       git fetch origin badges2
-    #       git checkout badges2
-    #       git reset --hard origin/badges2
+          git fetch origin badges2
+          git checkout badges2
+          git reset --hard origin/badges2
 
-    #       cp badges/${BADGE_FILE} .
+          cp badges/${BADGE_FILE} .
 
-    #       git add ${BADGE_FILE}
-    #       git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
-    #       git push origin badges2 --force
+          git add ${BADGE_FILE}
+          git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
+          git push origin badges2 --force
