@@ -77,6 +77,8 @@ class TestTransformerX(unittest.TestCase):
         self.model = TransformerX(
             self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
         )
+        # Mock the log method directly on the instance
+        self.model.log = MagicMock()
         # Manually attach a mock trainer to satisfy the log() requirement
         self.model.trainer = MagicMock()
 
@@ -170,6 +172,7 @@ class TestTransformerX(unittest.TestCase):
                     new_model = TransformerX(
                         self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
                     )
+                    new_model.log = MagicMock()
                     new_model.trainer = MagicMock()
                     loss = new_model.training_step(batch, 0)
 
