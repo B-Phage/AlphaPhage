@@ -92,6 +92,10 @@ class TestTransformerX(unittest.TestCase):
             torch.randint(0, self.vocab_size_out, (4,)),
         )
 
+        # Manually attach a mock trainer to satisfy the log() requirement
+        from unittest.mock import MagicMock
+
+        self.model.trainer = MagicMock()
         loss = self.model.training_step(batch, 0)
 
         self.assertIsInstance(loss, torch.Tensor)
@@ -168,6 +172,18 @@ class TestTransformerX(unittest.TestCase):
 
                     self.assertIsInstance(loss, torch.Tensor)
                     self.assertFalse(torch.isnan(loss))
+
+    def test_get_token_basics(self):
+        """Test get_token_basics function."""
+        batch = (
+            torch.randint(0, self.num_tokens, (4, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (4,)),
+        )
+
+        loss = self.model.training_step(batch, 0)
+
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertFalse(torch.isnan(loss))
 
 
 if __name__ == "__main__":
