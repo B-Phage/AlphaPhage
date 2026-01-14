@@ -20,9 +20,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Check Disk Space
-        run: df -h
+      - name: 🔥 Heavy Duty Disk Cleanup
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
 
+          # 1. Remove massive pre-installed toolsets
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+
+          # 2. Clean Docker - This is likely where your 58GB is hiding
+          # 'docker image prune -a' removes all unused images, not just dangling ones
+          docker image prune -af
+          docker system prune -af
+
+          # 3. Clean Apt
+          sudo apt-get clean
+
+          echo "=== Disk space after cleanup ==="
+          df -h
 
 
       # - name: 🔥 Free up disk space
