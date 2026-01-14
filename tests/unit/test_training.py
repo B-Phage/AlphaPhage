@@ -7,6 +7,7 @@ PYTHONPATH=./packages pytest tests/
 
 import sys
 import unittest
+from unittest.mock import MagicMock
 
 import torch
 from arc.TransformerX import TransformerX
@@ -15,7 +16,10 @@ from omegaconf import OmegaConf
 
 class TestTransformerX(unittest.TestCase):
     def setUp(self):
-        """Set up a mock configuration similar to your config_test_2.yaml"""
+        """Set up a mock configuration similar to your config_test_2.yaml
+        and mock the trainer.
+        """
+
         self.num_tokens = 20
         self.vocab_size_out = 2
         self.length_padded = 128
@@ -73,6 +77,8 @@ class TestTransformerX(unittest.TestCase):
         self.model = TransformerX(
             self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
         )
+        # Manually attach a mock trainer to satisfy the log() requirement
+        self.model.trainer = MagicMock()
 
     def test_forward_shape(self):
         """Test if the model produces the correct output shape."""
@@ -92,10 +98,6 @@ class TestTransformerX(unittest.TestCase):
             torch.randint(0, self.vocab_size_out, (4,)),
         )
 
-        # Manually attach a mock trainer to satisfy the log() requirement
-        from unittest.mock import MagicMock
-
-        self.model.trainer = MagicMock()
         loss = self.model.training_step(batch, 0)
 
         self.assertIsInstance(loss, torch.Tensor)
@@ -165,10 +167,11 @@ class TestTransformerX(unittest.TestCase):
                     # print(f'archspec: {archspec} archspec2: {archspec2}')
                     self.cfg.hyp.archspec = archspec
                     self.cfg.hyp.archspec2 = archspec2
-                    self.model = TransformerX(
+                    new_model = TransformerX(
                         self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
                     )
-                    loss = self.model.training_step(batch, 0)
+                    new_model.trainer = MagicMock()
+                    loss = new_model.training_step(batch, 0)
 
                     self.assertIsInstance(loss, torch.Tensor)
                     self.assertFalse(torch.isnan(loss))
