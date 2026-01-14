@@ -142,7 +142,7 @@ class BinaryPairkeyFeatureDataset(Dataset):
             self.f_x = h5py.File(self.features_path, "r", libver="latest", swmr=True)
 
     def mock_h5(self):
-        """Relpacement for h5 file reading in unit tests"""
+        """Replacement for h5 file reading in unit tests"""
         self.num_hosts = self.num_hosts_mock
         self.num_phages = self.num_hosts_mock
         lst_pair_indices = []
