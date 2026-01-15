@@ -5,13 +5,18 @@ python -m unittest tests.test_config_loader
 PYTHONPATH=./packages pytest tests/
 """
 
+import os
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock
 
+import h5py
+import numpy as np
 import torch
 from arc.TransformerX import TransformerX
 from omegaconf import OmegaConf
+from training.train_utils import get_token_basics
 
 
 class TestTransformerX(unittest.TestCase):
@@ -179,17 +184,50 @@ class TestTransformerX(unittest.TestCase):
                     self.assertIsInstance(loss, torch.Tensor)
                     self.assertFalse(torch.isnan(loss))
 
-    def test_get_token_basics(self):
-        """Test get_token_basics function."""
-        batch = (
-            torch.randint(0, self.num_tokens, (4, self.length_padded)),
-            torch.randint(0, self.vocab_size_out, (4,)),
+
+class TestTokenBasics(unittest.TestCase):
+    def setUp(self):
+        """Create a temporary HDF5 file for testing."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.h5_path = os.path.join(self.test_dir.name, "test_data.h5")
+
+        self.host_key = "host_data"
+        self.phage_key = "phage_data"
+
+        # Define mock data:
+        # Host: 2 samples, length 3. Phage: 2 samples, length 2.
+        # Tokens present: 0, 1, 5, 10
+        self.host_data = np.array([[1, 0, 5], [0, 1, 1]], dtype=np.int32)
+        self.phage_data = np.array([[10, 5], [0, 10]], dtype=np.int32)
+
+        with h5py.File(self.h5_path, "w") as f:
+            f.create_dataset(self.host_key, data=self.host_data)
+            f.create_dataset(self.phage_key, data=self.phage_data)
+
+    def tearDown(self):
+        """Clean up the temporary directory."""
+        self.test_dir.cleanup()
+
+    def test_get_token_basics_values(self):
+        """Test if the function correctly calculates length and tokens."""
+        length_padded, num_tokens, tokens_in_data = get_token_basics(
+            self.h5_path, self.host_key, self.phage_key
         )
 
-        loss = self.model.training_step(batch, 0)
+        # 1. Check length_padded (3 + 2 = 5)
+        self.assertEqual(length_padded, 5)
 
-        self.assertIsInstance(loss, torch.Tensor)
-        self.assertFalse(torch.isnan(loss))
+        # 2. Check unique tokens (should be [0, 1, 5, 10] sorted)
+        expected_tokens = [0, 1, 5, 10]
+        self.assertCountEqual(tokens_in_data, expected_tokens)
+
+        # 3. Check num_tokens (max token is 10, so num_tokens = 11)
+        self.assertEqual(num_tokens, 11)
+
+    def test_get_token_basics_invalid_path(self):
+        """Test how it handles a non-existent file."""
+        with self.assertRaises(OSError):
+            get_token_basics("non_existent_file.h5", "h", "p")
 
 
 if __name__ == "__main__":
