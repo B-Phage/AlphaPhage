@@ -41,15 +41,6 @@ class RotaryPositionalEmbeddings(nn.Module):
         # Register as a buffer for caching (not trainable)
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
-    # def rotate_half(self, x: torch.Tensor):
-    #     """
-    #     Splits the tensor into two halves and rotates the second half to the front, negated.
-    #     [x0, x1, x2, x3] -> [-x2, -x3, x0, x1]
-    #     This prepares the tensor for the standard RoPE application.
-    #     """
-    #     x1, x2 = x.chunk(2, dim=-1)
-    #     return torch.cat((-x2, x1), dim=-1)
-
     def forward(self, x: torch.Tensor):  # , seq_len: int):
         """
         Applies the RoPE rotation to the input tensor.
@@ -92,23 +83,23 @@ class RotaryPositionalEmbeddings(nn.Module):
         return x_out
 
 
-# if __name__ == "__main__":
-#     # Setup Example Parameters for ROPE
-#     HEAD_DIM = 64  # Dimension of the vector inside a single attention head
-#     MAX_LEN = 50  # 100
-#     BATCH_SIZE = 4
-#     SEQUENCE_LEN = 50
-#     NUM_HEADS = 4
-#     RoPE = RotaryPositionalEmbeddings(dim=HEAD_DIM, max_seq_len=MAX_LEN)
+if __name__ == "__main__":
+    # Setup Example Parameters for ROPE
+    HEAD_DIM = 64  # Dimension of the vector inside a single attention head
+    MAX_LEN = 50  # 100
+    BATCH_SIZE = 4
+    SEQUENCE_LEN = 50
+    NUM_HEADS = 4
+    RoPE = RotaryPositionalEmbeddings(dim=HEAD_DIM, max_seq_len=MAX_LEN)
 
-#     # ##### 2. Mock Query and Key tensors (after projection and head splitting) ######
-#     # # Shape: (Batch, Heads, Sequence_Length, Head_Dimension) -> (B, H, T, D)
-#     Q = torch.randn(BATCH_SIZE, NUM_HEADS, SEQUENCE_LEN, HEAD_DIM)
-#     K = torch.randn(BATCH_SIZE, NUM_HEADS, SEQUENCE_LEN, HEAD_DIM)
-#     print("Q", Q)
-#     # 3. Apply RoPE to Query and Key
-#     Q_rotated = RoPE(Q)  # SEQUENCE_LEN
-#     K_rotated = RoPE(K)  # , SEQUENCE_LEN
-#     print("Q_rotated", Q_rotated)
+    # ##### 2. Mock Query and Key tensors (after projection and head splitting) ######
+    # # Shape: (Batch, Heads, Sequence_Length, Head_Dimension) -> (B, H, T, D)
+    Q = torch.randn(BATCH_SIZE, NUM_HEADS, SEQUENCE_LEN, HEAD_DIM)
+    K = torch.randn(BATCH_SIZE, NUM_HEADS, SEQUENCE_LEN, HEAD_DIM)
+    print("Q", Q)
+    # 3. Apply RoPE to Query and Key
+    Q_rotated = RoPE(Q)  # SEQUENCE_LEN
+    K_rotated = RoPE(K)  # , SEQUENCE_LEN
+    print("Q_rotated", Q_rotated)
 
-#     # from embeddings import RotaryPositionalEmbeddings
+    # from embeddings import RotaryPositionalEmbeddings
