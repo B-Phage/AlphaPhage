@@ -71,16 +71,16 @@ jobs:
 
 
 
-      # - name: ⬇️ Checkout Repository
-      #   uses: actions/checkout@v4
-      #   # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
-      #   with:
-      #     fetch-depth: 0
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+        # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
+        with:
+          fetch-depth: 0
 
-      # - name: 🐍 Set up Python Environment
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.10' # Match your target Python version
+      - name: 🐍 Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Match your target Python version
 
       - name: Check Environment (before install)
         run: |
@@ -91,25 +91,25 @@ jobs:
           echo "--- Installed Packages ---"
           pip list
 
-      # - name: Install Dependencies
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     # Install your main package in editable mode, including test dependencies
-      #     pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
-      #     pip install -e ./packages/utils
-      #     pip install -e ./packages/orchestration
-      #     pip install -e ./packages/preprocessing
-      #     pip install -e ./packages/training
-      #     pip install -e ./packages/dataloaders
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install your main package in editable mode, including test dependencies
+          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
+          pip install -e ./packages/utils
+          pip install -e ./packages/orchestration
+          pip install -e ./packages/preprocessing
+          pip install -e ./packages/training
+          pip install -e ./packages/dataloaders
 
-      # - name: Check Environment (after install)
-      #   run: |
-      #     echo "--- Python Location ---"
-      #     which python
-      #     echo "--- Python Path ---"
-      #     python -c "import sys; print('\n'.join(sys.path))"
-      #     echo "--- Installed Packages ---"
-      #     pip list
+      - name: Check Environment (after install)
+        run: |
+          echo "--- Python Location ---"
+          which python
+          echo "--- Python Path ---"
+          python -c "import sys; print('\n'.join(sys.path))"
+          echo "--- Installed Packages ---"
+          pip list
 
       - name: 🏃 Run Pre-Commit Checks
         uses: pre-commit/action@v3.0.1 # Use the official action
