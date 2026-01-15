@@ -120,20 +120,23 @@ class BinaryPairkeyFeatureDataset(Dataset):
         # For a mocked version of unittest that bypasses h5 file reading, set
         # is_mockunittest = True (from test_dotamodule using Mock), and override
         # num_hosts_mock and num_phages_mock before instantiation.
-        self.is_mockunittest = False
-        self.num_hosts_mock = None
-        self.num_phages_mock = None
+        # self.is_mockunittest = False
+        # self.num_hosts_mock = None
+        # self.num_phages_mock = None
 
         # Pre-calculate length
-        if not self.is_mockunittest:
-            # Open briefly just to get the length, then close (do lazy loading) to
-            # accommodate h5 and Mac.
-            with h5py.File(self.labels_path, "r") as f_y:
-                self.total_size = len(f_y["data"])
-        else:
-            # For unit testing, we could mock/replace the file handles by a dict
-            self.mock_h5()
-            self.total_size = len(self.f_y["data"])
+        with h5py.File(self.labels_path, "r") as f_y:
+            self.total_size = len(f_y["data"])
+
+        # if not self.is_mockunittest:
+        #     # Open briefly just to get the length, then close (do lazy loading) to
+        #     # accommodate h5 and Mac.
+        #     with h5py.File(self.labels_path, "r") as f_y:
+        #         self.total_size = len(f_y["data"])
+        # else:
+        #     # For unit testing, we could mock/replace the file handles by a dict
+        #     self.mock_h5()
+        #     self.total_size = len(self.f_y["data"])
 
     def open_h5(self):
         """Reading an h5 file"""
@@ -141,34 +144,36 @@ class BinaryPairkeyFeatureDataset(Dataset):
             self.f_y = h5py.File(self.labels_path, "r", libver="latest", swmr=True)
             self.f_x = h5py.File(self.features_path, "r", libver="latest", swmr=True)
 
-    def mock_h5(self):
-        """Replacement for h5 file reading in unit tests"""
-        self.num_hosts = self.num_hosts_mock
-        self.num_phages = self.num_hosts_mock
-        lst_pair_indices = []
-        for i in range(self.num_hosts):
-            for j in range(self.num_phages):
-                lst_pair_indices.append([i, j])
+    # def mock_h5(self):
+    #     """Replacement for h5 file reading in unit tests"""
+    #     self.num_hosts = self.num_hosts_mock
+    #     self.num_phages = self.num_hosts_mock
+    #     lst_pair_indices = []
+    #     for i in range(self.num_hosts):
+    #         for j in range(self.num_phages):
+    #             lst_pair_indices.append([i, j])
 
-        self.f_y = {
-            "data": np.array([0 if i % 2 == 0 else 1 for i in range(len(lst_pair_indices))])
-        }
-        self.f_x = {
-            self.dataset_name_host: np.random.randint(0, 20, (self.num_hosts, 128)),
-            self.dataset_name_phage: np.random.randint(0, 20, (self.num_phages, 128)),
-            self.pair_indices_name: np.array(lst_pair_indices),
-        }
+    #     self.f_y = {
+    #         "data": np.array([0 if i % 2 == 0 else 1 for i in range(len(lst_pair_indices))])
+    #     }
+    #     self.f_x = {
+    #         self.dataset_name_host: np.random.randint(0, 20, (self.num_hosts, 128)),
+    #         self.dataset_name_phage: np.random.randint(0, 20, (self.num_phages, 128)),
+    #         self.pair_indices_name: np.array(lst_pair_indices),
+    #     }
 
     def __getitem__(self, idx):
         """Returns a single sample consisting of concatenated host and phage
         features, and the label."""
 
-        if not self.is_mockunittest:
-            # Ensure data parts are loaded from h5 file
-            self.open_h5()
-        # else: #We dont have to create the mocked h5 here for every sample,
-        # done already in init
-        #     self.mock_h5()
+        # if not self.is_mockunittest:
+        #     # Ensure data parts are loaded from h5 file
+        #     self.open_h5()
+        # # else: #We dont have to create the mocked h5 here for every sample,
+        # # done already in init
+        # #     self.mock_h5()
+
+        self.open_h5()
 
         if not hasattr(self, "Ynp"):  # Lazy loading avoids opening an already opened file
             # Map the datasets to the persistent file handles (not using with..:)
