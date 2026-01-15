@@ -250,6 +250,20 @@ class TestBinaryPairkeyDataModule(unittest.TestCase):
                 if stage == "test":
                     self.assertTrue(hasattr(dm, "test_dataset"))
 
+    def test_datamodule_debug_mode(self):
+        """Hits the debug_mode branch in setup()."""
+        self.cfg.debug_mode = True
+        dm = BinaryPairkeyDataModule(self.cfg)
+        dm.setup(stage="fit")
+        self.assertEqual(dm.full_dataset.features_path, self.feat_path)
+
+    def test_dataset_lazy_loading_already_open(self):
+        """Ensure the code that skips re-opening H5 files is covered."""
+        dataset = BinaryPairkeyFeatureDataset(self.cfg, self.feat_path, self.lab_path)
+        _ = dataset[0]  # First hit: opens files
+        _ = dataset[1]  # Second hit: skips hasattr block
+        self.assertTrue(hasattr(dataset, "Ynp"))
+
 
 if __name__ == "__main__":
     unittest.main()
