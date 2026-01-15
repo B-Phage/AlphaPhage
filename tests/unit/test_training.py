@@ -9,13 +9,16 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import h5py
 import numpy as np
 import torch
 from arc.TransformerX import TransformerX
+from hydra.core.global_hydra import GlobalHydra
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
+from training.train import main
 from training.train_utils import get_token_basics
 
 
@@ -31,9 +34,10 @@ class TestTransformerX(unittest.TestCase):
 
         self.cfg = OmegaConf.create(
             {
-                # "seed"  : 42,
-                # "verboselevel" : "ERROR",
+                "seed": 42,
+                "verboselevel": "ERROR",
                 # "debug_mode" : False,
+                "train_features_path": "fake_feat.h5",
                 # "train_features_path" : "../../bp/AlphaX/proc/sim_data/Tests/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
                 # "train_labels_path" : "../../bp/AlphaX/proc/sim_data/Tests/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
                 # "train_features_path" : "tests/data/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
@@ -43,10 +47,10 @@ class TestTransformerX(unittest.TestCase):
                 # "debug_features_path" : "",
                 # "debug_labels_path" : "",
                 # "pair_indices_name" : "pair_indices",
-                # "dataset_name_host" : "host_vec_1",
-                # "dataset_name_phage" : "phage_vec_1",
-                # "reader_mode" : "binary_pairkey",
-                # "architecture" : "TransformerX",
+                "dataset_name_host": "host_vec_1",
+                "dataset_name_phage": "phage_vec_1",
+                "reader_mode": "binary_pairkey",
+                "architecture": "TransformerX",
                 "num_workers": 0,
                 "trainer": {
                     "logger_method": "MLFlowLogger",
@@ -86,6 +90,98 @@ class TestTransformerX(unittest.TestCase):
         self.model.log = MagicMock()
         # Manually attach a mock trainer to satisfy the log() requirement
         self.model.trainer = MagicMock()
+
+    #################################
+    # @patch("pytorch_lightning.Trainer")
+    # @patch("training.train.get_token_basics")
+    # @patch("hydra.core.hydra_config.HydraConfig.get") # Mock the global Hydra helper
+    # def test_main_initialization(self, mock_hydra_get, mock_get_basics, mock_trainer):
+    #     """Test if main() executes and initializes the trainer correctly."""
+
+    #     # 1. Mock the specific Hydra call your main() uses:
+    #     # main() calls: hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+    #     mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+
+    #     # 2. Mock get_token_basics return values
+    #     mock_get_basics.return_value = (128, 20, [0, 1])
+
+    #     # 3. Mock the Trainer instance
+    #     mock_trainer_instance = MagicMock()
+    #     mock_trainer.return_value = mock_trainer_instance
+
+    #     # 4. Use __wrapped__ to bypass the @hydra.main decorator
+    #     main.__wrapped__(self.cfg)
+
+    #     # 5. Assertions
+    #     mock_get_basics.assert_called_once()
+    #     mock_trainer_instance.fit.assert_called_once()
+
+    @patch("pytorch_lightning.Trainer")
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    def test_main_initialization(self, mock_hydra_get, mock_get_basics, mock_trainer):
+        """Test if main() executes and initializes the trainer correctly."""
+
+        # 1. Create a temporary directory for this specific test run
+        with tempfile.TemporaryDirectory() as tmp_log_dir:
+
+            # 2. Mock Hydra's output_dir to point to our temp directory
+            mock_hydra_get.return_value.runtime.output_dir = tmp_log_dir
+
+            # 3. Mock dependencies
+            mock_get_basics.return_value = (128, 20, [0, 1])
+            mock_trainer_instance = MagicMock()
+            mock_trainer.return_value = mock_trainer_instance
+
+            # 4. Run the main function logic
+            main.__wrapped__(self.cfg)
+
+            # 7. Verify Callbacks (EarlyStopping and ModelCheckpoint)
+            args, kwargs = mock_trainer.call_args
+            callbacks = kwargs.get("callbacks", [])
+
+            # Check if the list contains the right types
+            from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+
+            has_checkpoint = any(isinstance(c, ModelCheckpoint) for c in callbacks)
+            has_early_stop = any(isinstance(c, EarlyStopping) for c in callbacks)
+
+            self.assertTrue(has_checkpoint, "ModelCheckpoint callback missing from Trainer.")
+            self.assertTrue(has_early_stop, "EarlyStopping callback missing from Trainer.")
+
+            # 8. Verify Checkpoint logic (Optional: check the specific monitor)
+            for c in callbacks:
+                if isinstance(c, ModelCheckpoint):
+                    self.assertEqual(c.monitor, "val_loss")
+                if isinstance(c, EarlyStopping):
+                    self.assertEqual(c.patience, self.cfg.trainer.patience)
+
+            # 5. Assertions: Check if directories were actually created
+            checkpoint_dir = os.path.join(tmp_log_dir, "checkpoints")
+            self.assertTrue(os.path.exists(checkpoint_dir), "Checkpoint directory was not created.")
+
+            # 6. Verify Trainer was called with the correct logger directory
+            # Based on your script: logger_object = pl.loggers.CSVLogger(log_dir)
+            mock_trainer.assert_called_once()
+            _, kwargs = mock_trainer.call_args
+
+            # This confirms the PL Trainer received the logger we expected
+            self.assertIsNotNone(kwargs["logger"], "Trainer was not provided with a logger.")
+
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    def test_unsupported_architecture(self, mock_hydra_get, mock_get_basics):
+        # Mock Hydra again for this test
+        mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+
+        self.cfg.architecture = "UnknownNet"
+        mock_get_basics.return_value = (128, 20, [])
+
+        with self.assertRaises(ValueError) as cm:
+            main.__wrapped__(self.cfg)
+        self.assertIn("Unknown architecture", str(cm.exception))
+
+    ###########
 
     def test_forward_shape(self):
         """Test if the model produces the correct output shape."""

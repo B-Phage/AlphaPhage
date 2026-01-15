@@ -103,12 +103,16 @@ params:
 - file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-27-01/mlrun/params.yaml
 - outputs/2026-01-10/08-35-50/mlrun/params.yaml
 - outputs/2026-01-12/12-36-51/mlrun/params.yaml
+- outputs/2026-01-15/13-08-06/mlrun/params.yaml
+- outputs/2026-01-15/13-09-37/mlrun/params.yaml
 metrics:
 - file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-20-53/mlrun/metrics.json
 - file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-25-06/mlrun/metrics.json
 - file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-27-01/mlrun/metrics.json
 - outputs/2026-01-10/08-35-50/mlrun/metrics.json
 - outputs/2026-01-12/12-36-51/mlrun/metrics.json
+- outputs/2026-01-15/13-08-06/mlrun/metrics.json
+- outputs/2026-01-15/13-09-37/mlrun/metrics.json
 plots:
 - file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-20-53/mlrun/plots/metrics:
     x: step
@@ -119,4 +123,8 @@ plots:
 - outputs/2026-01-10/08-35-50/mlrun/plots/metrics:
     x: step
 - outputs/2026-01-12/12-36-51/mlrun/plots/metrics:
+    x: step
+- outputs/2026-01-15/13-08-06/mlrun/plots/metrics:
+    x: step
+- outputs/2026-01-15/13-09-37/mlrun/plots/metrics:
     x: step

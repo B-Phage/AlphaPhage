@@ -11,7 +11,7 @@ import utils.consol_log as log
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from torch.utils.data import DataLoader, IterableDataset
-from train_utils import get_token_basics
+from training.train_utils import get_token_basics
 
 logger = log.get_logger(level=log.ERROR)
 
