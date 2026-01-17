@@ -354,15 +354,36 @@ class TestTransformerX(unittest.TestCase):
         dm.setup(stage="test")
         self.assertTrue(hasattr(dm, "test_dataset"))
 
+    # def test_train_main_entrypoint(self):
+    #     """Forces coverage of the 'if __name__ == "__main__"' block at the bottom
+    #     of train.py.
+    #     Note: clutters the printouts.
+    #     """
+    #     import runpy
+
+    #     # Mock main so it doesn't actually run a full training session
+    #     with patch("training.train.main"), patch("sys.argv", ["train.py"]):
+    #         runpy.run_path("packages/training/train.py", run_name="__main__")
+
     def test_train_main_entrypoint(self):
-        """Forces coverage of the 'if __name__ == "__main__"' block at the bottom
-        of train.py.
-        Note: clutters the printouts.
-        """
+        """Forces coverage of the 'if __name__ == "__main__"' block."""
         import runpy
 
-        # Mock main so it doesn't actually run a full training session
-        with patch("training.train.main"), patch("sys.argv", ["train.py"]):
+        # Define dummy git credentials
+        mock_env = {
+            "GIT_AUTHOR_NAME": "Test User",
+            "GIT_AUTHOR_EMAIL": "test@example.com",
+            "GIT_COMMITTER_NAME": "Test User",
+            "GIT_COMMITTER_EMAIL": "test@example.com",
+        }
+
+        # Patch both the main function AND the environment variables
+        with (
+            patch("training.train.main"),
+            patch("sys.argv", ["train.py"]),
+            patch.dict(os.environ, mock_env),
+        ):
+
             runpy.run_path("packages/training/train.py", run_name="__main__")
 
     def test_model_all_steps(self):

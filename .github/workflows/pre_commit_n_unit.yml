@@ -140,7 +140,15 @@ jobs:
           echo "Failing job because pre-commit checks modified files."
           exit 1
 
-     # Unit tests
+      # test_train_main_entrypoint (runpy) requires this if you did not mock
+      # the environmental variables
+      # # configure with my email
+      # - name: Configure Git
+      #   run: |
+      #     git config --global user.email "dutoit.schabort@b-phage.com"
+      #     git config --global user.name "Du Toit Schabort"
+
+        # Unit tests
       - name: 🧪 Run Unit Tests
         run: |
           PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
