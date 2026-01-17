@@ -47,6 +47,8 @@ class IndexBatchSampler(Sampler):
             # Take all indices
             self.batch_size = len(self.index_shuf)
             self.num_batches = 1
+        else:
+            raise ValueError("batch_size not type int or 'all'. ")
         random.shuffle(self.index_shuf)
         self.make_index_groups()
 

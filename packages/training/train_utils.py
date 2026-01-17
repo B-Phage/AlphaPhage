@@ -21,18 +21,18 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
     with h5py.File(features_path, "r", libver="latest", swmr=True) as f_x:
         Xh5_host = f_x[dataset_name_host]
         Xh5_phage = f_x[dataset_name_phage]
-        if type(Xh5_host[0][0].item() != int):
-            logger.error(
-                f"Warning: data in host array not int. Will be \
-                          converted to int."
-            )
-            # raise ValueError("Data in host array not int.")
-        if type(Xh5_phage[0][0].item() != int):
-            logger.error(
-                f"Warning: data in phage array not int. Will be \
-                         converted to int"
-            )
-            # raise ValueError("Data in phage array not int.")
+        # if type(Xh5_host[0][0].item() != int):
+        #     logger.error(
+        #         f"Warning: data in host array not int. Will be \
+        #                   converted to int."
+        #     )
+        #     # raise ValueError("Data in host array not int.")
+        # if type(Xh5_phage[0][0].item() != int):
+        #     logger.error(
+        #         f"Warning: data in phage array not int. Will be \
+        #                  converted to int"
+        #     )
+        #     # raise ValueError("Data in phage array not int.")
 
         # Just getting length_padded as length of first pair joined
         length_padded = len(Xh5_host[0]) + len(Xh5_phage[0])

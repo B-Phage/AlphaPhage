@@ -145,6 +145,7 @@ jobs:
         run: |
           PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
           coverage json -o coverage.json
+        #  PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=term-missing tests/unit/test_training.py
         # You could also use an 'id' and 'continue-on-error' if you want
         # to guarantee the test run even if other steps failed,
         # but generally, if linting fails, tests shouldn't run.

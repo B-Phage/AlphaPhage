@@ -34,8 +34,11 @@ trainer:
   val_fraction : 0.15
 
 hyp:
-  archspec : "rope_nt_nonormpostl_sum"
+  # archspec : "rope_nt_nonormpostl_sum"
+  archspec : "nope_tt_nonormpostl_cls"
   archspec2 : "L4_bn"
+  # archspec2 : "invalid_call"
+  # archspec2 : invalid_n
   dim : 8
   lcom : 30
   dim1 : 8
@@ -43,6 +46,7 @@ hyp:
   heads : 4
   mult : 4
   depth : 1
+  # depth : 0
   vocab_size_out : 2
 
 optimizer:

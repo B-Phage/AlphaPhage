@@ -75,9 +75,9 @@ def main(cfg: DictConfig):
 
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
-        from arc.TransformerX import TransformerX, TransformerXClassifier
+        from arc.TransformerX import TransformerX, TransformerXClassifier, archspecs, archspecs2
 
-        model = TransformerX(cfg, num_tokens, vocab_size_out, length_padded)
+        model = TransformerX(cfg, num_tokens, vocab_size_out, length_padded, archspecs, archspecs2)
     else:
         raise ValueError(f"Unknown architecture: {cfg.architecture}")
 

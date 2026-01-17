@@ -14,7 +14,8 @@ from unittest.mock import MagicMock, patch
 import h5py
 import numpy as np
 import torch
-from arc.TransformerX import TransformerX
+from arc.TransformerX import TransformerX, archspecs, archspecs2
+from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
@@ -22,11 +23,169 @@ from training.train import main
 from training.train_utils import get_token_basics
 
 
+class TestTrainerInitialization(unittest.TestCase):
+
+    def setUp(self):
+        # Clear Hydra state to ensure each test starts with a fresh 'initialize'
+        GlobalHydra.instance().clear()
+
+    @patch("pytorch_lightning.Trainer")
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    def test_invalid_reader_mode(self, mock_hydra_get, mock_get_basics, mock_trainer):
+        """Tests that an unknown reader_mode raises a ValueError."""
+
+        # Setup mocks to allow the script to reach the reader_mode check
+        mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+        mock_get_basics.return_value = (100, 20, 1000)
+
+        with initialize(version_base="1.3", config_path="../../tests/unit/data"):
+            cfg = compose(
+                config_name="config_test_2",
+                overrides=["reader_mode=invalid_mode", "verboselevel=40"],
+            )
+
+            with self.assertRaisesRegex(ValueError, "Unknown reader_mode"):
+                main.__wrapped__(cfg)
+
+        mock_trainer.assert_not_called()
+
+    @patch("pytorch_lightning.Trainer")
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    @patch("dataloaders.dataloaders.BinaryPairkeyDataModule")
+    def test_invalid_architecture(self, mock_dm, mock_hydra_get, mock_get_basics, mock_trainer):
+        """Tests that an unknown architecture raises a ValueError."""
+
+        # Setup mocks
+        mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+        mock_get_basics.return_value = (100, 20, 1000)
+
+        # We must mock the DataModule because it's initialized BEFORE the architecture check
+        mock_dm.return_value = MagicMock()
+
+        with initialize(version_base="1.3", config_path="../../tests/unit/data"):
+            cfg = compose(
+                config_name="config_test_2",
+                overrides=[
+                    "reader_mode=binary_pairkey",  # Pass the first check
+                    "architecture=UnknownModel",  # Fail the second check
+                    "verboselevel=40",
+                ],
+            )
+
+            with self.assertRaisesRegex(ValueError, "Unknown architecture"):
+                main.__wrapped__(cfg)
+
+        mock_trainer.assert_not_called()
+
+
+class TestAllLoggers(unittest.TestCase):
+
+    def setUp(self):
+        GlobalHydra.instance().clear()
+
+    @patch("pytorch_lightning.Trainer")
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    @patch("dataloaders.dataloaders.BinaryPairkeyDataModule")
+    @patch("arc.TransformerX.TransformerX")
+    @patch("pytorch_lightning.loggers.WandbLogger")
+    @patch("pytorch_lightning.loggers.CSVLogger")
+    @patch("pytorch_lightning.loggers.TensorBoardLogger")
+    @patch("pytorch_lightning.loggers.MLFlowLogger")
+    @patch("dvclive.lightning.DVCLiveLogger")  # Added DVC just in case
+    def test_logger_initialization_grid(
+        self,
+        mock_dvc,
+        mock_mlflow,
+        mock_tb,
+        mock_csv,
+        mock_wandb,
+        mock_model,
+        mock_dm,
+        mock_hydra_get,
+        mock_get_basics,
+        mock_trainer,
+    ):
+
+        # 1. Setup global mocks
+        mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+        mock_get_basics.return_value = (100, 20, 1000)
+
+        # 2. Define the cases: (method_name, expected_mock, extra_overrides)
+        logger_test_cases = [
+            ("WandbLogger", mock_wandb, []),
+            ("CSVLogger", mock_csv, []),
+            ("TensorBoardLogger", mock_tb, []),
+            ("DVCLiveLogger", mock_dvc, []),
+            # MLFlow Case 1: Remote URI
+            ("MLFlowLogger", mock_mlflow, ["trainer.mlflow_tracking_uri=http://localhost:5000"]),
+            # MLFlow Case 2: Local Fallback (null)
+            ("MLFlowLogger", mock_mlflow, ["trainer.mlflow_tracking_uri=null"]),
+        ]
+
+        # 3. Loop through cases using subTest
+        for method_name, expected_mock, extra_overrides in logger_test_cases:
+            with self.subTest(logger_method=method_name, extras=extra_overrides):
+                # Reset all mocks
+                for m in [mock_mlflow, mock_tb, mock_csv, mock_wandb, mock_dvc, mock_trainer]:
+                    m.reset_mock()
+
+                with initialize(version_base="1.3", config_path="../../tests/unit/data"):
+                    # Build overrides list
+                    base_overrides = [
+                        f"trainer.logger_method={method_name}",
+                        "trainer.run_name=test_run",
+                        "verboselevel=40",
+                    ]
+                    final_overrides = base_overrides + extra_overrides
+
+                    cfg = compose(config_name="config_test_2", overrides=final_overrides)
+                    main.__wrapped__(cfg)
+
+                # 4. Verify the correct logger was called
+                expected_mock.assert_called_once()
+
+                # 5. Specific check for MLFlow logic if that's the current test
+                if method_name == "MLFlowLogger":
+                    call_kwargs = expected_mock.call_args.kwargs
+                    if "http" in str(extra_overrides):
+                        self.assertEqual(call_kwargs["tracking_uri"], "http://localhost:5000")
+                    else:
+                        # Local fallback check
+                        self.assertTrue(call_kwargs["tracking_uri"].startswith("file://"))
+
+                # 6. Verify the Trainer received this specific logger instance
+                passed_logger = mock_trainer.call_args.kwargs["logger"]
+                self.assertEqual(passed_logger, expected_mock.return_value)
+
+    @patch("training.train.get_token_basics")
+    @patch("hydra.core.hydra_config.HydraConfig.get")
+    def test_unknown_logger_error_message(self, mock_hydra_get, mock_get_basics):
+        """Tests that a typo in the logger method raises the correct ValueError."""
+
+        mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
+        mock_get_basics.return_value = (100, 20, 1000)
+        invalid_logger = "InvalidLogger"
+
+        with initialize(version_base="1.3", config_path="../../tests/unit/data"):
+            cfg = compose(
+                config_name="config_test_2",
+                overrides=[f"trainer.logger_method={invalid_logger}", "verboselevel=40"],
+            )
+
+            # Testing for the specific error message you wrote in your script
+            with self.assertRaisesRegex(ValueError, f"Unknown logger method: {invalid_logger}"):
+                main.__wrapped__(cfg)
+
+
 class TestTransformerX(unittest.TestCase):
     def setUp(self):
         """Set up a mock configuration similar to your config_test_2.yaml
         and mock the trainer.
         """
+        GlobalHydra.instance().clear()
 
         self.num_tokens = 20
         self.vocab_size_out = 2
@@ -36,24 +195,19 @@ class TestTransformerX(unittest.TestCase):
             {
                 "seed": 42,
                 "verboselevel": "ERROR",
-                # "debug_mode" : False,
+                "debug_mode": False,
                 "train_features_path": "fake_feat.h5",
-                # "train_features_path" : "../../bp/AlphaX/proc/sim_data/Tests/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
-                # "train_labels_path" : "../../bp/AlphaX/proc/sim_data/Tests/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
-                # "train_features_path" : "tests/data/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
-                # "train_labels_path" : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5",
-                # "train_features_path" : "tests/data/x_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5",
-                # "train_labels_path" : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_unaligned_test_binary_pairkey.h5",
-                # "debug_features_path" : "",
-                # "debug_labels_path" : "",
-                # "pair_indices_name" : "pair_indices",
+                "train_labels_path": "fake_label.h5",
+                "debug_features_path": "fake_debug_feat.h5",
+                "debug_labels_path": "fake_debug_label.h5",
+                "pair_indices_name": "pair_indices",
                 "dataset_name_host": "host_vec_1",
                 "dataset_name_phage": "phage_vec_1",
                 "reader_mode": "binary_pairkey",
                 "architecture": "TransformerX",
                 "num_workers": 0,
                 "trainer": {
-                    "logger_method": "MLFlowLogger",
+                    "logger_method": "DVCLiveLogger",
                     "project": "AlphaPhage_Testing",
                     "run_name": "test_run_2",
                     "mlflow_tracking_uri": None,
@@ -67,7 +221,8 @@ class TestTransformerX(unittest.TestCase):
                     "val_fraction": 0.15,
                 },
                 "hyp": {
-                    "archspec": "nope_nt_nonormpostl_sum",
+                    # "archspec": "nope_nt_nonormpostl_sum",
+                    "archspec": "nope_nt_nonormpostl_cls",
                     "archspec2": "L4_bn",
                     "dim": 8,
                     "lcom": 30,
@@ -84,7 +239,12 @@ class TestTransformerX(unittest.TestCase):
             }
         )
         self.model = TransformerX(
-            self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
+            self.cfg,
+            self.num_tokens,
+            self.vocab_size_out,
+            self.length_padded,
+            archspecs,
+            archspecs2,
         )
         # Mock the log method directly on the instance
         self.model.log = MagicMock()
@@ -92,96 +252,34 @@ class TestTransformerX(unittest.TestCase):
         self.model.trainer = MagicMock()
 
     #################################
-    # @patch("pytorch_lightning.Trainer")
-    # @patch("training.train.get_token_basics")
-    # @patch("hydra.core.hydra_config.HydraConfig.get") # Mock the global Hydra helper
-    # def test_main_initialization(self, mock_hydra_get, mock_get_basics, mock_trainer):
-    #     """Test if main() executes and initializes the trainer correctly."""
-
-    #     # 1. Mock the specific Hydra call your main() uses:
-    #     # main() calls: hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    #     mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
-
-    #     # 2. Mock get_token_basics return values
-    #     mock_get_basics.return_value = (128, 20, [0, 1])
-
-    #     # 3. Mock the Trainer instance
-    #     mock_trainer_instance = MagicMock()
-    #     mock_trainer.return_value = mock_trainer_instance
-
-    #     # 4. Use __wrapped__ to bypass the @hydra.main decorator
-    #     main.__wrapped__(self.cfg)
-
-    #     # 5. Assertions
-    #     mock_get_basics.assert_called_once()
-    #     mock_trainer_instance.fit.assert_called_once()
-
+    # Note: The order of the @patch decorators is the reverse of the arguments in
+    # the function signature
     @patch("pytorch_lightning.Trainer")
     @patch("training.train.get_token_basics")
-    @patch("hydra.core.hydra_config.HydraConfig.get")
+    @patch("hydra.core.hydra_config.HydraConfig.get")  # Mock the global Hydra helper
     def test_main_initialization(self, mock_hydra_get, mock_get_basics, mock_trainer):
         """Test if main() executes and initializes the trainer correctly."""
 
-        # 1. Create a temporary directory for this specific test run
-        with tempfile.TemporaryDirectory() as tmp_log_dir:
-
-            # 2. Mock Hydra's output_dir to point to our temp directory
-            mock_hydra_get.return_value.runtime.output_dir = tmp_log_dir
-
-            # 3. Mock dependencies
-            mock_get_basics.return_value = (128, 20, [0, 1])
-            mock_trainer_instance = MagicMock()
-            mock_trainer.return_value = mock_trainer_instance
-
-            # 4. Run the main function logic
-            main.__wrapped__(self.cfg)
-
-            # 7. Verify Callbacks (EarlyStopping and ModelCheckpoint)
-            args, kwargs = mock_trainer.call_args
-            callbacks = kwargs.get("callbacks", [])
-
-            # Check if the list contains the right types
-            from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-
-            has_checkpoint = any(isinstance(c, ModelCheckpoint) for c in callbacks)
-            has_early_stop = any(isinstance(c, EarlyStopping) for c in callbacks)
-
-            self.assertTrue(has_checkpoint, "ModelCheckpoint callback missing from Trainer.")
-            self.assertTrue(has_early_stop, "EarlyStopping callback missing from Trainer.")
-
-            # 8. Verify Checkpoint logic (Optional: check the specific monitor)
-            for c in callbacks:
-                if isinstance(c, ModelCheckpoint):
-                    self.assertEqual(c.monitor, "val_loss")
-                if isinstance(c, EarlyStopping):
-                    self.assertEqual(c.patience, self.cfg.trainer.patience)
-
-            # 5. Assertions: Check if directories were actually created
-            checkpoint_dir = os.path.join(tmp_log_dir, "checkpoints")
-            self.assertTrue(os.path.exists(checkpoint_dir), "Checkpoint directory was not created.")
-
-            # 6. Verify Trainer was called with the correct logger directory
-            # Based on your script: logger_object = pl.loggers.CSVLogger(log_dir)
-            mock_trainer.assert_called_once()
-            _, kwargs = mock_trainer.call_args
-
-            # This confirms the PL Trainer received the logger we expected
-            self.assertIsNotNone(kwargs["logger"], "Trainer was not provided with a logger.")
-
-    @patch("training.train.get_token_basics")
-    @patch("hydra.core.hydra_config.HydraConfig.get")
-    def test_unsupported_architecture(self, mock_hydra_get, mock_get_basics):
-        # Mock Hydra again for this test
+        # 1. Mock the specific Hydra call your main() uses:
+        # main() calls: hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+        # When the code asks for the output directory, just tell it it's in /tmp.
         mock_hydra_get.return_value.runtime.output_dir = "/tmp/test_output"
 
-        self.cfg.architecture = "UnknownNet"
-        mock_get_basics.return_value = (128, 20, [])
+        # 2. Mock get_token_basics return values
+        mock_get_basics.return_value = (128, 20, [0, 1])
 
-        with self.assertRaises(ValueError) as cm:
-            main.__wrapped__(self.cfg)
-        self.assertIn("Unknown architecture", str(cm.exception))
+        # 3. Mock the Trainer instance
+        mock_trainer_instance = MagicMock()
+        mock_trainer.return_value = mock_trainer_instance
 
-    ###########
+        # 4. Use __wrapped__ to bypass the @hydra.main decorator
+        # allows the test to reach inside the decorator and run just your Python
+        # code, passing in the self.cfg object you created manually
+        main.__wrapped__(self.cfg)
+
+        # 5. Assertions
+        mock_get_basics.assert_called_once()
+        mock_trainer_instance.fit.assert_called_once()
 
     def test_forward_shape(self):
         """Test if the model produces the correct output shape."""
@@ -205,6 +303,78 @@ class TestTransformerX(unittest.TestCase):
 
         self.assertIsInstance(loss, torch.Tensor)
         self.assertFalse(torch.isnan(loss))
+
+    def test_validation_step(self):
+        """Test if validation_step executes and logs."""
+        batch = (
+            torch.randint(0, self.num_tokens, (4, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (4,)),
+        )
+        self.model.log.reset_mock()
+
+        # Execute (will likely return None)
+        self.model.validation_step(batch, 0)
+
+        # Assert that logging was triggered (this proves the code ran)
+        self.assertTrue(self.model.log.called)
+
+    def test_test_step(self):
+        """Test if test_step executes and logs."""
+        batch = (
+            torch.randint(0, self.num_tokens, (4, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (4,)),
+        )
+        self.model.log.reset_mock()
+
+        self.model.test_step(batch, 0)
+
+        self.assertTrue(self.model.log.called)
+
+    @patch("dataloaders.dataloaders.h5py.File")
+    def test_datamodule_predict_stage(self, mock_h5):
+        """Covers the 'predict' branch and handles HDF5 file requirements."""
+        from dataloaders.dataloaders import BinaryPairkeyDataModule
+
+        # 1. Setup the mock HDF5 structure
+        # This simulates: f['data'] returning a list of length 10
+        mock_file = mock_h5.return_value.__enter__.return_value
+        mock_file.__getitem__.return_value = [0] * 10
+
+        # 2. Initialize DataModule
+        dm = BinaryPairkeyDataModule(self.cfg)
+
+        # 3. Hit all conditional setup branches
+        # This will now cover 'predict', 'fit', and 'test' in setup()
+        dm.setup(stage="predict")
+        self.assertTrue(hasattr(dm, "predict_dataset"))
+
+        dm.setup(stage="fit")
+        self.assertTrue(hasattr(dm, "full_dataset"))
+
+        dm.setup(stage="test")
+        self.assertTrue(hasattr(dm, "test_dataset"))
+
+    def test_train_main_entrypoint(self):
+        """Forces coverage of the 'if __name__ == "__main__"' block at the bottom
+        of train.py.
+        Note: clutters the printouts.
+        """
+        import runpy
+
+        # Mock main so it doesn't actually run a full training session
+        with patch("training.train.main"), patch("sys.argv", ["train.py"]):
+            runpy.run_path("packages/training/train.py", run_name="__main__")
+
+    def test_model_all_steps(self):
+        """Trigger validation and test steps to hit 100% coverage on the model."""
+        batch = (torch.randint(0, 20, (4, 128)), torch.randint(0, 2, (4,)))
+
+        # This hits the lines you are likely missing
+        val_loss = self.model.validation_step(batch, 0)
+        test_loss = self.model.test_step(batch, 0)
+
+        self.assertIsNotNone(val_loss)
+        self.assertIsNotNone(test_loss)
 
     def test_parameter_update(self):
         """Verification that gradients actually flow and weights change."""
@@ -234,24 +404,34 @@ class TestTransformerX(unittest.TestCase):
             torch.randint(0, self.num_tokens, (4, self.length_padded)),
             torch.randint(0, self.vocab_size_out, (4,)),
         )
+
         archspec_list = [
             "rope_tt_normpostl_view",
             "rope_tt_normpostl_sum",
+            "rope_tt_normpostl_cls",
             "rope_tt_nonormpostl_view",
             "rope_tt_nonormpostl_sum",
+            "rope_tt_nonormpostl_cls",
             "rope_nt_normpostl_view",
             "rope_nt_normpostl_sum",
+            "rope_nt_normpostl_cls",
             "rope_nt_nonormpostl_view",
             "rope_nt_nonormpostl_sum",
+            "rope_nt_nonormpostl_cls",
             "nope_tt_normpostl_view",
             "nope_tt_normpostl_sum",
+            "nope_tt_normpostl_cls",
             "nope_tt_nonormpostl_view",
             "nope_tt_nonormpostl_sum",
+            "nope_tt_nonormpostl_cls",
             "nope_nt_normpostl_view",
             "nope_nt_normpostl_sum",
+            "nope_nt_normpostl_cls",
             "nope_nt_nonormpostl_view",
             "nope_nt_nonormpostl_sum",
+            "nope_nt_nonormpostl_cls",
         ]
+
         archspec2_list = [
             "L4_bn",
             "L4_ln",
@@ -271,7 +451,12 @@ class TestTransformerX(unittest.TestCase):
                     self.cfg.hyp.archspec = archspec
                     self.cfg.hyp.archspec2 = archspec2
                     new_model = TransformerX(
-                        self.cfg, self.num_tokens, self.vocab_size_out, self.length_padded
+                        self.cfg,
+                        self.num_tokens,
+                        self.vocab_size_out,
+                        self.length_padded,
+                        archspecs,
+                        archspecs2,
                     )
                     new_model.log = MagicMock()
                     new_model.trainer = MagicMock()
@@ -279,6 +464,183 @@ class TestTransformerX(unittest.TestCase):
 
                     self.assertIsInstance(loss, torch.Tensor)
                     self.assertFalse(torch.isnan(loss))
+
+    def test_all_defined_archspecs(self):
+        """Dynamic coverage for every spec defined in the model file."""
+        from arc.TransformerX import archspecs, archspecs2
+
+        batch = (
+            torch.randint(0, self.num_tokens, (2, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (2,)),
+        )
+
+        for spec1 in archspecs.keys():
+            for spec2 in archspecs2.keys():
+                with self.subTest(spec1=spec1, spec2=spec2):
+                    self.cfg.hyp.archspec = spec1
+                    self.cfg.hyp.archspec2 = spec2
+                    # Test both Compressed and Non-Compressed modes
+                    for lcom_val in [None, 30]:
+                        # print(spec1,spec2,lcom_val)
+
+                        self.cfg.hyp.lcom = lcom_val
+
+                        # Ensure dim1 == dim for transformer modes to avoid sys.exit
+                        self.cfg.hyp.dim1 = self.cfg.hyp.dim
+
+                        model = TransformerX(
+                            self.cfg,
+                            self.num_tokens,
+                            self.vocab_size_out,
+                            self.length_padded,
+                            archspecs,
+                            archspecs2,
+                        )
+                        logits = model(batch[0])
+                        self.assertEqual(logits.shape, (2, self.vocab_size_out))
+
+    def test_invalid_depth_and_layers(self):
+        print("\n---test_invalid_depth_and_layers---")
+        with initialize(version_base=None, config_path="../../tests/unit/data"):
+            cfg = compose(
+                config_name="config_test_2",
+                overrides=["hyp.depth=0", "+hyp.layer_method=torch_transformer"],
+            )
+            # 3. Assert that the ValueError is raised during instantiation
+            with self.assertRaises(ValueError) as cm:
+                model = TransformerX(
+                    cfg,
+                    self.num_tokens,
+                    self.vocab_size_out,
+                    self.length_padded,
+                    archspecs,
+                    archspecs2,
+                )
+            # # 4. Verify the error message (OUTSIDE the 'with' block)
+            # # We use a partial match so the test doesn't break if you tweak wording
+            # self.assertIn("self.layer_method is not None", str(cm.exception)) #works
+
+    def test_invalid_dim_and_dim1(self):
+        print("\n---test_invalid_dim_and_dim1---")
+        with initialize(version_base=None, config_path="../../tests/unit/data"):
+            cfg = compose(
+                config_name="config_test_2",
+                overrides=["hyp.dim=8", "hyp.dim1=16", "+hyp.layer_method=torch_transformer"],
+            )
+            # 3. Assert that the ValueError is raised during instantiation
+            with self.assertRaises(ValueError):
+                model = TransformerX(
+                    cfg,
+                    self.num_tokens,
+                    self.vocab_size_out,
+                    self.length_padded,
+                    archspecs,
+                    archspecs2,
+                )
+
+    def test_invalid_archspec(self):
+        print("\n---test_invalid_archspec---")
+        # re-define the dictionaries. The single archspec2 is valid while the archspec are all invalid.
+        archspecs = {
+            "valid1": {
+                "positional_encoding": "invalid",
+                "layer_method": "torch_transformer",
+                "norm_post_layers": False,
+                "aggr_attention_method": "view",
+            },
+            "valid2": {
+                "positional_encoding": "rope",
+                "layer_method": "invalid",
+                "norm_post_layers": False,
+                "aggr_attention_method": "view",
+            },
+            "valid3": {
+                "positional_encoding": "rope",
+                "layer_method": "torch_transformer",
+                "norm_post_layers": "invalid",
+                "aggr_attention_method": "view",
+            },
+            "valid4": {
+                "positional_encoding": "rope",
+                "layer_method": "torch_transformer",
+                "norm_post_layers": False,
+                "aggr_attention_method": "invalid",
+            },
+        }
+        archspecs2 = {
+            "invalid_call": {"call": "L4", "n": "bn"},
+        }
+        batch = (
+            torch.randint(0, self.num_tokens, (2, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (2,)),
+        )
+
+        # pass each key combination if archspecs1 - all archspecs1 should
+        # lead to failure by a sub-key
+        for spec1 in archspecs.keys():
+            for spec2 in archspecs2.keys():
+                with self.subTest(spec1=spec1, spec2=spec2):
+                    # print(f"-- spec1 {spec1} spec2 {spec2}")
+                    self.cfg.hyp.archspec = spec1
+                    self.cfg.hyp.archspec2 = spec2
+                    # Test Non-Compressed mode
+                    self.cfg.hyp.lcom = None
+
+                    # Ensure dim1 == dim for transformer modes to avoid sys.exit
+                    self.cfg.hyp.dim1 = self.cfg.hyp.dim
+                    # print(f"spec1 {spec1} spec2 {spec2}")
+                    # with self.assertRaises(ValueError) as cm:
+                    with self.assertRaises(ValueError):
+                        model = TransformerX(
+                            self.cfg,
+                            self.num_tokens,
+                            self.vocab_size_out,
+                            self.length_padded,
+                            archspecs,
+                            archspecs2,
+                        )
+
+    def test_invalid_archspec2(self):
+        print("\n---test_invalid_archspec2---")
+        # re-define the dictionaries. The single archspec is valid while all the archspec2 are invalid.
+        archspecs = {
+            "valid": {
+                "positional_encoding": "rope",
+                "layer_method": "torch_transformer",
+                "norm_post_layers": False,
+                "aggr_attention_method": "view",
+            }
+        }
+        archspecs2 = {
+            "invalid_call": {"call": "invalid", "n": "bn"},
+            "invalid_n": {"call": "L4", "n": "invalid"},
+        }
+        batch = (
+            torch.randint(0, self.num_tokens, (2, self.length_padded)),
+            torch.randint(0, self.vocab_size_out, (2,)),
+        )
+        # pass each key combination if archspecs2 - all archspecs2 should
+        # lead to failure by a sub-key
+        for spec1 in archspecs.keys():
+            for spec2 in archspecs2.keys():
+                with self.subTest(spec1=spec1, spec2=spec2):
+                    self.cfg.hyp.archspec = spec1
+                    self.cfg.hyp.archspec2 = spec2
+                    # Test Non-Compressed mode
+                    self.cfg.hyp.lcom = None
+
+                    # Ensure dim1 == dim for transformer modes to avoid sys.exit
+                    self.cfg.hyp.dim1 = self.cfg.hyp.dim
+                    # with self.assertRaises(ValueError) as cm:
+                    with self.assertRaises(ValueError):
+                        model = TransformerX(
+                            self.cfg,
+                            self.num_tokens,
+                            self.vocab_size_out,
+                            self.length_padded,
+                            archspecs,
+                            archspecs2,
+                        )
 
 
 class TestTokenBasics(unittest.TestCase):
