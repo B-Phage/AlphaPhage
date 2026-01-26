@@ -38,6 +38,9 @@ jobs:
           conda activate preprocessing
           python -m pip install --upgrade pip
           pip install pytest pytest-cov
+          pip install -e ./packages/utils
+          pip install -e ./packages/orchestration
+          pip install -e ./packages/hmm
 
       - name: 🏃 Run integration tests
         run: |
