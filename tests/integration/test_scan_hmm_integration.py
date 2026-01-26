@@ -40,10 +40,8 @@ def small_pfam_test_data(tmp_path):
     hmm_file = Path("tests/fixtures/DUF1244.hmm")
     fasta_file = Path("tests/fixtures/DUF1244.fa")
 
-    # Annotation CSV matching the HMM domain
-    # annotation_file = tmp_path / "annotations.csv"
-    # annotation_file.write_text("hmm_domain_name,annot\nPHROG_126,TestAnnotation\n")
-    annotation_file = Path("../databases/hmm/pfam/v38.0/Pfam-A.hmm.dat")
+    # Annotation dat file matching the HMM domain
+    annotation_file = Path("tests/fixtures/Pfam-A_test.hmm.dat")
 
     return {
         "fasta": fasta_file,

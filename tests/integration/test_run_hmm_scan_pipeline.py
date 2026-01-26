@@ -107,7 +107,7 @@ def test_pipeline_skips_unchanged_inputs(tmp_path):
     """
     Test that the pipeline skips rerunning proteins if inputs are unchanged.
     """
-    proteins_path = Path("tests/fixtures")
+    proteins_path = Path("tests/fixtures").resolve()
     results = tmp_path / "results"
     duckdb = tmp_path / "hmm.duckdb"
     lst_genomes = ["phrog_126"]
@@ -139,7 +139,7 @@ def test_new_protein_triggers_partial_rerun(tmp_path):
     proteins_path.mkdir()
 
     # Copy small real protein files from fixtures
-    fixture_dir = Path("tests/fixtures")
+    fixture_dir = Path("tests/fixtures").resolve()
     for genome in ["phrog_126", "DUF1244"]:
         shutil.copy(fixture_dir / f"{genome}.fa", proteins_path / f"{genome}.fa")
 
