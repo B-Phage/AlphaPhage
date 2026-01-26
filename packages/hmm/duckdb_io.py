@@ -26,6 +26,7 @@ from typing import Iterable
 
 import pandas as pd
 import utils.consol_log as log
+from hmm.search import normalize_name
 from hmm.types import Protein
 from utils.duckdb_client import DuckDBClient
 
@@ -148,7 +149,7 @@ def write_hmm_results_with_sequences(
     query_prot = []
     protein_sequence = []
     for prot in protein_py_easel_obj:
-        name = prot.name.decode()
+        name = normalize_name(prot.name)
         sequence = prot.textize().sequence
         query_prot.append(name)
         protein_sequence.append(sequence)
