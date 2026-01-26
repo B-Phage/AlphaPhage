@@ -11,7 +11,7 @@ This module is pure computation and contains no persistence or CLI logic.
 """
 
 import logging
-from typing import Iterable
+from typing import Iterable, Union
 
 import pandas as pd
 import pyhmmer
@@ -20,6 +20,15 @@ from pyhmmer.easel import DigitalSequenceBlock
 from pyhmmer.plan7 import HMM
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_name(name: str | bytes | bytearray | memoryview) -> str:
+    """Normalize pyhmmer name fields to a Python string."""
+    if isinstance(name, memoryview):
+        return name.tobytes().decode()
+    if isinstance(name, (bytes, bytearray)):
+        return name.decode()
+    return name
 
 
 def run_hmm_search(
@@ -58,12 +67,12 @@ def run_hmm_search(
     tophits = list(pyhmmer.hmmsearch(hmms, proteins, E=evalue_cutoff))
 
     for hits in tophits:
-        domain_name = hits.query.name.decode()
+        domain_name = normalize_name(hits.query.name)
         for hit in hits:
             if not hit.included:
                 continue
 
-            query_prot = hit.name.decode()
+            query_prot = normalize_name(hit.name)
             annot = annotations.get(domain_name)
 
             results.append(

@@ -194,3 +194,38 @@ def test_run_hmm_search_annotations_called(
 
     mock_annotation_provider.get.assert_called_with("PF00004")
     assert not df.empty
+
+
+@pytest.mark.parametrize(
+    "input_value, expected",
+    [
+        ("PF00001", "PF00001"),  # str
+        (b"PF00002", "PF00002"),  # bytes
+        (bytearray(b"PF00003"), "PF00003"),  # bytearray
+        (memoryview(b"PF00004"), "PF00004"),  # memoryview
+    ],
+)
+def test_normalize_name(input_value, expected):
+    assert search.normalize_name(input_value) == expected
+
+
+def test_normalize_name_returns_str():
+    result = search.normalize_name(memoryview(b"PF99999"))
+    assert isinstance(result, str)
+
+
+def test_normalize_name_memoryview_branch():
+    name = memoryview(b"PF12345")
+
+    result = search.normalize_name(name)
+
+    assert result == "PF12345"
+    assert isinstance(result, str)
+
+
+def test_normalize_name_returns_str_unchanged():
+    name = "PF67890"
+
+    result = search.normalize_name(name)
+
+    assert result is name
