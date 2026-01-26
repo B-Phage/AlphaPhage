@@ -66,3 +66,17 @@ exclude = ["tests"]
 #Eg:
 #   vulture packages/hmm/io.py
 #
+
+[tool.mypy]
+# Default: type check everything in the repo
+files = "packages,utils"  # only your real modules/packages
+
+# Optional: strictness settings
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+# Treat workflows scripts as standalone
+[[tool.mypy.overrides]]
+module = "workflows.orchestrator.run_hmm_scan_pipeline"
+ignore_errors = true

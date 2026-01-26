@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import hmm.annotations as mod
+import pandas as pd
 import pytest
 from hmm.annotations import AnnotationProvider, PfamSource, PhrogSource
 
@@ -15,16 +16,16 @@ from hmm.annotations import AnnotationProvider, PfamSource, PhrogSource
 def tmp_phrog_file(tmp_path: Path) -> Path:
     """
     Create a minimal PHROGs-like TSV file.
-    Column 0: phrog ID
-    Column 6: annotation
     """
-    content = (
-        "1\t.\t.\t.\t.\t.\tCapsid protein\n"
-        "2\t.\t.\t.\t.\t.\tTail fiber\n"
-        "3\t.\t.\t.\t.\t.\t\n"  # missing annotation
-    )
     path = tmp_path / "phrogs.tsv"
-    path.write_text(content)
+
+    data = [
+        {"phrog": "1", "annot": "NA", "category": "unknown function"},
+        {"phrog": "2", "annot": "Capsid protein", "category": "unknown function"},
+    ]
+
+    # Write to TSV
+    pd.DataFrame(data).to_csv(path, sep="\t", index=False)
     return path
 
 
@@ -54,11 +55,7 @@ def test_phrog_load_to_dict(tmp_phrog_file: Path):
     source = PhrogSource()
     data = source.load_to_dict(tmp_phrog_file)
 
-    assert data == {
-        "1": "Capsid protein",
-        "2": "Tail fiber",
-        "3": "-",  # missing annotation normalized
-    }
+    assert data == {"1": "-", "2": "Capsid protein"}
 
 
 def test_phrog_normalize_id():
@@ -148,8 +145,8 @@ def test_lazy_loading_only_on_first_access(tmp_phrog_file: Path, monkeypatch):
 def test_get_returns_annotation(tmp_phrog_file: Path):
     provider = AnnotationProvider("phrogs", tmp_phrog_file)
 
-    assert provider.get("phrog_1") == "Capsid protein"
-    assert provider.get("phrog_2") == "Tail fiber"
+    assert provider.get("phrog_1") == "-"
+    assert provider.get("phrog_2") == "Capsid protein"
 
 
 def test_get_returns_dash_for_missing_domain(tmp_phrog_file: Path):

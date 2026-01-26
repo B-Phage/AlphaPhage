@@ -11,7 +11,7 @@ def small_phrog_test_data(tmp_path):
     """Integration fixture: tiny FASTA, real HMM, and annotation CSV."""
 
     # FASTA file
-    fasta_file = tmp_path / "proteins.faa"
+    fasta_file = tmp_path / "proteins.fa"
     fasta_file.write_text(
         ">ECP1;NC_049926.1_13\nMKMPEKNDLLAAILAAKEQGIGAILAFAMAYLRGRYNGGAFTKTVIDATMCAIIAWFIRDLLGFAGLSSNLAYITSVFIGYIGTDSIGSLIKRFAAKKAGVEDGGNQ*\n>411_P1;411_P1_68\nMKMPEKHDLLAAILAAKEQGIGAILAFAMAYLRGRYNGGAFTKTVIDATMCAIIAWFIRDLLDFAGLSSNLAYITSVFIGYIGTDSIGSLIKRFAAKKAGIEDGGNQ*\n"
     )

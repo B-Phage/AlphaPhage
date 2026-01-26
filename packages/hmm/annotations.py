@@ -35,10 +35,10 @@ class PhrogSource(AnnotationSource):
     def load_to_dict(self, path: Path) -> Dict[str, str]:
         # usecols=[0, 6] ensures we only load 'phrog' and 'annot' columns into memory
         try:
-            df = pd.read_csv(path, sep="\t", header=None, usecols=[0, 6], names=["id", "annot"])
+            df = pd.read_csv(path, sep="\t", usecols=["phrog", "annot"])
             # Convert numeric IDs to strings to ensure consistent lookup
-            df["id"] = df["id"].astype(str)
-            return df.set_index("id")["annot"].fillna("-").to_dict()
+            df["phrog"] = df["phrog"].astype(str)
+            return df.set_index("phrog")["annot"].fillna("-").to_dict()
         except Exception as e:
             logger.error(f"Failed to load PHROG annotations from {path}: {e}")
             return {}

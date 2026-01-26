@@ -31,6 +31,15 @@
   inner_path: pharokka_v1.4.0_databases/all_phrogs.h3m
   can_split: true
 
+- name: phrog_annot_v4.tsv
+  source_url: https://zenodo.org/records/8267900/files/pharokka_v1.4.0_databases.tar.gz?download=1
+  dest_dir: ../databases/hmm/pharokka_v1.4.0_databases
+  final_sha256: 502f96101597c21133bcce5711803e0b95e0c162cd4e86425c352549bd95e8c2
+  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c
+  source_format: tar
+  inner_path: pharokka_v1.4.0_databases/phrog_annot_v4.tsv
+  can_split: false
+
 #  There are backups on google drive, incase the sources get changed
 # HMM_PHROG_NAME = pharokka_v1.4.0_databases
 # HMM_PHROG_GDRIVE_URL = https://drive.google.com/drive/folders/1NwDk6s--Pb381uOBRrpXj4dtsh4_XFZO

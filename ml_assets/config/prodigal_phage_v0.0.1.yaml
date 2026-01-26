@@ -1,7 +1,9 @@
-prodigal_config:
-  lst_genomes:      []        # optional whitelist of genomes
+general:
+  lst_genomes:      ["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes
   n_jobs:           4
   code_version:     "prodigal-gv-v1.0"
+
+prodigal_config:
 
   # from the ann_hmm snakemake config
   checkpoint:       null
@@ -9,8 +11,12 @@ prodigal_config:
   genome_dir:       "../databases/production/sequence_data/phage"
   output_dir:       "ml_assets/data/processed/phage/proteins"
 
-  hmm_multifile:    "pharokka_v1.4.0_databases/all_phrogs.h3m"
-  annotations:      "PHROG/phrogs_table_almostfinal_plusGO_wNA_utf8.tsv"
-  hhm_scan_method:  "phrogs"
+hmm_config:
+  hmm_multifile:    "hmm/pharokka_v1.4.0_databases/all_phrogs.h3m"
+  annotations:      "hmm/pharokka_v1.4.0_databases/phrog_annot_v4.tsv"
+  hmm_scan_method:  "phrogs"
   sql_tbl_sufix:    ""
   min_bit_score:    50
+
+  output_dir:       "ml_assets/data/processed/phage/hmm_scan"
+  duckdb_file:      "duckdb/proteins.duckdb"

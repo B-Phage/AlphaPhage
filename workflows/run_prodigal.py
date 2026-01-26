@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 from orchestration.orchestrator import Orchestrator
-from utils.config_loader import get_prodigal_config
+from utils.config_loader import get_config
 
 # -----------------------------
 # Command-line args
@@ -31,13 +31,16 @@ args = parser.parse_args()
 # -----------------------------
 # Load configuration
 # -----------------------------
-cfg = get_prodigal_config(override_path=args.config)
+gen_cfg = get_config(override_path=args.config, params_set="general")
+
+cfg = get_config(override_path=args.config, params_set="prodigal_config")
+
+LST_GENOMES = gen_cfg.lst_genomes
+N_JOBS = gen_cfg.n_jobs
+CODE_VERSION = gen_cfg.code_version
 
 GENOME_DIR = Path(cfg.genome_dir)
 OUTPUT_DIR = Path(cfg.output_dir)
-LST_GENOMES = cfg.lst_genomes
-N_JOBS = cfg.n_jobs
-CODE_VERSION = cfg.code_version
 HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 
 
@@ -66,7 +69,7 @@ def run_prodigal(input_path: Path, outputs: list):
 # -----------------------------
 def prodigal_output_func(input_path: Path):
     genome_name = input_path.stem
-    protein_file = OUTPUT_DIR / f"{genome_name}.faa"
+    protein_file = OUTPUT_DIR / f"{genome_name}.fa"
     return [protein_file]
 
 

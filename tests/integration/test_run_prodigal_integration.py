@@ -34,6 +34,7 @@ class TestRunProdigalIntegration(unittest.TestCase):
 prodigal_config:
   genome_dir: "{self.input_dir}"
   output_dir: "{self.output_dir}"
+general:
   lst_genomes: []
   n_jobs: 1
   code_version: "integration-test-v1"
@@ -69,5 +70,5 @@ prodigal_config:
         self.assertEqual(result.returncode, 0, msg="run_prodigal.py failed")
 
         # Check that the output protein file exists
-        expected_protein = self.output_dir / "genome1.faa"
+        expected_protein = self.output_dir / "genome1.fa"
         self.assertTrue(expected_protein.exists(), msg=f"{expected_protein} not created")
