@@ -28,7 +28,7 @@ def normalize_name(name: str | bytes | bytearray | memoryview) -> str:
         return name.tobytes().decode()
     if isinstance(name, (bytes, bytearray)):
         return name.decode()
-    return name
+    return str(name)
 
 
 def run_hmm_search(

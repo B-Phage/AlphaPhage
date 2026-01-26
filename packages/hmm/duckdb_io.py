@@ -146,6 +146,8 @@ def write_hmm_results_with_sequences(
             """
         )
     df_for_sql = hmm_scan_df[col_from_hmm_scan]
+    for col in df_for_sql.select_dtypes(include=["object"]):  # force to string
+        df_for_sql[col] = df_for_sql[col].astype(str)
     query_prot = []
     protein_sequence = []
     for prot in protein_py_easel_obj:
