@@ -90,7 +90,7 @@ def test_cli_runs_successfully_for_pfam(small_pfam_test_data, tmp_path):
         "-f", str(small_pfam_test_data["fasta"]),
         "-hp", str(small_pfam_test_data["hmm"]),
         "-a", str(small_pfam_test_data["annotation"]),
-        "-m", "phrogs",
+        "-m", "pfam",
         "-o", str(small_pfam_test_data["out_csv"]),
         "-db", str(small_pfam_test_data["out_db"]),
     ]

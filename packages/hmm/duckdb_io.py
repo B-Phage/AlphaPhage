@@ -146,8 +146,25 @@ def write_hmm_results_with_sequences(
             """
         )
     df_for_sql = hmm_scan_df[col_from_hmm_scan]
+
+    # Newer DuckDB’s pandas → Arrow conversion got stricter
     for col in df_for_sql.select_dtypes(include=["object"]):  # force to string
         df_for_sql[col] = df_for_sql[col].astype(str)
+
+    for col in df_for_sql.columns:
+        if df_for_sql[col].dtype == "object":
+            df_for_sql[col] = df_for_sql[col].map(
+                lambda x: (
+                    x.decode()
+                    if isinstance(x, (bytes, bytearray))
+                    else (
+                        x.tobytes().decode()
+                        if isinstance(x, memoryview)
+                        else str(x) if x is not None else None
+                    )
+                )
+            )
+
     query_prot = []
     protein_sequence = []
     for prot in protein_py_easel_obj:
