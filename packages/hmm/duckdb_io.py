@@ -33,6 +33,30 @@ from utils.duckdb_client import DuckDBClient
 logger = log.get_logger(level=log.DEBUG)
 
 
+def _duckdb_safe_str(x):
+    """Convert values to DuckDB-safe strings while preserving NULLs.
+
+    Normalizes mixed-type values (e.g., bytes, bytearray, memoryview) into
+    Python ``str`` objects and returns ``None`` for missing values to ensure
+    correct NULL handling in DuckDB.
+
+    Args:
+        x: A value that may be a ``str``, bytes-like, or missing (``None``/``NaN``).
+
+    Returns:
+        str | None: A decoded string, or ``None`` if the value is missing.
+    """
+    if x is None:
+        return None
+    if pd.isna(x):
+        return None  # or np.nan — both are fine
+    if isinstance(x, (bytes, bytearray)):
+        return x.decode()
+    if isinstance(x, memoryview):
+        return x.tobytes().decode()
+    return str(x)
+
+
 def write_hmm_results_with_sequences(
     hmm_scan_df: pd.DataFrame,
     protein_py_easel_obj: Iterable[Protein],
@@ -147,24 +171,6 @@ def write_hmm_results_with_sequences(
         )
     df_for_sql = hmm_scan_df[col_from_hmm_scan]
 
-    # Newer DuckDB’s pandas → Arrow conversion got stricter
-    for col in df_for_sql.select_dtypes(include=["object"]):  # force to string
-        df_for_sql[col] = df_for_sql[col].astype(str)
-
-    for col in df_for_sql.columns:
-        if df_for_sql[col].dtype == "object":
-            df_for_sql[col] = df_for_sql[col].map(
-                lambda x: (
-                    x.decode()
-                    if isinstance(x, (bytes, bytearray))
-                    else (
-                        x.tobytes().decode()
-                        if isinstance(x, memoryview)
-                        else str(x) if x is not None else None
-                    )
-                )
-            )
-
     query_prot = []
     protein_sequence = []
     for prot in protein_py_easel_obj:
@@ -177,6 +183,18 @@ def write_hmm_results_with_sequences(
     data = {"protein_name": query_prot, "sequence": protein_sequence}
     seq_df = pd.DataFrame(data)
     df_for_sql = pd.merge(df_for_sql, seq_df, how="outer", on="protein_name")
+
+    # Force *pure Python object strings*, not pandas StringDtype
+    for col in df_for_sql.columns:
+        if df_for_sql[col].dtype == "object":
+            df_for_sql[col] = df_for_sql[col].map(_duckdb_safe_str).astype(object)
+
+    # Check that the str conversions worked.
+    # If this doesn't pass, we will get DuckDB errors with some versions (e.g. in CI).
+    assert all(
+        df_for_sql[col].map(lambda x: x is None or isinstance(x, str)).all()
+        for col in df_for_sql.select_dtypes(include=["object"])
+    )
 
     db.insert_dataframe(
         sql_table_name,
