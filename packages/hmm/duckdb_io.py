@@ -105,7 +105,7 @@ def duckdb_prepare_dataframe(
     # # force string columns first
     if string_cols:
         for col in string_cols:
-            df_safe[col] = df_safe[col].map(duckdb_force_string)
+            df_safe[col] = df_safe[col].map(duckdb_force_string).astype("string")
 
     # Then fix numeric columns
     if num_cols:
