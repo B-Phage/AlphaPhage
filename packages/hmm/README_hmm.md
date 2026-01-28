@@ -1,7 +1,7 @@
 # Hidden Markov Model (HMM) Package
 This package is used in a preprocessing stage for protein annotation based on HMM matching.
 
-This package requires the hmmr_env conda enviornmnet to be active.
+This package requires the preprocessing conda enviornmnet to be active.
 
 The integration of the package can be seen in workflows/cli/hmm_scan.py
 

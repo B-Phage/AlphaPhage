@@ -22,7 +22,7 @@ already been performed and that input data is provided in tabular
 """
 
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import pandas as pd
 import utils.consol_log as log
@@ -33,28 +33,32 @@ from utils.duckdb_client import DuckDBClient
 logger = log.get_logger(level=log.DEBUG)
 
 
-def _duckdb_safe_str(x):
-    """Convert values to DuckDB-safe strings while preserving NULLs.
-
-    Normalizes mixed-type values (e.g., bytes, bytearray, memoryview) into
-    Python ``str`` objects and returns ``None`` for missing values to ensure
-    correct NULL handling in DuckDB.
-
-    Args:
-        x: A value that may be a ``str``, bytes-like, or missing (``None``/``NaN``).
-
-    Returns:
-        str | None: A decoded string, or ``None`` if the value is missing.
+def _duckdb_safe_str(x: Any):
     """
-    if x is None:
-        return None
+    Convert a value in an object/string column to a Python string, returning None
+    for missing values. Leaves numeric types untouched.
+
+    Parameters
+    ----------
+    x : any
+        Value from a pandas column.
+
+    Returns
+    -------
+    str or None
+        A proper Python string, or None if missing/NA.
+    """
     if pd.isna(x):
-        return None  # or np.nan — both are fine
-    if isinstance(x, (bytes, bytearray)):
-        return x.decode()
+        return None
+    if isinstance(x, bytes):
+        return x.decode("utf-8")
+    if isinstance(x, bytearray):
+        return bytes(x).decode("utf-8")
     if isinstance(x, memoryview):
-        return x.tobytes().decode()
-    return str(x)
+        return x.tobytes().decode("utf-8")
+    if isinstance(x, str):
+        return x
+    return x  # leave numbers untouched
 
 
 def write_hmm_results_with_sequences(
@@ -157,10 +161,10 @@ def write_hmm_results_with_sequences(
                 annot VARCHAR,
                 evalue FLOAT,
                 score FLOAT,
-                bias VARCHAR,
+                bias FLOAT,
                 length INTEGER,
-                top_hmm_domain_hit_on_prot VARCHAR,
-                top_protein_match_for_hmm VARCHAR,
+                top_hmm_domain_hit_on_prot INTEGER,
+                top_protein_match_for_hmm INTEGER,
                 best_dom_env_start INTEGER,
                 best_dom_env_end INTEGER,
                 best_dom_env_length INTEGER,
@@ -185,16 +189,22 @@ def write_hmm_results_with_sequences(
     df_for_sql = pd.merge(df_for_sql, seq_df, how="outer", on="protein_name")
 
     # Force *pure Python object strings*, not pandas StringDtype
-    for col in df_for_sql.columns:
-        if df_for_sql[col].dtype == "object":
+    # and normalise object-dtype columns to avoid DuckDB / pandas incompatibilities
+    STRING_COLUMNS = {"protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"}
+
+    for col in STRING_COLUMNS:
+        if col in df_for_sql.columns:
             df_for_sql[col] = df_for_sql[col].map(_duckdb_safe_str).astype(object)
 
     # Check that the str conversions worked.
     # If this doesn't pass, we will get DuckDB errors with some versions (e.g. in CI).
-    assert all(
-        df_for_sql[col].map(lambda x: x is None or isinstance(x, str)).all()
-        for col in df_for_sql.select_dtypes(include=["object"])
-    )
+    bad = {
+        col: df_for_sql[col][~df_for_sql[col].map(lambda x: x is None or isinstance(x, str))]
+        for col in STRING_COLUMNS
+        if col in df_for_sql.columns
+        and not df_for_sql[col].map(lambda x: x is None or isinstance(x, str)).all()
+    }
+    assert not bad, f"Non-string values found in string columns: {bad}"
 
     db.insert_dataframe(
         sql_table_name,
