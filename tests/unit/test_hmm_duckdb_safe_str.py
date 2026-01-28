@@ -1,105 +1,69 @@
-import numpy as np
+import math
+
 import pandas as pd
 import pytest
-from hmm.duckdb_io import _duckdb_safe_str
+from hmm.duckdb_io import assert_duckdb_safe, duckdb_force_string, duckdb_safe_numeric
 
-# ----------------------------
-# Missing / NA handling
-# ----------------------------
-
-
-@pytest.mark.parametrize(
-    "value",
-    [
-        None,
-        np.nan,
-        pd.NA,
-    ],
-)
-def test_duckdb_safe_str_missing_values(value):
-    assert _duckdb_safe_str(value) is None
-
-
-# ----------------------------
-# Bytes-like inputs
-# ----------------------------
+# ---------------------------------------------------------------------
+# duckdb_force_string
+# ---------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "value, expected",
+    "input_val, expected",
     [
-        (b"PF00001", "PF00001"),
-        (bytearray(b"PF00002"), "PF00002"),
-        (memoryview(b"PF00003"), "PF00003"),
+        (None, None),
+        (float("nan"), None),
+        (b"bytes", "bytes"),
+        (bytearray(b"bytearray"), "bytearray"),
+        (memoryview(b"view"), "view"),
+        (123, "123"),
+        (3.14, "3.14"),
+        ("already_str", "already_str"),
     ],
 )
-def test_duckdb_safe_str_bytes_like(value, expected):
-    assert _duckdb_safe_str(value) == expected
+def test_duckdb_force_string(input_val, expected):
+    assert duckdb_force_string(input_val) == expected
 
 
-# ----------------------------
-# Strings
-# ----------------------------
+# ---------------------------------------------------------------------
+# duckdb_safe_numeric
+# ---------------------------------------------------------------------
 
 
-def test_duckdb_safe_str_string_passthrough():
-    s = "PF00004"
-    out = _duckdb_safe_str(s)
-
-    assert out == s
-    assert out is s  # exact object preserved
-
-
-# ----------------------------
-# Numeric passthrough
-# ----------------------------
+def test_duckdb_safe_numeric_basic():
+    series = pd.Series([1, 2.5, None, float("nan")])
+    result = duckdb_safe_numeric(series)
+    expected = pd.Series([1, 2.5, None, None])
+    pd.testing.assert_series_equal(result, expected)
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        0,
-        1,
-        -5,
-        3.14,
-        np.int64(7),
-        np.float64(2.71),
-    ],
-)
-def test_duckdb_safe_str_numeric_passthrough(value):
-    out = _duckdb_safe_str(value)
-
-    assert out == value
-    assert type(out) is type(value)
+def test_duckdb_safe_numeric_all_invalid():
+    series = pd.Series(["a", "b", None])
+    result = duckdb_safe_numeric(series)
+    expected = pd.Series([float("nan"), float("nan"), float("nan")])
+    pd.testing.assert_series_equal(result, expected)
 
 
-# ----------------------------
-# Other objects are untouched
-# ----------------------------
+# ---------------------------------------------------------------------
+# assert_duckdb_safe
+# ---------------------------------------------------------------------
 
 
-def test_duckdb_safe_str_other_object_passthrough():
-    obj = {"a": 1}
-    out = _duckdb_safe_str(obj)
-
-    assert out is obj
+def test_assert_duckdb_safe_pass():
+    df = pd.DataFrame({"str_col": ["a", "b", None], "num_col": [1.0, 2.5, None]})
+    assert_duckdb_safe(df, numeric_cols=["num_col"])  # should not raise
 
 
-# ----------------------------
-# Pandas object-dtype safety check
-# ----------------------------
+def test_assert_duckdb_safe_fail_str():
+    df = pd.DataFrame({"str_col": ["a", 1, None], "num_col": [1.0, 2.0, None]})
+    with pytest.raises(TypeError, match="Column str_col contains non-str values"):
+        assert_duckdb_safe(df, numeric_cols=["num_col"])
 
 
-def test_duckdb_safe_str_safe_for_dataframe_map():
+def test_assert_duckdb_safe_fail_numeric():
     df = pd.DataFrame(
-        {
-            "a": [b"x", "y", None],
-            "b": [1, 2, 3],
-        }
+        {"str_col": ["a", "b", None], "num_col": [1.0, "invalid", None]}  # mix invalid string
     )
-
-    for col in df.columns:
-        df[col] = df[col].map(_duckdb_safe_str)
-
-    assert df["a"].tolist() == ["x", "y", None]
-    assert df["b"].tolist() == [1, 2, 3]
+    with pytest.raises(TypeError, match="Column num_col contains non-numeric values"):
+        assert_duckdb_safe(df, numeric_cols=["num_col"])

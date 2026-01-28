@@ -34,22 +34,30 @@ from utils.duckdb_client import DuckDBClient
 logger = log.get_logger(level=log.DEBUG)
 
 
-def _duckdb_safe_str(x: Any):
+def assert_duckdb_safe(df: pd.DataFrame, numeric_cols: list[str] | None = None) -> None:
     """
-    Convert a value in an object/string column to a Python string, returning None
-    for missing values. Leaves numeric types untouched.
-
-    Parameters
-    ----------
-    x : any
-        Value from a pandas column.
-
-    Returns
-    -------
-    str or None
-        A proper Python string, or None if missing/NA.
+    Assert that a DataFrame is safe for DuckDB insertion:
+      - Object columns contain only str or None
+      - Numeric columns (explicitly listed) contain only int, float, or None
     """
-    if x is None or (isinstance(x, float) and math.isnan(x)) or pd.isna(x):
+    numeric_cols = numeric_cols or []
+
+    for col in df.columns:
+        series = df[col]
+        if col in numeric_cols:
+            for i, val in enumerate(series):
+                if val is not None and not isinstance(val, (int, float)):
+                    raise TypeError(f"Column {col} contains non-numeric values after conversion!")
+        elif series.dtype == "O":
+            if not series.map(lambda x: isinstance(x, str) or x is None).all():
+                raise TypeError(f"Column {col} contains non-str values after conversion!")
+
+
+def duckdb_force_string(x: Any) -> str | None:
+    """
+    Force a value to a Python string, returning None for missing/NA.
+    """
+    if x is None or pd.isna(x) or (isinstance(x, float) and math.isnan(x)):
         return None
     if isinstance(x, bytes):
         return x.decode("utf-8")
@@ -57,9 +65,54 @@ def _duckdb_safe_str(x: Any):
         return bytes(x).decode("utf-8")
     if isinstance(x, memoryview):
         return x.tobytes().decode("utf-8")
-    if isinstance(x, str):
-        return x
-    return x  # leave numbers untouched
+    return str(x)
+
+
+def duckdb_safe_numeric(series: pd.Series) -> pd.Series:
+    """
+    Convert a pandas Series to a numeric type safe for DuckDB:
+      - Keep ints/floats
+      - Convert invalid entries to None
+    """
+    # coerce invalid entries to NaN
+    numeric_series = pd.to_numeric(series, errors="coerce")
+    # replace NaN with None for DuckDB
+    return numeric_series  # keep dtype numeric
+
+
+def duckdb_prepare_dataframe(
+    df: pd.DataFrame, string_cols: list[str] | None = None, num_cols: list[str] | None = None
+) -> pd.DataFrame:
+    """
+    Make a dataframe fully safe for DuckDB insertion.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Original dataframe
+    string_cols : list[str] | None
+        Columns to forcibly convert to strings.
+    num_cols : list[str] | None
+        Columns to forcibly convert to numbers.
+
+    Returns
+    -------
+    pd.DataFrame
+        A copy of the dataframe safe for DuckDB
+    """
+    df_safe = df.copy()
+
+    # # force string columns first
+    if string_cols:
+        for col in string_cols:
+            df_safe[col] = df_safe[col].map(duckdb_force_string)
+
+    # Then fix numeric columns
+    if num_cols:
+        for col in num_cols:
+            df_safe[col] = duckdb_safe_numeric(df_safe[col])
+
+    return df_safe
 
 
 def write_hmm_results_with_sequences(
@@ -191,21 +244,22 @@ def write_hmm_results_with_sequences(
 
     # Force *pure Python object strings*, not pandas StringDtype
     # and normalise object-dtype columns to avoid DuckDB / pandas incompatibilities
-    STRING_COLUMNS = {"protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"}
-
-    for col in df_for_sql.columns:
-        if df_for_sql[col].dtype == "object":
-            df_for_sql[col] = df_for_sql[col].map(_duckdb_safe_str).astype(object)
-
-    # Check that the str conversions worked.
-    # If this doesn't pass, we will get DuckDB errors with some versions (e.g. in CI).
-    bad = {
-        col: df_for_sql[col][~df_for_sql[col].map(lambda x: x is None or isinstance(x, str))]
-        for col in df_for_sql.columns
-        if df_for_sql[col].dtype == "object"
-        and not df_for_sql[col].map(lambda x: x is None or isinstance(x, str)).all()
-    }
-    assert not bad, f"Non-string values found in string columns: {bad}"
+    STRING_COLUMNS = ["protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"]
+    NUMERIC_COLUMNS = [
+        "evalue",
+        "score",
+        "bias",
+        "length",
+        "top_hmm_domain_hit_on_prot",
+        "top_protein_match_for_hmm",
+        "best_dom_env_start",
+        "best_dom_env_end",
+        "best_dom_env_length",
+    ]
+    df_for_sql = duckdb_prepare_dataframe(
+        df_for_sql, string_cols=STRING_COLUMNS, num_cols=NUMERIC_COLUMNS
+    )
+    assert_duckdb_safe(df_for_sql, numeric_cols=NUMERIC_COLUMNS)
 
     db.insert_dataframe(
         sql_table_name,
