@@ -21,6 +21,7 @@ already been performed and that input data is provided in tabular
 (pandas DataFrame) and pyhmmer easel formats.
 """
 
+import math
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -48,7 +49,7 @@ def _duckdb_safe_str(x: Any):
     str or None
         A proper Python string, or None if missing/NA.
     """
-    if pd.isna(x):
+    if x is None or (isinstance(x, float) and math.isnan(x)) or pd.isna(x):
         return None
     if isinstance(x, bytes):
         return x.decode("utf-8")
@@ -192,16 +193,16 @@ def write_hmm_results_with_sequences(
     # and normalise object-dtype columns to avoid DuckDB / pandas incompatibilities
     STRING_COLUMNS = {"protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"}
 
-    for col in STRING_COLUMNS:
-        if col in df_for_sql.columns:
+    for col in df_for_sql.columns:
+        if df_for_sql[col].dtype == "object":
             df_for_sql[col] = df_for_sql[col].map(_duckdb_safe_str).astype(object)
 
     # Check that the str conversions worked.
     # If this doesn't pass, we will get DuckDB errors with some versions (e.g. in CI).
     bad = {
         col: df_for_sql[col][~df_for_sql[col].map(lambda x: x is None or isinstance(x, str))]
-        for col in STRING_COLUMNS
-        if col in df_for_sql.columns
+        for col in df_for_sql.columns
+        if df_for_sql[col].dtype == "object"
         and not df_for_sql[col].map(lambda x: x is None or isinstance(x, str)).all()
     }
     assert not bad, f"Non-string values found in string columns: {bad}"
