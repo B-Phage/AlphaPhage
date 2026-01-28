@@ -267,3 +267,11 @@ Thank you for contributing to AlphaPhage! Your work helps maintain a robust, rel
 pip install -e ./packages/utils
 pip install -e ./packages/preprocessing
 ```
+
+## Versioning & Releases
+
+We follow (Semantic Versioning)[https://semver.org/].
+All changes must go through reviewed Pull Requests.
+
+For details on how releases are prepared and tagged, see:
+docs/releasing.md
