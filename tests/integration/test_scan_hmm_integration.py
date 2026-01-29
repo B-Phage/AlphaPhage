@@ -77,8 +77,8 @@ def test_cli_runs_successfully_for_phrogs(small_phrog_test_data, tmp_path):
     # CSV results should exist and have expected columns
     assert small_phrog_test_data["out_csv"].exists()
     df = pd.read_csv(small_phrog_test_data["out_csv"])
-    assert "protein_name" in df.columns
-    assert "hmm_domain_name" in df.columns
+    assert "n_rows" in df.columns
+    assert "n_columns" in df.columns
 
 
 def test_cli_runs_successfully_for_pfam(small_pfam_test_data, tmp_path):
@@ -105,5 +105,5 @@ def test_cli_runs_successfully_for_pfam(small_pfam_test_data, tmp_path):
     # CSV results should exist and have expected columns
     assert small_pfam_test_data["out_csv"].exists()
     df = pd.read_csv(small_pfam_test_data["out_csv"])
-    assert "protein_name" in df.columns
-    assert "hmm_domain_name" in df.columns
+    assert "n_rows" in df.columns
+    assert "n_columns" in df.columns

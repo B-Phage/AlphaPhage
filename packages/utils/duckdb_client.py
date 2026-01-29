@@ -1,3 +1,5 @@
+import random
+import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -22,12 +24,29 @@ class DuckDBClient:
         read_only: bool = False,
         config: Optional[Dict[str, Any]] = None,
     ):
+        if db_path != ":memory:":
+            p = Path(db_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+
         self.db_path = db_path
-        self.con = duckdb.connect(
-            database=db_path,
-            read_only=read_only,
-            config=config or {},
-        )
+
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                if config:
+                    self.con = duckdb.connect(
+                        database=self.db_path, read_only=read_only, config=config
+                    )
+                else:
+                    # Omitting the config parameter entirely fixes the unit tests
+                    self.con = duckdb.connect(database=self.db_path, read_only=read_only)
+                return  # Success!
+            except duckdb.IOException as e:
+                if "lock" in str(e).lower() and attempt < max_retries - 1:
+                    delay = random.uniform(0.5, 2.0)
+                    time.sleep(delay)
+                    continue
+                raise
 
     # ------------------------------------------------------------------
     # Context management
@@ -165,6 +184,16 @@ class DuckDBClient:
         if extra_columns:
             raise ValueError(
                 f"DataFrame contains columns not in table '{table_name}': {extra_columns}"
+            )
+
+        # Identify "Object" columns that cause ambiguity
+        object_cols = df.select_dtypes(include=["object"]).columns.tolist()
+
+        if object_cols:
+            raise TypeError(
+                f"DuckDBClient refuses to insert 'object' types to prevent data corruption. "
+                f"Please convert the following columns to explicit types (string, int, float) "
+                f"in the calling application: {object_cols}"
             )
 
         # Determine primary keys

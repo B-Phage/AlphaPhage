@@ -35,12 +35,13 @@ stages:
     cmd: "/bin/bash -c \"for i in {1..10}; do echo 'Line $i'; sleep 0.5; done\"\n"
   prodigal_phage:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
-      && python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_prodigal.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
     deps:
     - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
       hash: md5
-      md5: 6e918c295866741129d15773e03de950
-      size: 585
+      md5: ba8a3e8f3e9ba10eeceefea1e47e007d
+      size: 795
     - path: ml_assets/data/sequence_data/phage
       hash: md5
       md5: 686a6064256b03e97b3a8553f70643f8.dir
@@ -48,19 +49,50 @@ stages:
       nfiles: 133
     - path: packages/orchestration/orchestrator.py
       hash: md5
-      md5: f067bbf8b987760a9a9ce1827489b513
-      size: 5619
+      md5: c23b2971b4adf897180d64e8945c23b8
+      size: 5626
     - path: params.yaml
       hash: md5
       md5: 6ac52bb71ef5384cb26120a334698b16
       size: 405
     - path: workflows/run_prodigal.py
       hash: md5
-      md5: c2f3e5451bc3a853c2f34431a5f655e6
-      size: 2614
+      md5: 4d5b1a686bc18c6cbeec333338c4c508
+      size: 2709
     outs:
     - path: ml_assets/data/processed/phage/proteins
       hash: md5
-      md5: 875f7b1e53e944d2dd3390cc8f172398.dir
-      size: 5439150
-      nfiles: 132
+      md5: 013e0e7e9884a4ff43d866b291d25ec1.dir
+      size: 63687
+      nfiles: 3
+  hmm_scan_all_phage:
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
+      && python -u workflows/orchestrator/run_hmm_scan_pipeline.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
+    deps:
+    - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
+      hash: md5
+      md5: ba8a3e8f3e9ba10eeceefea1e47e007d
+      size: 795
+    - path: ml_assets/data/processed/phage/proteins
+      hash: md5
+      md5: 013e0e7e9884a4ff43d866b291d25ec1.dir
+      size: 63687
+      nfiles: 3
+    - path: packages/hmm/search.py
+      hash: md5
+      md5: 62bb42b5167615838d14776517fcf533
+      size: 4392
+    - path: workflows/cli/hmm_scan.py
+      hash: md5
+      md5: 5ae6951114be0194ac382f207cd66cbf
+      size: 4480
+    - path: workflows/orchestrator/run_hmm_scan_pipeline.py
+      hash: md5
+      md5: c8389c4b3011fe7d61928319771d111f
+      size: 4115
+    outs:
+    - path: ml_assets/data/processed/phage/hmm_scan
+      hash: md5
+      md5: c57b374da8dcb627b54cd589f703e7d6.dir
+      size: 261
+      nfiles: 3

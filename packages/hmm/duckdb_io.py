@@ -240,7 +240,10 @@ def write_hmm_results_with_sequences(
     # Create the DataFrame
     data = {"protein_name": query_prot, "sequence": protein_sequence}
     seq_df = pd.DataFrame(data)
-    df_for_sql = pd.merge(df_for_sql, seq_df, how="outer", on="protein_name")
+    organism_name_value = df_for_sql["organism_name"].iloc[0]
+    seq_df["organism_name"] = organism_name_value
+    df_for_sql = pd.merge(df_for_sql, seq_df, how="outer", on=["protein_name", "organism_name"])
+    df_for_sql["hmm_domain_name"] = df_for_sql["hmm_domain_name"].fillna("-")
 
     # Force *pure Python object strings*, not pandas StringDtype
     # and normalise object-dtype columns to avoid DuckDB / pandas incompatibilities

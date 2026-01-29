@@ -92,7 +92,7 @@ def test_outer_join_includes_proteins_without_hits(hmm_scan_df, protein_block):
 
     # protB had no HMM hit → NaNs expected
     protB_row = df[df["protein_name"] == "protB"].iloc[0]
-    assert pd.isna(protB_row["hmm_domain_name"])
+    assert protB_row["hmm_domain_name"] == "-"
 
 
 def test_only_expected_hmm_columns_selected(hmm_scan_df, protein_block):

@@ -132,7 +132,7 @@ def main_cli():
             f.write("")
     else:
         write_hmm_scan_summary(df_results, args.out_csv, unique_cols=("hmm_domain_name",))
-        df_results.to_csv(args.out_csv, sep=",", index=False)
+        # df_results.to_csv(args.out_csv, sep=",", index=False)
 
     # Write everything to DuckDB
     if args.out_database:

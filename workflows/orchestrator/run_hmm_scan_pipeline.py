@@ -48,7 +48,13 @@ def run_hmm_worker(
         duckdb_path,
     ]
 
-    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    # subprocess.run(cmd, capture_output=True, text=True, check=True)
+    subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        # stderr is not defined, so it "inherits" the terminal
+        check=True,
+    )
     return outputs
 
 
