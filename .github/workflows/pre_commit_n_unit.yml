@@ -25,8 +25,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # These folder names must match your /packages/ directory
-        package: [utils, orchestration, preprocessing, training, dataloaders]
+        # # These folder names must match your /packages/ directory
+        # package: [utils, orchestration, preprocessing, training, dataloaders]
+        include:
+          # Map each package to its corresponding environment file
+          - package: utils
+            env_file: conda_envs/root_dev.yml
+            env_name: root_dev
+          - package: orchestration
+            env_file: conda_envs/root_dev.yml
+            env_name: root_dev
+          - package: preprocessing
+            env_file: conda_envs/preprocessing.yml
+            env_name: preprocessing
+          - package: training
+            env_file: conda_envs/training.yml
+            env_name: training
+          - package: dataloaders
+            env_file: conda_envs/training.yml
+            env_name: training
 
     steps:
       - name: ⬇️ Checkout Repository
@@ -49,8 +66,8 @@ jobs:
           environment-file: packages/${{ matrix.package }}/environment.yml
           environment-name: ${{ matrix.package }}
           cache-environment: true
-          # Cache is invalidated if the Makefile or the package source changes dependencies
-          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.package }}-${{ hashFiles(format('packages/{0}/pyproject.toml', matrix.package), 'Makefile') }}
+          # Cache key is now based on the SPECIFIC env file, not the package folder
+          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
 
       - name: 🛠️ Editable Install
         shell: bash -l {0}
