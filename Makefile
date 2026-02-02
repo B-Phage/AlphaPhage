@@ -96,6 +96,9 @@ setup-training:
 	@echo "=== Installing training package ==="
 	conda run -n $(ENV_TRAINING) pip install -e packages/training
 
+
+
+
 .PHONY: setup-inference
 setup-inference:
 # 	$(call ensure_env,$(ENV_INFERENCE))

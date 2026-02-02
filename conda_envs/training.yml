@@ -1,0 +1,11 @@
+name: training_1
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - h5py
+  - colorlog
+  - scikit-learn
+prefix: /Users/dutoitschabort/miniforge3/envs/training_1
