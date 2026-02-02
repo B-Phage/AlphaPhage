@@ -8,12 +8,14 @@ dependencies:
   # Core Binaries via Conda (Faster/More stable)
   - python=3.10
   - pip
+  - pytest
+  - coverage
+  - pytest-cov
   - pre-commit
   - h5py
   - colorlog
   - scikit-learn
   - numpy
-
   # ML Frameworks via Pip (Better for Lightning compatibility)
   - pip:
       - torch

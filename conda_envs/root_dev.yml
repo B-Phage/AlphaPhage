@@ -5,9 +5,9 @@ channels:
 dependencies:
   - pre-commit
   - pytest
-  - omegaconf
   - coverage
   - pytest-cov
+  - omegaconf
   - tqdm
   - colorlog
   - "dvc[gdrive]"
