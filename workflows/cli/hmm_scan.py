@@ -22,7 +22,7 @@ from hmm.duckdb_io import write_hmm_results_with_sequences
 from hmm.io import load_hmms_from_file, load_single_hmm_per_file, write_hmm_scan_summary
 from hmm.search import run_hmm_search
 from hmm.types import Protein
-from utils.duckdb_client import DuckDBClient
+from storage_io.duckdb_client import DuckDBClient
 
 logger = log.get_logger()
 
@@ -118,7 +118,7 @@ def main_cli():
 
     # Run HMM search
     df_results = run_hmm_search(
-        proteins=proteins_block,
+        proteins=proteins_block,  # pyright: ignore[reportArgumentType]
         hmms=hmms,
         annotations=annotations,
         organism_name=organism_name,

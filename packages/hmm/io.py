@@ -48,11 +48,16 @@ def load_hmms_from_file(hmm_multifile):
     return hmms
 
 
-def split_hmms(hmm_multifile, out_dir):
+def split_hmms(hmm_multifile: Union[str, Path], out_dir: Union[str, Path]) -> None:
     """
-    Load the all HMMs from a single HMM file (hmmer3 format).
-    Example patt: "*.hhm"
-    Then split them into individual files with a "*.hhm" format
+    Load all HMMs from a single HMM file (hmmer3 format) and split them into individual files.
+
+    Parameters
+    ----------
+    hmm_multifile : str | Path
+        Path to the HMM file containing multiple HMMs.
+    out_dir : str | Path
+        Directory where individual HMM files will be written.
     """
     hmms = load_hmms_from_file(hmm_multifile)  # get list of hmms
     os.makedirs(out_dir, exist_ok=True)
@@ -63,9 +68,9 @@ def split_hmms(hmm_multifile, out_dir):
 
         filename_base = None
         if hmm.name:  # name prefered
-            filename_base = hmm.name.decode("utf-8")
+            filename_base = to_str(hmm.name)
         elif hmm.accession:
-            filename_base = hmm.accession.decode("utf-8")
+            filename_base = to_str(hmm.accession)
         else:
             # Fallback if neither name nor accession is present (unlikely for well-formed HMMs)
             filename_base = f"unnamed_hmm_{i}"
@@ -126,3 +131,10 @@ def write_hmm_scan_summary(
             summary[f"{col}_unique_preview"] = f">{max_unique_preview}"
 
     pd.DataFrame([summary]).to_csv(out_csv, index=False)
+
+
+def to_str(value):
+    """Convert bytes to string if needed, else return as-is"""
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return value

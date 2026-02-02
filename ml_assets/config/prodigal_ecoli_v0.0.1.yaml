@@ -9,8 +9,8 @@ prodigal_config:
   genome_dir:       "../databases/production/sequence_data/bacteria"
   output_dir:       "ml_assets/data/processed/bacteria/proteins"
 
-  hmm_multifile:    "Pfam/Pfam-A.hmm"
-  annotations:      "Pfam/Pfam-A.hmm.dat"
+  hmm_multifile:    "../databases/hmm/pfam/v38.0/Pfam-A.hmm"
+  annotations:      "../databases/hmm/pfam/v38.0/Pfam-A.hmm.dat"
   hhm_scan_method:  "cogs"
   sql_tbl_sufix:    ""
   min_bit_score:    50

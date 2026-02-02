@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import duckdb
 import pandas as pd
-from utils.duckdb_client import DuckDBClient
+from storage_io.duckdb_client import DuckDBClient
 
 
 class TestDuckDBClient(unittest.TestCase):
@@ -234,8 +234,8 @@ class TestDuckDBClient(unittest.TestCase):
         self.assertTrue(hasattr(client, "con"))
         self.assertIsInstance(client.con, duckdb.DuckDBPyConnection)
 
-    @patch("utils.duckdb_client.time.sleep", return_value=None)
-    @patch("utils.duckdb_client.duckdb.connect")
+    @patch("storage_io.duckdb_client.time.sleep", return_value=None)
+    @patch("storage_io.duckdb_client.duckdb.connect")
     def test_retry_logic_success_after_lock(self, connect_mock, sleep_mock):
         # Fail twice with lock, then succeed
         connect_mock.side_effect = [
@@ -248,8 +248,8 @@ class TestDuckDBClient(unittest.TestCase):
         self.assertEqual(connect_mock.call_count, 3)
         self.assertEqual(sleep_mock.call_count, 2)
 
-    @patch("utils.duckdb_client.time.sleep", return_value=None)
-    @patch("utils.duckdb_client.duckdb.connect")
+    @patch("storage_io.duckdb_client.time.sleep", return_value=None)
+    @patch("storage_io.duckdb_client.duckdb.connect")
     def test_retry_logic_raises_after_max_attempts(self, connect_mock, sleep_mock):
         # Always raise lock error
         connect_mock.side_effect = duckdb.IOException("database is locked")
@@ -259,8 +259,8 @@ class TestDuckDBClient(unittest.TestCase):
         self.assertEqual(connect_mock.call_count, 10)
         self.assertEqual(sleep_mock.call_count, 9)  # last attempt doesn't sleep
 
-    @patch("utils.duckdb_client.time.sleep", return_value=None)
-    @patch("utils.duckdb_client.duckdb.connect")
+    @patch("storage_io.duckdb_client.time.sleep", return_value=None)
+    @patch("storage_io.duckdb_client.duckdb.connect")
     def test_retry_logic_raises_other_exception_immediately(self, connect_mock, sleep_mock):
         connect_mock.side_effect = duckdb.IOException("some other IO error")
         with self.assertRaises(duckdb.IOException) as cm:

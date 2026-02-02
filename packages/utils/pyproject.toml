@@ -15,6 +15,6 @@ dependencies = []
 
 [tool.setuptools]
 # Add your new filename (without the .py extension) to this list
-py-modules = ["consol_log", "config_loader", "duckdb_client"]
+py-modules = ["consol_log", "config_loader"]
 
 # we use the root level pyproject.toml black and isort

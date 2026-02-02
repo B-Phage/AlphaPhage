@@ -29,7 +29,7 @@ import pandas as pd
 import utils.consol_log as log
 from hmm.search import normalize_name
 from hmm.types import Protein
-from utils.duckdb_client import DuckDBClient
+from storage_io.duckdb_client import DuckDBClient
 
 logger = log.get_logger(level=log.DEBUG)
 

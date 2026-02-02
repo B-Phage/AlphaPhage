@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing hmm setup_workflows #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -102,6 +102,12 @@ setup-setup_workflows:
 	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing worflow setup package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/setup_workflows
+
+.PHONY: setup-storage_io
+setup-storage_io:
+	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing storage input/output package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/storage_io
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:

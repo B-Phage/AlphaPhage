@@ -1,5 +1,3 @@
-from pathlib import Path
-from typing import Union
 from unittest.mock import MagicMock, patch
 
 # Adjust this import to match your project structure
@@ -236,3 +234,12 @@ def test_write_hmm_scan_summary_empty_cols(tmp_path):
     result_df = pd.read_csv(out_file)
     assert list(result_df.columns) == ["n_rows", "n_columns"]
     assert result_df.loc[0, "n_rows"] == 2
+
+
+def test_split_hmms_str_name(tmp_path):
+    hmms = [DummyHMM(name="hmmStr")]  # str instead of bytes
+    with patch("hmm.io.load_hmms_from_file", return_value=hmms):
+        # Should not raise after fix
+        hmm_io.split_hmms("/tmp/fake.hmm", tmp_path)
+        # Assert the file was created correctly
+        assert (tmp_path / "hmmStr.hmm").exists()
