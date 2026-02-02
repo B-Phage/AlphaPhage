@@ -63,8 +63,8 @@ jobs:
         uses: mamba-org/setup-micromamba@v1
         with:
           # Points to the file your Makefile just generated
-          environment-file: packages/${{ matrix.package }}/environment.yml
-          environment-name: ${{ matrix.package }}
+          environment-file: ${{ matrix.env_file }}
+          environment-name: ${{ matrix.env_name }}
           cache-environment: true
           # Cache key is now based on the SPECIFIC env file, not the package folder
           cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
