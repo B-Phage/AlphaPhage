@@ -47,6 +47,7 @@ repo/
 ├── conda_envs/     # Conda environment files
 ├── workflows/
 ├── tests/          # Unit and Integration test
+├── docs/           # Processes, long-form reference, and cross-cutting guides
 ├── dvc.yaml
 └── Makefile # Setup & pipeline commands
 ```
