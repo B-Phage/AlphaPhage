@@ -1,11 +1,29 @@
-name: training_1
+name: training
 channels:
-  - bioconda
+  - pytorch         # Added for official torch binaries
+  - nvidia          # Added for CUDA support
   - conda-forge
+  - bioconda
 dependencies:
+  # Core Binaries via Conda (Faster/More stable)
   - python=3.10
-  - pytorch
+  - pip
   - h5py
   - colorlog
   - scikit-learn
-prefix: /Users/dutoitschabort/miniforge3/envs/training_1
+  - numpy
+
+  # ML Frameworks via Pip (Better for Lightning compatibility)
+  - pip:
+      - torch
+      - torchvision
+      - pytorch-lightning
+      - torchmetrics
+      - hydra-core
+      - mlflow
+      - wandb
+      - tensorboardX
+      - "dvclive[lightning]"
+      - dvc-gdrive
+
+#prefix: /Users/dutoitschabort/miniforge3/envs/training
