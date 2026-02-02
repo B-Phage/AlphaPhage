@@ -54,6 +54,7 @@ stages:
       - workflows/cli/hmm_scan.py
       - ml_assets/data/processed/phage/proteins
       - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - packages/data_contracts/hmm_lake.py
     outs:
       - ml_assets/data/processed/phage/hmm_scan
 

@@ -19,4 +19,4 @@ hmm_config:
   min_bit_score:    50
 
   output_dir:       "ml_assets/data/processed/phage/hmm_scan"
-  duckdb_file:      "../databases/production/duckdb/proteins.duckdb"
+  data_lake:        "ml_assets/data/processed/phage/hmm_scan_lake"

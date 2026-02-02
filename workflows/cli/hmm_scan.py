@@ -13,6 +13,7 @@ This script contains no domain logic.
 #!/usr/bin/env python3
 import argparse
 import os
+from pathlib import Path
 from typing import Iterable, cast
 
 import pyhmmer
@@ -22,7 +23,6 @@ from hmm.duckdb_io import write_hmm_results_with_sequences
 from hmm.io import load_hmms_from_file, load_single_hmm_per_file, write_hmm_scan_summary
 from hmm.search import run_hmm_search
 from hmm.types import Protein
-from storage_io.duckdb_client import DuckDBClient
 
 logger = log.get_logger()
 
@@ -68,15 +68,7 @@ def main_cli():
         dest="out_database",
         required=True,
         type=str,
-        help="DuckDB database file to append results",
-    )
-    parser.add_argument(
-        "-dbt",
-        "--out-db-tbl-suffix",
-        dest="out_db_tbl_suffix",
-        default="",
-        type=str,
-        help="Optional suffix for SQL table name. Use if you do not want to write to the default table",
+        help="Parquet lake to add organism results to",
     )
     parser.add_argument(
         "-ec",
@@ -136,15 +128,11 @@ def main_cli():
 
     # Write everything to DuckDB
     if args.out_database:
-        sql_table_name = f"hmm_{args.method}_annotations{args.out_db_tbl_suffix}"
-        logger.info(f"Writing HMM hits to table {sql_table_name} in {args.out_database}")
-
-        db = DuckDBClient(args.out_database)
         write_hmm_results_with_sequences(
             df_results,
             proteins,
-            db,
-            sql_table_name,
+            organism_name,
+            Path(args.out_database),
         )
 
 

@@ -15,7 +15,7 @@ PIPELINE_PATH = Path("workflows/orchestrator/run_hmm_scan_pipeline.py")
 
 
 def write_test_config(
-    tmp_path, proteins_dir, results_dir, duckdb_file, lst_genomes, min_bit_score=25.0
+    tmp_path, proteins_dir, results_dir, data_lake, lst_genomes, min_bit_score=25.0
 ):
     """
     Write a minimal valid YAML config that matches what the pipeline expects.
@@ -33,7 +33,7 @@ prodigal_config:
 
 hmm_config:
   output_dir: "{results_dir}"
-  duckdb_file: "{duckdb_file}"
+  data_lake: "{data_lake}"
   hmm_multifile: "tests/fixtures/phrog_126.hmm"
   annotations: "tests/fixtures/phrog_annot_test.tsv"
   hmm_scan_method: "phrogs"
@@ -82,7 +82,7 @@ def test_hmm_pipeline_runs_and_creates_outputs(tmp_path):
     """
     proteins_path = Path("tests/fixtures")
     results = tmp_path / "results"
-    duckdb = tmp_path / "hmm.duckdb"
+    duckdb = tmp_path / "data_lake"
     lst_genomes = ["phrog_126", "DUF1244"]
 
     # Write YAML config
@@ -109,7 +109,7 @@ def test_pipeline_skips_unchanged_inputs(tmp_path):
     """
     proteins_path = Path("tests/fixtures").resolve()
     results = tmp_path / "results"
-    duckdb = tmp_path / "hmm.duckdb"
+    duckdb = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
 
     config_path = write_test_config(tmp_path, proteins_path, results, duckdb, lst_genomes)
@@ -135,7 +135,7 @@ def test_new_protein_triggers_partial_rerun(tmp_path):
     """
     proteins_path = tmp_path / "proteins"
     results = tmp_path / "results"
-    duckdb = tmp_path / "hmm.duckdb"
+    duckdb = tmp_path / "data_lake"
     proteins_path.mkdir()
 
     # Copy small real protein files from fixtures
@@ -167,7 +167,7 @@ def test_config_change_forces_rerun(tmp_path):
     """
     proteins_path = Path("tests/fixtures")
     results = tmp_path / "results"
-    duckdb = tmp_path / "hmm.duckdb"
+    duckdb = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
 
     # Initial run

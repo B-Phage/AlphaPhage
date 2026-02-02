@@ -27,99 +27,23 @@ from typing import Any, Iterable
 
 import pandas as pd
 import utils.consol_log as log
+from data_contracts.hmm_lake import (
+    HMM_LAKE_PRIMARY_KEYS,
+    HMM_LAKE_SCHEMA,
+)
 from hmm.search import normalize_name
 from hmm.types import Protein
 from storage_io.duckdb_client import DuckDBClient
+from storage_io.parquet_lake import enforce_schema, write_parquet_partition
 
 logger = log.get_logger(level=log.DEBUG)
-
-
-def assert_duckdb_safe(df: pd.DataFrame, numeric_cols: list[str] | None = None) -> None:
-    """
-    Assert that a DataFrame is safe for DuckDB insertion:
-      - Object columns contain only str or None
-      - Numeric columns (explicitly listed) contain only int, float, or None
-    """
-    numeric_cols = numeric_cols or []
-
-    for col in df.columns:
-        series = df[col]
-        if col in numeric_cols:
-            for i, val in enumerate(series):
-                if val is not None and not isinstance(val, (int, float)):
-                    raise TypeError(f"Column {col} contains non-numeric values after conversion!")
-        elif series.dtype == "O":
-            if not series.map(lambda x: isinstance(x, str) or x is None).all():
-                raise TypeError(f"Column {col} contains non-str values after conversion!")
-
-
-def duckdb_force_string(x: Any) -> str | None:
-    """
-    Force a value to a Python string, returning None for missing/NA.
-    """
-    if x is None or pd.isna(x) or (isinstance(x, float) and math.isnan(x)):
-        return None
-    if isinstance(x, bytes):
-        return x.decode("utf-8")
-    if isinstance(x, bytearray):
-        return bytes(x).decode("utf-8")
-    if isinstance(x, memoryview):
-        return x.tobytes().decode("utf-8")
-    return str(x)
-
-
-def duckdb_safe_numeric(series: pd.Series) -> pd.Series:
-    """
-    Convert a pandas Series to a numeric type safe for DuckDB:
-      - Keep ints/floats
-      - Convert invalid entries to None
-    """
-    # coerce invalid entries to NaN
-    numeric_series = pd.to_numeric(series, errors="coerce")
-    # replace NaN with None for DuckDB
-    return numeric_series  # keep dtype numeric
-
-
-def duckdb_prepare_dataframe(
-    df: pd.DataFrame, string_cols: list[str] | None = None, num_cols: list[str] | None = None
-) -> pd.DataFrame:
-    """
-    Make a dataframe fully safe for DuckDB insertion.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Original dataframe
-    string_cols : list[str] | None
-        Columns to forcibly convert to strings.
-    num_cols : list[str] | None
-        Columns to forcibly convert to numbers.
-
-    Returns
-    -------
-    pd.DataFrame
-        A copy of the dataframe safe for DuckDB
-    """
-    df_safe = df.copy()
-
-    # # force string columns first
-    if string_cols:
-        for col in string_cols:
-            df_safe[col] = df_safe[col].map(duckdb_force_string).astype("string")
-
-    # Then fix numeric columns
-    if num_cols:
-        for col in num_cols:
-            df_safe[col] = duckdb_safe_numeric(df_safe[col])
-
-    return df_safe
 
 
 def write_hmm_results_with_sequences(
     hmm_scan_df: pd.DataFrame,
     protein_py_easel_obj: Iterable[Protein],
-    db: DuckDBClient,
-    sql_table_name: str,
+    organism_name: str,
+    out_root: Path,
 ):
     """
     Write HMM scan results and associated protein sequences to a DuckDB table.
@@ -160,20 +84,15 @@ def write_hmm_results_with_sequences(
         `pyhmmer.easel.SequenceFile.read_block()`), providing protein names and
         amino acid sequences.
 
-    db_path : str
-        Path to the DuckDB database file.
+    organism_name : str
+        Name of the organism (usually the fasta name) to write to the data lake.
 
-    sql_table_name : str
-        Name of the DuckDB table to create or append to.
+    out_root : Path
+        Data Lake's root path.
 
     Returns
     -------
     None
-
-    Side Effects
-    ------------
-    - Creates a DuckDB table if it does not already exist.
-    - Inserts or upserts rows into the specified table.
 
     Notes
     -----
@@ -183,51 +102,13 @@ def write_hmm_results_with_sequences(
     such as multiple sequence alignment (MSA).
     """
     if hmm_scan_df.empty:
-        # No hits: just exit
-        logger.warning(f"No HMM hits to insert")
+        logger.warning(f"No HMM hits to insert for {organism_name}")
         return
+    else:
+        df_for_sql = hmm_scan_df.copy()
 
-    col_from_hmm_scan = [
-        "protein_name",
-        "organism_name",
-        "hmm_domain_name",
-        "annot",
-        "evalue",
-        "score",
-        "bias",
-        "length",
-        "top_hmm_domain_hit_on_prot",
-        "top_protein_match_for_hmm",
-        "best_dom_env_start",
-        "best_dom_env_end",
-        "best_dom_env_length",
-    ]
-    # Plus columns from protein file; ['sequence']
-
-    if not db.table_exists(sql_table_name):
-        logger.warning(f"Creating {sql_table_name}")
-        db.con.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {sql_table_name} (
-                protein_name VARCHAR,
-                organism_name VARCHAR,
-                hmm_domain_name VARCHAR,
-                annot VARCHAR,
-                evalue FLOAT,
-                score FLOAT,
-                bias FLOAT,
-                length INTEGER,
-                top_hmm_domain_hit_on_prot INTEGER,
-                top_protein_match_for_hmm INTEGER,
-                best_dom_env_start INTEGER,
-                best_dom_env_end INTEGER,
-                best_dom_env_length INTEGER,
-                sequence VARCHAR,
-                PRIMARY KEY (protein_name, organism_name, hmm_domain_name)
-            )
-            """
-        )
-    df_for_sql = hmm_scan_df[col_from_hmm_scan]
+    out_path = out_root / f"organism={organism_name}" / "proteins.parquet"
+    logger.info(f"Writing HMM hits to data lake '{out_path}'")
 
     query_prot = []
     protein_sequence = []
@@ -240,35 +121,13 @@ def write_hmm_results_with_sequences(
     # Create the DataFrame
     data = {"protein_name": query_prot, "sequence": protein_sequence}
     seq_df = pd.DataFrame(data)
-    organism_name_value = df_for_sql["organism_name"].iloc[0]
-    seq_df["organism_name"] = organism_name_value
+    seq_df["organism_name"] = organism_name
     df_for_sql = pd.merge(df_for_sql, seq_df, how="outer", on=["protein_name", "organism_name"])
     df_for_sql["hmm_domain_name"] = df_for_sql["hmm_domain_name"].fillna("-")
 
-    # Force *pure Python object strings*, not pandas StringDtype
-    # and normalise object-dtype columns to avoid DuckDB / pandas incompatibilities
-    STRING_COLUMNS = ["protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"]
-    NUMERIC_COLUMNS = [
-        "evalue",
-        "score",
-        "bias",
-        "length",
-        "top_hmm_domain_hit_on_prot",
-        "top_protein_match_for_hmm",
-        "best_dom_env_start",
-        "best_dom_env_end",
-        "best_dom_env_length",
-    ]
-    df_for_sql = duckdb_prepare_dataframe(
-        df_for_sql, string_cols=STRING_COLUMNS, num_cols=NUMERIC_COLUMNS
-    )
-    assert_duckdb_safe(df_for_sql, numeric_cols=NUMERIC_COLUMNS)
-
-    db.insert_dataframe(
-        sql_table_name,
-        df_for_sql,
-        primary_keys=["protein_name", "organism_name", "hmm_domain_name"],
-    )
+    # final checks
+    df_for_sql = enforce_schema(df_for_sql, HMM_LAKE_SCHEMA)
+    write_parquet_partition(df_for_sql, out_path, HMM_LAKE_PRIMARY_KEYS)
 
 
 def read_hmm_list(

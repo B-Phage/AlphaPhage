@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Run HMM scan on a set of protein files using a specified YAML configuration.
-Tracks per-file outputs in DuckDB and summary CSVs.
+Tracks per-file outputs in a parquet data lake and summary CSVs.
 """
 
 import argparse
@@ -11,7 +11,6 @@ import sys
 from functools import partial
 from pathlib import Path
 
-import pandas as pd
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config  # YAML loader
 
@@ -26,7 +25,7 @@ def run_hmm_worker(
     hmm: str,
     annotations: str,
     method: str,
-    duckdb_path: Path,
+    data_lake: Path,
 ):
     summary_csv = outputs[0]
     summary_csv.parent.mkdir(exist_ok=True, parents=True)
@@ -45,7 +44,7 @@ def run_hmm_worker(
         "-o",
         summary_csv,
         "-db",
-        duckdb_path,
+        data_lake,
     ]
 
     # subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -94,7 +93,7 @@ def main(argv: list[str] | None = None) -> None:
     protein_dir = Path(prot_cfg.output_dir)
     result_dir = Path(hmm_cfg.output_dir)
     result_dir.mkdir(exist_ok=True, parents=True)
-    duckdb_path = Path(hmm_cfg.duckdb_file)
+    data_lake = Path(hmm_cfg.data_lake)
     hash_store_dir = Path("ml_assets/data/workflow/hashes")
 
     # -----------------------------
@@ -113,7 +112,7 @@ def main(argv: list[str] | None = None) -> None:
         hmm=hmm_cfg.hmm_multifile,
         annotations=hmm_cfg.annotations,
         method=hmm_cfg.hmm_scan_method,
-        duckdb_path=duckdb_path,
+        data_lake=data_lake,
     )
 
     output_fn = partial(hmm_output_func, result_dir=result_dir)
