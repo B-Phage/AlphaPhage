@@ -50,10 +50,10 @@ jobs:
         uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      - name: 🔥 Heavy Duty Disk Cleanup
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          docker system prune -af
+      # - name: 🔥 Heavy Duty Disk Cleanup
+      #   run: |
+      #     sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+      #     docker system prune -af
 
       # - name: 🏗️ Generate Environment Files (via Makefile)
       #   run: |
@@ -75,20 +75,37 @@ jobs:
           # Ensure the package is linked to the newly created env
           pip install -e ./packages/${{ matrix.package }}
 
-      - name: 🧪 Run Unit Tests
-        shell: bash -l {0}
-        run: |
-          # Assumes tests are organized by package name
-          pytest tests/unit/test_${{ matrix.package }}.py \
-            --cov=packages/${{ matrix.package }} \
-            --cov-report=xml:coverage.xml
 
-      - name: ⬆️ Upload Coverage Artifact
+      # - name: 🧪 Run Unit Tests
+      #   shell: bash -l {0}
+      #   run: |
+      #     # Assumes tests are organized by package name
+      #     pytest tests/unit/test_${{ matrix.package }}.py \
+      #       --cov=packages/${{ matrix.package }} \
+      #       --cov-report=xml:coverage.xml
+
+      # - name: ⬆️ Upload Coverage Artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-${{ matrix.package }}
+      #     path: coverage.xml
+
+      - name: 🧪 Run Unit Tests
+        run: |
+          PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
+          coverage json -o coverage.json
+
+      - name: ⬆️ Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.package }}
-          path: coverage.xml
+          name: html-coverage-report
+          path: htmlcov/
 
+      - name: 💯 Extract total coverage
+        id: extract
+        run: |
+          COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "coverage=$COV" >> $GITHUB_OUTPUT
 
       # ############
       # - name: ⬆️ Upload Coverage Report
