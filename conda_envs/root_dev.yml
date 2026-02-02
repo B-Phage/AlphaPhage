@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - pre_commit
+  - pre-commit
   - pytest
   - omegaconf
   - coverage

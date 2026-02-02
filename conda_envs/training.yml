@@ -8,6 +8,7 @@ dependencies:
   # Core Binaries via Conda (Faster/More stable)
   - python=3.10
   - pip
+  - pre-commit
   - h5py
   - colorlog
   - scikit-learn
