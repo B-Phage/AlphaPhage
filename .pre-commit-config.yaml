@@ -32,6 +32,7 @@ repos:
     rev: v1.18.2 # Use the latest stable release
     hooks:
       - id: mypy                # Checks for errors related to Python type hints
+        additional_dependencies: [types-PyYAML]
 
   # 4. Security Check
   - repo: https://github.com/Yelp/detect-secrets

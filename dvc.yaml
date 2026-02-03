@@ -56,7 +56,22 @@ stages:
       - ml_assets/config/prodigal_phage_v0.0.1.yaml
       - packages/data_contracts/hmm_lake.py
     outs:
-      - ml_assets/data/processed/phage/hmm_scan
+      - ml_assets/data/processed/phage/hmm_scan_lake
+
+  build_phage_hmm_summary:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      python -u workflows/hmm_parquet_to_summary_tbl.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml
+      --fingerprint ml_assets/data/artifacts/hmm_phrog_summary.fingerprint'
+    deps:
+      - workflows/hmm_parquet_to_summary_tbl.py
+      - packages/data_contracts/hmm_lake.py
+      - packages/hmm/duckdb_io.py
+      - ml_assets/data/processed/phage/hmm_scan_lake        # parquet-producing stage output
+    outs:
+      - ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
 
 # Hashing the next stages out for now
 # will bring them in systematically as the code is implemented

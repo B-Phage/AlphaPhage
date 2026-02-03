@@ -1,9 +1,19 @@
+import hashlib
 from pathlib import Path
 
+import duckdb
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from data_contracts.hmm_lake import HMM_LAKE_PRIMARY_KEYS, HMM_LAKE_SCHEMA
-from hmm.duckdb_io import write_hmm_results_with_sequences
+from hmm.duckdb_io import (
+    build_hmm_summary_table,
+    fingerprint_hmm_table,
+    hash_file,
+    hash_lake,
+    write_hmm_results_with_sequences,
+)
 
 
 @pytest.fixture
@@ -126,3 +136,418 @@ def test_write_hmm_empty_proteins(tmp_path, hmm_df):
     assert set(df["protein_name"]) == {"prot1", "prot2"}
     # Sequence column should exist and be NaN
     assert df["sequence"].isna().all()
+
+
+@pytest.fixture
+def sample_hmm_df():
+    """Return a small HMM DataFrame for testing."""
+    data = {
+        "protein_name": ["prot1", "prot2", "prot3", "prot4"],
+        "organism_name": ["E_coli"] * 4,
+        "hmm_domain_name": ["hmm1", "hmm2", "hmm3", "hmm4"],
+        "annot": ["a"] * 4,
+        "evalue": [0.01, 0.02, 0.03, 0.04],
+        "score": [50, 10, 30, 0],
+        "bias": [0.0] * 4,
+        "length": [100] * 4,
+        "top_hmm_domain_hit_on_prot": [1, 0, 0, 0],
+        "top_protein_match_for_hmm": [1, 0, 1, 0],
+        "best_dom_env_start": [1] * 4,
+        "best_dom_env_end": [50] * 4,
+        "best_dom_env_length": [50] * 4,
+        "sequence": ["MKT"] * 4,
+    }
+    return pd.DataFrame(data)
+
+
+# -------------------------------
+# Tests for hash_file
+# -------------------------------
+
+
+def test_hash_file_single_file(tmp_path: Path):
+    # create a temporary file
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("hello world")
+
+    expected = hashlib.sha256(b"hello world").hexdigest()
+    assert hash_file(file_path) == expected
+
+
+def test_hash_file_empty_file(tmp_path: Path):
+    file_path = tmp_path / "empty.txt"
+    file_path.touch()  # empty file
+
+    expected = hashlib.sha256(b"").hexdigest()
+    assert hash_file(file_path) == expected
+
+
+def test_hash_file_changes(tmp_path: Path):
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("foo")
+    hash1 = hash_file(file_path)
+
+    file_path.write_text("bar")
+    hash2 = hash_file(file_path)
+
+    assert hash1 != hash2
+
+
+# -------------------------------
+# Tests for hash_lake
+# -------------------------------
+
+
+def create_parquet_file(path: Path, df) -> None:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    table = pa.Table.from_pandas(df)
+    pq.write_table(table, path)
+
+
+def test_hash_lake_single_file(tmp_path: Path):
+    import pandas as pd
+
+    df = pd.DataFrame({"col": [1, 2, 3]})
+    file_path = tmp_path / "file.parquet"
+    create_parquet_file(file_path, df)
+
+    # hash_lake should equal hash_file for single parquet
+    expected = hash_file(file_path)
+    assert hash_lake(tmp_path) == hashlib.sha256(expected.encode()).hexdigest()
+
+
+def test_hash_lake_multiple_files_order(tmp_path: Path):
+    import pandas as pd
+
+    # two files
+    df1 = pd.DataFrame({"a": [1]})
+    df2 = pd.DataFrame({"a": [2]})
+
+    f1 = tmp_path / "b.parquet"
+    f2 = tmp_path / "a.parquet"
+
+    create_parquet_file(f1, df1)
+    create_parquet_file(f2, df2)
+
+    # sorted by filename
+    expected_ordered = [hash_file(f2), hash_file(f1)]
+    expected_hash = hashlib.sha256("".join(expected_ordered).encode()).hexdigest()
+
+    assert hash_lake(tmp_path) == expected_hash
+
+
+def test_hash_lake_empty_dir(tmp_path: Path):
+    # should return hash of empty string
+    expected = hashlib.sha256("".encode()).hexdigest()
+    assert hash_lake(tmp_path) == expected
+
+
+# -------------------------------
+# Tests for fingerprint_hmm_table
+# -------------------------------
+
+
+def test_fingerprint_hmm_table_basic():
+    con = duckdb.connect(":memory:")
+    con.execute(
+        """
+        CREATE TABLE hmm_summary (
+            protein_name VARCHAR,
+            organism_name VARCHAR,
+            hmm_domain_name VARCHAR,
+            sequence VARCHAR
+        )
+    """
+    )
+    con.execute(
+        """
+        INSERT INTO hmm_summary VALUES
+        ('p1','org1','hmm1','AAAA'),
+        ('p2','org2','hmm2','BBBB')
+    """
+    )
+
+    hash1 = fingerprint_hmm_table(con, "hmm_summary")
+    hash2 = fingerprint_hmm_table(con, "hmm_summary")
+
+    assert isinstance(hash1, str)
+    assert len(hash1) == 64
+    # deterministic
+    assert hash1 == hash2
+
+    con.close()
+
+
+def test_fingerprint_hmm_table_empty_table():
+    con = duckdb.connect(":memory:")
+    con.execute(
+        """
+        CREATE TABLE hmm_summary (
+            protein_name VARCHAR,
+            organism_name VARCHAR,
+            hmm_domain_name VARCHAR,
+            sequence VARCHAR
+        )
+    """
+    )
+
+    hash_empty = fingerprint_hmm_table(con, "hmm_summary")
+    assert hash_empty == "0" * 64
+
+    con.close()
+
+
+def test_fingerprint_hmm_table_changes():
+    con = duckdb.connect(":memory:")
+    con.execute(
+        """
+        CREATE TABLE hmm_summary (
+            protein_name VARCHAR,
+            organism_name VARCHAR,
+            hmm_domain_name VARCHAR,
+            sequence VARCHAR
+        )
+    """
+    )
+
+    con.execute("INSERT INTO hmm_summary VALUES ('p1','org1','hmm1','AAAA')")
+    hash1 = fingerprint_hmm_table(con, "hmm_summary")
+
+    con.execute("INSERT INTO hmm_summary VALUES ('p2','org2','hmm2','BBBB')")
+    hash2 = fingerprint_hmm_table(con, "hmm_summary")
+
+    assert hash1 != hash2
+    con.close()
+
+
+# -------------------------------
+# Helper to create parquet file
+# -------------------------------
+def write_parquet(df: pd.DataFrame, path: Path):
+    table = pa.Table.from_pandas(df)
+    pq.write_table(table, path)
+
+
+# -------------------------------
+# Test: basic filtering
+# -------------------------------
+def test_build_hmm_summary_table_basic(tmp_path: Path):
+    # Create a fake lake directory structure
+    lake_root = tmp_path / "lake"
+    (lake_root / "organism=Bacteria1").mkdir(parents=True)
+
+    df = pd.DataFrame(
+        {
+            "protein_name": ["p1", "p2", "p3", "p4"],
+            "organism_name": ["Bacteria1"] * 4,
+            "hmm_domain_name": ["hmm1", "hmm2", "hmm3", "hmm4"],
+            "annot": ["a1", "a2", "a3", "a4"],
+            "evalue": [0.01] * 4,
+            "score": [10, 5, 20, 1],
+            "bias": [0.1] * 4,
+            "length": [100] * 4,
+            "top_hmm_domain_hit_on_prot": [1, 0, 0, 0],
+            "top_protein_match_for_hmm": [1, 1, 1, 0],
+            "best_dom_env_start": [1] * 4,
+            "best_dom_env_end": [50] * 4,
+            "best_dom_env_length": [50] * 4,
+            "sequence": ["AAAA", "BBBB", "CCCC", "DDDD"],
+        }
+    )
+
+    parquet_path = lake_root / "organism=Bacteria1" / "proteins.parquet"
+    write_parquet(df, parquet_path)
+
+    db_path = tmp_path / "summary.duckdb"
+    table_name = "hmm_summary"
+    min_score = 6
+
+    # Build the summary table
+    build_hmm_summary_table(
+        db_path=db_path, lake_root=lake_root, table_name=table_name, min_score=min_score
+    )
+
+    # Connect to DuckDB and check results
+    con = duckdb.connect(str(db_path))
+    result = con.execute(
+        f"SELECT protein_name, hmm_domain_name FROM {table_name} ORDER BY protein_name"
+    ).fetchall()
+    con.close()
+
+    # Expected: only rows satisfying:
+    # top_protein_match_for_hmm=1 AND (top_hmm_domain_hit_on_prot=1 OR score>6)
+    # Check each row:
+    expected = [
+        ("p1", "hmm1"),  # top_hmm_domain_hit_on_prot=1
+        ("p3", "hmm3"),  # score=20 > 6
+    ]
+    assert result == expected
+
+
+# -------------------------------
+# Test: empty parquet file produces empty summary
+# -------------------------------
+def test_build_hmm_summary_table_empty(tmp_path: Path):
+    lake_root = tmp_path / "lake"
+    (lake_root / "organism=Bacteria1").mkdir(parents=True)
+
+    df = pd.DataFrame(
+        columns=[
+            "protein_name",
+            "organism_name",
+            "hmm_domain_name",
+            "annot",
+            "evalue",
+            "score",
+            "bias",
+            "length",
+            "top_hmm_domain_hit_on_prot",
+            "top_protein_match_for_hmm",
+            "best_dom_env_start",
+            "best_dom_env_end",
+            "best_dom_env_length",
+            "sequence",
+        ]
+    )
+    parquet_path = lake_root / "organism=Bacteria1" / "proteins.parquet"
+    write_parquet(df, parquet_path)
+
+    db_path = tmp_path / "summary.duckdb"
+    table_name = "hmm_summary"
+    min_score = 5
+
+    build_hmm_summary_table(
+        db_path=db_path, lake_root=lake_root, table_name=table_name, min_score=min_score
+    )
+
+    con = duckdb.connect(str(db_path))
+    count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+    con.close()
+
+    assert count == 0
+
+
+# -------------------------------
+# Test: incremental rebuild adds new rows
+# -------------------------------
+def test_build_hmm_summary_table_incremental(tmp_path: Path):
+    lake_root = tmp_path / "lake"
+    (lake_root / "organism=Bacteria1").mkdir(parents=True)
+
+    # First parquet file
+    df1 = pd.DataFrame(
+        {
+            "protein_name": ["p1"],
+            "organism_name": ["Bacteria1"],
+            "hmm_domain_name": ["hmm1"],
+            "annot": ["a1"],
+            "evalue": [0.01],
+            "score": [10],
+            "bias": [0.1],
+            "length": [100],
+            "top_hmm_domain_hit_on_prot": [1],
+            "top_protein_match_for_hmm": [1],
+            "best_dom_env_start": [1],
+            "best_dom_env_end": [50],
+            "best_dom_env_length": [50],
+            "sequence": ["AAAA"],
+        }
+    )
+    parquet_path1 = lake_root / "organism=Bacteria1" / "proteins.parquet"
+    write_parquet(df1, parquet_path1)
+
+    db_path = tmp_path / "summary.duckdb"
+    table_name = "hmm_summary"
+    min_score = 5
+
+    build_hmm_summary_table(
+        db_path=db_path, lake_root=lake_root, table_name=table_name, min_score=min_score
+    )
+
+    # Add another parquet file for incremental update
+    (lake_root / "organism=Bacteria2").mkdir(parents=True)
+    df2 = pd.DataFrame(
+        {
+            "protein_name": ["p2"],
+            "organism_name": ["Bacteria2"],
+            "hmm_domain_name": ["hmm2"],
+            "annot": ["a2"],
+            "evalue": [0.01],
+            "score": [10],
+            "bias": [0.1],
+            "length": [100],
+            "top_hmm_domain_hit_on_prot": [0],
+            "top_protein_match_for_hmm": [1],
+            "best_dom_env_start": [1],
+            "best_dom_env_end": [50],
+            "best_dom_env_length": [50],
+            "sequence": ["BBBB"],
+        }
+    )
+    parquet_path2 = lake_root / "organism=Bacteria2" / "proteins.parquet"
+    write_parquet(df2, parquet_path2)
+
+    build_hmm_summary_table(
+        db_path=db_path, lake_root=lake_root, table_name=table_name, min_score=min_score
+    )
+
+    con = duckdb.connect(str(db_path))
+    result = con.execute(
+        f"SELECT protein_name, organism_name FROM {table_name} ORDER BY protein_name"
+    ).fetchall()
+    con.close()
+
+    expected = [("p1", "Bacteria1"), ("p2", "Bacteria2")]
+    assert result == expected
+
+
+# -------------------------------
+# Test: filtering by score works correctly
+# -------------------------------
+def test_build_hmm_summary_table_score_filter(tmp_path: Path):
+    lake_root = tmp_path / "lake"
+    (lake_root / "organism=Bacteria1").mkdir(parents=True)
+
+    df = pd.DataFrame(
+        {
+            "protein_name": ["p1", "p2", "p3"],
+            "organism_name": ["Bacteria1"] * 3,
+            "hmm_domain_name": ["hmm1", "hmm2", "hmm3"],
+            "annot": ["a1", "a2", "a3"],
+            "evalue": [0.01] * 3,
+            "score": [3, 7, 10],
+            "bias": [0.1] * 3,
+            "length": [100] * 3,
+            "top_hmm_domain_hit_on_prot": [0, 0, 0],
+            "top_protein_match_for_hmm": [1, 1, 1],
+            "best_dom_env_start": [1] * 3,
+            "best_dom_env_end": [50] * 3,
+            "best_dom_env_length": [50] * 3,
+            "sequence": ["AAA", "BBB", "CCC"],
+        }
+    )
+
+    parquet_path = lake_root / "organism=Bacteria1" / "proteins.parquet"
+    write_parquet(df, parquet_path)
+
+    db_path = tmp_path / "summary.duckdb"
+    table_name = "hmm_summary"
+
+    build_hmm_summary_table(
+        db_path=db_path, lake_root=lake_root, table_name=table_name, min_score=6
+    )
+
+    con = duckdb.connect(str(db_path))
+    result = con.execute(
+        f"SELECT protein_name, annot FROM {table_name} ORDER BY protein_name"
+    ).fetchall()
+    con.close()
+
+    # Only proteins with score > min_score (6) included
+    expected = [("p2", "a2"), ("p3", "a3")]
+    # Compare only protein names (DuckDB auto-converts types)
+    result_names = [r[0] for r in result]
+    expected_names = [r[0] for r in expected]
+    assert result_names == expected_names

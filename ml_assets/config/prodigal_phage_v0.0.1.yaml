@@ -20,3 +20,5 @@ hmm_config:
 
   output_dir:       "ml_assets/data/processed/phage/hmm_scan"
   data_lake:        "ml_assets/data/processed/phage/hmm_scan_lake"
+  duckdb:           "../databases/production/duckdb/proteins.duckdb"
+  summary_tbl:      "hmm_phrog_summary"

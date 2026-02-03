@@ -21,10 +21,12 @@ already been performed and that input data is provided in tabular
 (pandas DataFrame) and pyhmmer easel formats.
 """
 
+import hashlib
 import math
 from pathlib import Path
 from typing import Any, Iterable
 
+import duckdb
 import pandas as pd
 import utils.consol_log as log
 from data_contracts.hmm_lake import (
@@ -37,6 +39,43 @@ from storage_io.duckdb_client import DuckDBClient
 from storage_io.parquet_lake import enforce_schema, write_parquet_partition
 
 logger = log.get_logger(level=log.DEBUG)
+
+
+def hash_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(1024 * 1024):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def hash_lake(lake_root: Path) -> str:
+    """Hash all parquet files deterministically."""
+    hashes = []
+    for p in sorted(lake_root.rglob("*.parquet")):
+        hashes.append(hash_file(p))
+    return hashlib.sha256("".join(hashes).encode()).hexdigest()
+
+
+def fingerprint_hmm_table(con: duckdb.DuckDBPyConnection, table: str) -> str:
+    """Get a deterministic fingerprint of the table contents."""
+
+    row = con.execute(
+        f"""
+        SELECT sha256(string_agg(
+            protein_name || organism_name || hmm_domain_name || sequence,
+            ''
+            ORDER BY protein_name, organism_name, hmm_domain_name
+        ))
+        FROM {table};
+    """
+    ).fetchone()
+
+    # row could be None or row[0] could be None if table is empty
+    if row is None or row[0] is None:
+        return "0" * 64  # or some sentinel hash for empty table
+
+    return row[0]
 
 
 def write_hmm_results_with_sequences(
@@ -130,16 +169,61 @@ def write_hmm_results_with_sequences(
     write_parquet_partition(df_for_sql, out_path, HMM_LAKE_PRIMARY_KEYS)
 
 
-def read_hmm_list(
-    db: DuckDBClient,
-    db_table_name: str,
-    min_bit_score: float = 0,  # the score is always > 0, so default to no score filter
-):
+def build_hmm_summary_table(
+    db_path: Path,
+    lake_root: Path,
+    table_name: str,
+    min_score: float,
+) -> None:
     """
-    TODO: Get the list of unique/distinct HMM annotations in the table where the min_bit_score is
-    greater than the given value or the HMM is the best hit for a given protein.
+    Create or refresh a DuckDB summary table from the parquet HMM lake.
+
+    The table contains only proteins that:
+        - are the top protein match for an HMM
+        - and either the top domain hit on the protein OR score > min_score
+
+    The table is safe to rebuild as the lake grows.
     """
-    raise NotImplementedError
+
+    con = duckdb.connect(str(db_path))
+
+    parquet_glob = str(lake_root / "organism=*" / "proteins.parquet")
+
+    # Create table if not exists
+    con.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            protein_name VARCHAR,
+            organism_name VARCHAR,
+            hmm_domain_name VARCHAR,
+            annot VARCHAR,
+            sequence VARCHAR,
+            PRIMARY KEY (protein_name, organism_name, hmm_domain_name)
+        );
+    """
+    )
+
+    # Insert new rows from the lake, respecting the PK
+    con.execute(
+        f"""
+        INSERT OR REPLACE INTO {table_name}
+        SELECT
+            protein_name,
+            organism_name,
+            hmm_domain_name,
+            annot,
+            sequence
+        FROM read_parquet('{parquet_glob}', hive_partitioning=1)
+        WHERE
+            top_protein_match_for_hmm = 1
+            AND (
+                top_hmm_domain_hit_on_prot = 1
+                OR score > {min_score}
+            );
+    """
+    )
+
+    con.close()
 
 
 def extract_hmm_sequences_for_msa(
