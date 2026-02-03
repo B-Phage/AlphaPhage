@@ -25,15 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # # These folder names must match your /packages/ directory
         # package: [utils, orchestration, preprocessing, training, dataloaders]
         include:
-          ## No unit test for orchestration package for now
+          ## (PLACEHOLDER) No unit test for orchestration package for now
           # - env_name: root_dev
           #   env_file: conda_envs/root_dev.yml
           #   packages: "utils orchestration"
 
-          ## No unit test for preprocessing package for now
+          ## (PLACEHOLDER) No unit test for preprocessing package for now
           # - env_name: preprocessing
           #   env_file: conda_envs/preprocessing.yml
           #   packages: "preprocessing"
@@ -46,15 +45,6 @@ jobs:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-
-      # - name: 🔥 Heavy Duty Disk Cleanup
-      #   run: |
-      #     sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-      #     docker system prune -af
-
-      # - name: 🏗️ Generate Environment Files (via Makefile)
-      #   run: |
-      #     make setup-all
 
       - name: 🐍 Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
@@ -87,24 +77,6 @@ jobs:
               --cov-report=term
           done
 
-      # - name: ⬆️ Upload Coverage Artifacts
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #   # This uploads all htmlcov folders created in this job
-      #     name: html-coverage-${{ matrix.env_name }}
-      #     path: htmlcov-*
-
-      # # - name: ⬆️ Upload Coverage Report
-      # #   uses: actions/upload-artifact@v4
-      # #   with:
-      # #     name: html-coverage-report
-      # #     path: htmlcov/
-
-      # - name: 💯 Extract total coverage
-      #   id: extract
-      #   run: |
-      #     COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-      #     echo "coverage=$COV" >> $GITHUB_OUTPUT
 
       - name: ⬆️ Upload Coverage Artifacts
         uses: actions/upload-artifact@v4
@@ -112,9 +84,6 @@ jobs:
           # This correctly uses the wildcard * to find all package folders
           name: html-coverage-${{ matrix.env_name }}
           path: htmlcov-*
-
-      # REMOVE the "Upload Coverage Report" step that was looking for htmlcov/
-      # It is redundant now that you have the step above.
 
       - name: 💯 Extract total coverage
         id: extract
