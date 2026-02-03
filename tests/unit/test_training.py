@@ -354,17 +354,6 @@ class TestTransformerX(unittest.TestCase):
         dm.setup(stage="test")
         self.assertTrue(hasattr(dm, "test_dataset"))
 
-    # def test_train_main_entrypoint(self):
-    #     """Forces coverage of the 'if __name__ == "__main__"' block at the bottom
-    #     of train.py.
-    #     Note: clutters the printouts.
-    #     """
-    #     import runpy
-
-    #     # Mock main so it doesn't actually run a full training session
-    #     with patch("training.train.main"), patch("sys.argv", ["train.py"]):
-    #         runpy.run_path("packages/training/train.py", run_name="__main__")
-
     def test_train_main_entrypoint(self):
         """Forces coverage of the 'if __name__ == "__main__"' block."""
         import runpy
