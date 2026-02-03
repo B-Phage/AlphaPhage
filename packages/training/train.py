@@ -133,16 +133,10 @@ def main(cfg: DictConfig):
         devices=cfg.trainer.devices,  # e.g., 1 or [0, 1]
         logger=logger_object,
         callbacks=[checkpoint_callback, early_stop_callback],
-        # Precision setting is important for modern hardware
         precision=cfg.trainer.precision,
-        # strategy="ddp" #for devices >1 and DistributedDataParallel
         enable_progress_bar=True,
         profiler="advanced",
-        # check_val_every_n_epoch=1,       # Run validation every N epochs
     )
-    # # example using built in slurm plugin
-    # from lightning.fabric.plugins.environments import SLURMEnvironment
-    # trainer = Trainer(plugins=[SLURMEnvironment()])
 
     # ----------------------------------------------------
     # E. Train the Model
