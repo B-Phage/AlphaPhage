@@ -29,21 +29,40 @@ jobs:
         # package: [utils, orchestration, preprocessing, training, dataloaders]
         include:
           # Map each package to its corresponding environment file
-          - package: utils
+          # --- Environment 1: root_dev env ---
+          # - package: utils
+          #   env_file: conda_envs/root_dev.yml
+          #   env_name: root_dev
+
+          # - package: orchestration
+          #   env_file: conda_envs/root_dev.yml
+          #   env_name: root_dev
+
+          # # --- Environment 2: preprocessing env ---
+          # - package: preprocessing
+          #   env_file: conda_envs/preprocessing.yml
+          #   env_name: preprocessing
+
+          # # --- Environment 3: training env ---
+          # - package: training
+          #   env_file: conda_envs/training.yml
+          #   env_name: training
+
+          # - package: dataloaders
+          #   env_file: conda_envs/training.yml
+          #   env_name: training
+
+          - env_name: root_dev
             env_file: conda_envs/root_dev.yml
-            env_name: root_dev
-          - package: orchestration
-            env_file: conda_envs/root_dev.yml
-            env_name: root_dev
-          - package: preprocessing
+            packages: "utils orchestration"
+
+          - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            env_name: preprocessing
-          - package: training
+            packages: "preprocessing"
+
+          - env_name: training
             env_file: conda_envs/training.yml
-            env_name: training
-          - package: dataloaders
-            env_file: conda_envs/training.yml
-            env_name: training
+            packages: "training dataloaders"
 
     steps:
       - name: ⬇️ Checkout Repository
@@ -72,9 +91,24 @@ jobs:
       - name: 🛠️ Editable Install
         shell: bash -l {0}
         run: |
-          # Ensure the package is linked to the newly created env
-          pip install -e ./packages/${{ matrix.package }}
+          ## Ensure the package is linked to the newly created env
+          ## pip install -e ./packages/${{ matrix.package }}
+          # Iterate over the space-separated list of packages for this environment
+          for pkg in ${{ matrix.packages }}; do
+            echo "--- Processing Package: $pkg ---"
 
+            # 1. Editable Install
+            pip install -e ./packages/$pkg
+
+            # 2. Run Unit Tests
+            pytest tests/unit/test_${pkg}.py \
+              --cov=packages/${pkg} \
+              --cov-report=xml:coverage-${pkg}.xml \
+              --cov-report=term
+
+            # 3. (Optional) Upload coverage for this specific package
+            # We do this inside the loop or after the loop.
+          done
 
       # - name: 🧪 Run Unit Tests
       #   shell: bash -l {0}
@@ -87,13 +121,30 @@ jobs:
       # - name: ⬆️ Upload Coverage Artifact
       #   uses: actions/upload-artifact@v4
       #   with:
-      #     name: coverage-${{ matrix.package }}
+      #     name: coverage-${{ matrix.env_name }}
       #     path: coverage.xml
 
-      - name: 🧪 Run Unit Tests
-        run: |
-          PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
-          coverage json -o coverage.json
+      - name: ⬆️ Upload Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports-${{ matrix.env_name }}
+          path: coverage-*.xml
+
+      # - name: 🧪 Run Unit Tests
+      #   run: |
+      #     PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
+      #     coverage json -o coverage.json
+
+      # - name: 🧪 Run Unit Tests
+      #   shell: bash -l {0}
+      #   run: |
+      #     conda run -n ${{ matrix.env_name }} pytest tests/unit/test_${{ matrix.package }}.py \
+      #       --cov=packages/${{ matrix.package }} \
+      #       --cov-report=xml:coverage.xml
+
+
+
+
 
       - name: ⬆️ Upload Coverage Report
         uses: actions/upload-artifact@v4
