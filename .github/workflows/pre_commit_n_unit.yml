@@ -34,7 +34,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Install your main package in editable mode, including test dependencies
-          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog pandas pyhmmer pyrodigal "duckdb>=1.1.0"
+          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog pandas pyhmmer pyrodigal "duckdb>=1.1.0" pyarrow
           pip install -e ./packages/utils
           pip install -e ./packages/orchestration
           pip install -e ./packages/hmm

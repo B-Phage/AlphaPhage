@@ -87,6 +87,9 @@ def main(argv: list[str] | None = None) -> None:
     # Load configuration
     # -----------------------------
     gen_cfg = get_config(override_path=args.config, params_set="general")
+    run_cfg = get_config(
+        "ml_assets/config/runtime.yaml", params_set="meta"
+    )  # config that does not affect outputs
     prot_cfg = get_config(override_path=args.config, params_set="prodigal_config")
     hmm_cfg = get_config(override_path=args.config, params_set="hmm_config")
 
@@ -137,7 +140,7 @@ def main(argv: list[str] | None = None) -> None:
         output_func=output_fn,
         worker=worker_fn,
         code_id=full_code_id,
-        parallelism=gen_cfg.n_jobs,
+        parallelism=run_cfg.n_jobs,
         force=args.force,
         tqdm_desc=f"HMM scanning ({hmm_cfg.hmm_scan_method})",
     )

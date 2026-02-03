@@ -25,7 +25,6 @@ def write_test_config(
     config_content = f"""
 general:
   lst_genomes: {lst_genomes}
-  n_jobs: 1
   code_version: "test-code-v1"
 
 prodigal_config:
@@ -83,7 +82,7 @@ def test_hmm_pipeline_runs_and_creates_outputs(tmp_path):
     proteins_path = Path("tests/fixtures")
     results = tmp_path / "results"
     duckdb = tmp_path / "data_lake"
-    lst_genomes = ["phrog_126", "DUF1244"]
+    lst_genomes = ["phrog_126"]
 
     # Write YAML config
     config_path = write_test_config(tmp_path, proteins_path, results, duckdb, lst_genomes)
@@ -140,8 +139,9 @@ def test_new_protein_triggers_partial_rerun(tmp_path):
 
     # Copy small real protein files from fixtures
     fixture_dir = Path("tests/fixtures").resolve()
-    for genome in ["phrog_126", "DUF1244"]:
+    for genome in ["phrog_126"]:
         shutil.copy(fixture_dir / f"{genome}.fa", proteins_path / f"{genome}.fa")
+        shutil.copy(fixture_dir / f"{genome}.fa", proteins_path / f"{genome}_copy.fa")
 
     # Run pipeline for genome1
     config_path = write_test_config(tmp_path, proteins_path, results, duckdb, ["phrog_126"])
@@ -152,9 +152,9 @@ def test_new_protein_triggers_partial_rerun(tmp_path):
     hash_genome1_before = file_hash(results / "phrog_126.csv")
 
     # Run pipeline for genome2 (partial rerun)
-    config_path = write_test_config(tmp_path, proteins_path, results, duckdb, ["DUF1244"])
+    config_path = write_test_config(tmp_path, proteins_path, results, duckdb, ["phrog_126_copy"])
     run_pipeline(config_path)
-    assert (results / "DUF1244.csv").exists()
+    assert (results / "phrog_126_copy.csv").exists()
 
     # Check genome1 file was unchanged
     hash_genome1_after = file_hash(results / "phrog_126.csv")

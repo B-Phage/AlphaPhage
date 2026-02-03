@@ -1,6 +1,5 @@
 general:
-  lst_genomes:      ["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes
-  n_jobs:           3
+  lst_genomes:      [] #["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes, useful for testing
   code_version:     "prodigal-gv-v1.0"
 
 prodigal_config:

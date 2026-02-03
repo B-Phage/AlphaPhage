@@ -36,7 +36,6 @@ prodigal_config:
   output_dir: "{self.output_dir}"
 general:
   lst_genomes: []
-  n_jobs: 1
   code_version: "integration-test-v1"
 """
         )

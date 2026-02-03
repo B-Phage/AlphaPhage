@@ -139,7 +139,7 @@ class TestVocabLoader(unittest.TestCase):
             params_set="prodigal_config",
         )
         self.assertEqual(conf.lst_genomes, [])
-        self.assertEqual(conf.n_jobs, 4)
+        self.assertEqual(conf.hhm_scan_method, "cogs")
 
         with self.assertRaises(FileNotFoundError):
             conf = self.loader.get_config("missing.yaml")

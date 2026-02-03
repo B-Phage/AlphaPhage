@@ -141,8 +141,9 @@ def write_hmm_results_with_sequences(
     such as multiple sequence alignment (MSA).
     """
     if hmm_scan_df.empty:
-        logger.warning(f"No HMM hits to insert for {organism_name}")
-        return
+        raise ValueError(
+            f"No HMM hits to insert for {organism_name}. Check if the input protein file {organism_name}.fa is corrupted."
+        )
     else:
         df_for_sql = hmm_scan_df.copy()
 

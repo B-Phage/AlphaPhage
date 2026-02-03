@@ -110,15 +110,10 @@ def test_write_hmm_empty_hmm_scan(tmp_path, caplog):
     empty_df = pd.DataFrame(columns=list(HMM_LAKE_SCHEMA.keys()))
     protein_block = [MockProtein("prot1"), MockProtein("prot2"), MockProtein("prot3")]
 
-    caplog.set_level("WARNING")
-    write_hmm_results_with_sequences(empty_df, protein_block, organism_name, out_root)
+    with pytest.raises(ValueError) as exc_info:
+        write_hmm_results_with_sequences(empty_df, protein_block, organism_name, out_root)
 
-    out_file = out_root / f"organism={organism_name}" / "proteins.parquet"
-    # File should NOT be created
-    assert not out_file.exists()
-
-    # Warning should be logged
-    assert any("No HMM hits to insert" in record.message for record in caplog.records)
+    assert "No HMM hits to insert for" in str(exc_info.value)
 
 
 def test_write_hmm_empty_proteins(tmp_path, hmm_df):

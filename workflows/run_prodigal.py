@@ -31,12 +31,16 @@ args = parser.parse_args()
 # -----------------------------
 # Load configuration
 # -----------------------------
+run_cfg = get_config(
+    "ml_assets/config/runtime.yaml", params_set="meta"
+)  # config that does not affect outputs
 gen_cfg = get_config(override_path=args.config, params_set="general")
 
 cfg = get_config(override_path=args.config, params_set="prodigal_config")
 
+
 LST_GENOMES = gen_cfg.lst_genomes
-N_JOBS = gen_cfg.n_jobs
+N_JOBS = run_cfg.n_jobs
 CODE_VERSION = gen_cfg.code_version
 
 GENOME_DIR = Path(cfg.genome_dir)
