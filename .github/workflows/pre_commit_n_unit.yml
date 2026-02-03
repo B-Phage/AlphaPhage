@@ -28,33 +28,10 @@ jobs:
         # # These folder names must match your /packages/ directory
         # package: [utils, orchestration, preprocessing, training, dataloaders]
         include:
-          # Map each package to its corresponding environment file
-          # --- Environment 1: root_dev env ---
-          # - package: utils
+          ## No unit test for orchestration package for now
+          # - env_name: root_dev
           #   env_file: conda_envs/root_dev.yml
-          #   env_name: root_dev
-
-          # - package: orchestration
-          #   env_file: conda_envs/root_dev.yml
-          #   env_name: root_dev
-
-          # # --- Environment 2: preprocessing env ---
-          # - package: preprocessing
-          #   env_file: conda_envs/preprocessing.yml
-          #   env_name: preprocessing
-
-          # # --- Environment 3: training env ---
-          # - package: training
-          #   env_file: conda_envs/training.yml
-          #   env_name: training
-
-          # - package: dataloaders
-          #   env_file: conda_envs/training.yml
-          #   env_name: training
-
-          - env_name: root_dev
-            env_file: conda_envs/root_dev.yml
-            packages: "utils orchestration"
+          #   packages: "utils orchestration"
 
           ## No unit test for preprocessing package for now
           # - env_name: preprocessing
@@ -105,47 +82,17 @@ jobs:
             pytest tests/unit/test_${pkg}.py \
               --cov=packages/${pkg} \
               --cov-report=xml:coverage-${pkg}.xml \
+              --cov-report=html:htmlcov-${pkg} \
+              --cov-report=json:coverage-${pkg}.json \
               --cov-report=term
-
-            # 3. (Optional) Upload coverage for this specific package
-            # We do this inside the loop or after the loop.
           done
-
-      # - name: 🧪 Run Unit Tests
-      #   shell: bash -l {0}
-      #   run: |
-      #     # Assumes tests are organized by package name
-      #     pytest tests/unit/test_${{ matrix.package }}.py \
-      #       --cov=packages/${{ matrix.package }} \
-      #       --cov-report=xml:coverage.xml
-
-      # - name: ⬆️ Upload Coverage Artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: coverage-${{ matrix.env_name }}
-      #     path: coverage.xml
 
       - name: ⬆️ Upload Coverage Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-reports-${{ matrix.env_name }}
-          path: coverage-*.xml
-
-      # - name: 🧪 Run Unit Tests
-      #   run: |
-      #     PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
-      #     coverage json -o coverage.json
-
-      # - name: 🧪 Run Unit Tests
-      #   shell: bash -l {0}
-      #   run: |
-      #     conda run -n ${{ matrix.env_name }} pytest tests/unit/test_${{ matrix.package }}.py \
-      #       --cov=packages/${{ matrix.package }} \
-      #       --cov-report=xml:coverage.xml
-
-
-
-
+        # This uploads all htmlcov folders created in this job
+          name: html-coverage-${{ matrix.env_name }}
+          path: htmlcov-*
 
       - name: ⬆️ Upload Coverage Report
         uses: actions/upload-artifact@v4
@@ -159,61 +106,51 @@ jobs:
           COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
           echo "coverage=$COV" >> $GITHUB_OUTPUT
 
-      # ############
-      # - name: ⬆️ Upload Coverage Report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: html-coverage-report
-      #     path: htmlcov/
 
-      # - name: 💯 Extract total coverage
-      #   id: extract
-      #   run: |
-      #     COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-      #     echo "coverage=$COV" >> $GITHUB_OUTPUT
 
-      # - name: 🎖️ Generate SVG badge
-      #   run: |
-      #     # 1. Setup
-      #     mkdir -p badges
 
-      #     # Change the path to the bash script
-      #     BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
+      - name: 🎖️ Generate SVG badge
+        run: |
+          # 1. Setup
+          mkdir -p badges
 
-      #     # Make sure the script is executable
-      #     chmod +x "$BASH_SCRIPT_PATH"
+          # Change the path to the bash script
+          BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
 
-      #     # 2. Determine safe branch name
-      #     BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-      #     BRANCH_SAFE="${BRANCH_SAFE//\//_}"
+          # Make sure the script is executable
+          chmod +x "$BASH_SCRIPT_PATH"
 
-      #     # 3. Get Coverage value
-      #     COV="${{ steps.extract.outputs.coverage }}"
+          # 2. Determine safe branch name
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"
 
-      #     # 4. Define the output file path
-      #     BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
+          # 3. Get Coverage value
+          COV="${{ steps.extract.outputs.coverage }}"
 
-      #     # 5. Call the bash interface using its full relative path
-      #     "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
+          # 4. Define the output file path
+          BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
 
-      # - name: ⬆️ Commit and push SVG badge
-      #   run: |
-      #     BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-      #     BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
-      #     BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
+          # 5. Call the bash interface using its full relative path
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
 
-      #     git config user.name "github-actions"
-      #     git config user.email "github-actions@github.com"
+      - name: ⬆️ Commit and push SVG badge
+        run: |
+          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
+          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
 
-      #     git fetch origin badges2
-      #     git checkout badges2
-      #     git reset --hard origin/badges2
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-      #     cp badges/${BADGE_FILE} .
+          git fetch origin badges2
+          git checkout badges2
+          git reset --hard origin/badges2
 
-      #     git add ${BADGE_FILE}
-      #     git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
-      #     git push origin badges2 --force
+          cp badges/${BADGE_FILE} .
+
+          git add ${BADGE_FILE}
+          git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
+          git push origin badges2 --force
 
 ##################################################
 # name: 🧩🚨 Unit Tests & Pre-Commit Checks
