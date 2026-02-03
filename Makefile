@@ -73,11 +73,6 @@ setup-orchestration:
 	@echo "=== Installing orchestration package ==="
 	conda run -n $(ENV_DEV) pip install -e packages/orchestration
 
-# TODO: Implement the remaining packages
-# manual conda env creation:
-#conda env create -f conda_envs/preprocessing.yml -n preprocessing
-# or
-#conda env update -f conda_envs/preprocessing.yml -n preprocessing
 .PHONY: setup-preprocessing
 setup-preprocessing:
 	$(call ensure_env,$(ENV_PREPROCESSING))
