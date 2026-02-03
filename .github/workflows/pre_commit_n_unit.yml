@@ -87,26 +87,46 @@ jobs:
               --cov-report=term
           done
 
+      # - name: ⬆️ Upload Coverage Artifacts
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #   # This uploads all htmlcov folders created in this job
+      #     name: html-coverage-${{ matrix.env_name }}
+      #     path: htmlcov-*
+
+      # # - name: ⬆️ Upload Coverage Report
+      # #   uses: actions/upload-artifact@v4
+      # #   with:
+      # #     name: html-coverage-report
+      # #     path: htmlcov/
+
+      # - name: 💯 Extract total coverage
+      #   id: extract
+      #   run: |
+      #     COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+      #     echo "coverage=$COV" >> $GITHUB_OUTPUT
+
       - name: ⬆️ Upload Coverage Artifacts
         uses: actions/upload-artifact@v4
         with:
-        # This uploads all htmlcov folders created in this job
+          # This correctly uses the wildcard * to find all package folders
           name: html-coverage-${{ matrix.env_name }}
           path: htmlcov-*
 
-      - name: ⬆️ Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-coverage-report
-          path: htmlcov/
+      # REMOVE the "Upload Coverage Report" step that was looking for htmlcov/
+      # It is redundant now that you have the step above.
 
       - name: 💯 Extract total coverage
         id: extract
+        shell: bash -l {0}
         run: |
-          COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          # We need to find one of the generated JSON files.
+          # This line picks the last one in the list (e.g., coverage-dataloaders.json)
+          LATEST_JSON=$(ls coverage-*.json | tail -n 1)
+
+          echo "Using $LATEST_JSON for badge"
+          COV=$(python -c "import json; print(json.load(open('$LATEST_JSON'))['totals']['percent_covered_display'])")
           echo "coverage=$COV" >> $GITHUB_OUTPUT
-
-
 
 
       - name: 🎖️ Generate SVG badge
@@ -152,184 +172,3 @@ jobs:
           git add ${BADGE_FILE}
           git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
           git push origin badges2 --force
-
-##################################################
-# name: 🧩🚨 Unit Tests & Pre-Commit Checks
-
-# on:
-#   # Run on every push to a branch
-#   push:
-#     # Use branches-ignore to exclude specific branches
-#     branches-ignore:
-#       - 'archive'          # Example: Ignore a specific archive branch
-#       - 'badges2'           # Tests should never be merged into badges anyway
-
-#   # Run when a Pull Request is opened or updated
-#   pull_request:
-#     branches:
-#       - main
-
-# permissions:
-#   contents: write  # needed to push to badges branch
-
-# jobs:
-#   pre-commit:
-#     runs-on: ubuntu-latest
-#     steps:
-
-#       - name: 🔥 Check disk space
-#         run: |
-#           echo "=== Disk space at start ==="
-#           df -h
-
-#       - name: 🔥 Heavy Duty Disk Cleanup
-#         run: |
-#           echo "=== Disk space before cleanup ==="
-#           df -h
-
-#           # 1. Remove massive pre-installed toolsets
-#           sudo rm -rf /opt/hostedtoolcache
-#           sudo rm -rf /usr/local/lib/android
-#           sudo rm -rf /usr/share/dotnet
-#           sudo rm -rf /opt/ghc
-
-#           # 2. Clean Docker - This is likely where your 58GB is hiding
-#           # 'docker image prune -a' removes all unused images, not just dangling ones
-#           docker image prune -af
-#           docker system prune -af
-
-#           # 3. Clean Apt
-#           sudo apt-get clean
-
-#           echo "=== Disk space after cleanup ==="
-#           df -h
-
-
-#       - name: ⬇️ Checkout Repository
-#         uses: actions/checkout@v4
-#         # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
-#         with:
-#           fetch-depth: 0
-
-#       - name: 🐍 Set up Python Environment
-#         uses: actions/setup-python@v5
-#         with:
-#           python-version: '3.10' # Match your target Python version
-
-#       - name: Check Environment (before install)
-#         run: |
-#           echo "--- Python Location ---"
-#           which python
-#           echo "--- Python Path ---"
-#           python -c "import sys; print('\n'.join(sys.path))"
-#           echo "--- Installed Packages ---"
-#           pip list
-
-#       - name: Install Dependencies
-#         run: |
-#           python -m pip install --upgrade pip
-#           # Install your main package in editable mode, including test dependencies
-#           pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
-#           pip install -e ./packages/utils
-#           pip install -e ./packages/orchestration
-#           pip install -e ./packages/preprocessing
-#           pip install -e ./packages/training
-#           pip install -e ./packages/dataloaders
-
-#       - name: Check Environment (after install)
-#         run: |
-#           echo "--- Python Location ---"
-#           which python
-#           echo "--- Python Path ---"
-#           python -c "import sys; print('\n'.join(sys.path))"
-#           echo "--- Installed Packages ---"
-#           pip list
-
-#       - name: 🏃 Run Pre-Commit Checks
-#         uses: pre-commit/action@v3.0.1 # Use the official action
-#         # The official action automatically handles:
-#         # 1. Installing 'pre-commit'
-#         # 2. Caching the hook environments
-#         # 3. Running 'pre-commit run --all-files'
-#         # It will fail the job if any hook fails.
-#         id: run_hooks # Give the step an ID
-#         continue-on-error: true
-
-#       # Debugging Steps
-#       - name: ❌🪲 Show Modified Files and Differences
-#         # We only run this debugging step if the previous step actually failed (i.e., modified files)
-#         if: ${{ steps.run_hooks.outcome == 'failure' }}
-#         run: |
-#           echo "Hooks failed because they modified these files:"
-#           git status --porcelain # Shows list of modified files (in a machine-readable format)
-#           echo "--- Full Git Diff ---"
-#           git diff # Shows exactly what changes were made (missing newlines)
-
-#       # FAILURE STEP (Optional, but good practice)
-#       # If the debugging step passed, but the hooks failed, we fail the job here.
-#       # You can skip this if you want the action to just run the hooks and always pass.
-#       - name: ☠️ Check (Fail Job if Hooks Modified Files)
-#         if: ${{ steps.run_hooks.outcome == 'failure' }}
-#         run: |
-#           echo "Failing job because pre-commit checks modified files."
-#           exit 1
-
-#       - name: 🧪 Run Unit Tests
-#         run: |
-#           PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
-#           coverage json -o coverage.json
-
-#       - name: ⬆️ Upload Coverage Report
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: html-coverage-report
-#           path: htmlcov/
-
-#       - name: 💯 Extract total coverage
-#         id: extract
-#         run: |
-#           COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-#           echo "coverage=$COV" >> $GITHUB_OUTPUT
-
-#       - name: 🎖️ Generate SVG badge
-#         run: |
-#           # 1. Setup
-#           mkdir -p badges
-
-#           # Change the path to the bash script
-#           BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
-
-#           # Make sure the script is executable
-#           chmod +x "$BASH_SCRIPT_PATH"
-
-#           # 2. Determine safe branch name
-#           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-#           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
-
-#           # 3. Get Coverage value
-#           COV="${{ steps.extract.outputs.coverage }}"
-
-#           # 4. Define the output file path
-#           BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
-
-#           # 5. Call the bash interface using its full relative path
-#           "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
-
-#       - name: ⬆️ Commit and push SVG badge
-#         run: |
-#           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-#           BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
-#           BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
-
-#           git config user.name "github-actions"
-#           git config user.email "github-actions@github.com"
-
-#           git fetch origin badges2
-#           git checkout badges2
-#           git reset --hard origin/badges2
-
-#           cp badges/${BADGE_FILE} .
-
-#           git add ${BADGE_FILE}
-#           git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
-#           git push origin badges2 --force
