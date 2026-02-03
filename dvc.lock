@@ -40,8 +40,8 @@ stages:
     deps:
     - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
       hash: md5
-      md5: 9b6b66290a78fbac9dcb0085a6d2b7c9
-      size: 904
+      md5: 89ae602fa01a2399a70af3690958fedd
+      size: 964
     - path: ml_assets/data/sequence_data/phage
       hash: md5
       md5: 686a6064256b03e97b3a8553f70643f8.dir
@@ -57,27 +57,27 @@ stages:
       size: 405
     - path: workflows/run_prodigal.py
       hash: md5
-      md5: 7adbb339cd9daeacb30ef792349c7be5
-      size: 2821
+      md5: c7af090a7bdd6e2d616b0af143c72584
+      size: 2828
     outs:
     - path: ml_assets/data/processed/phage/proteins
       hash: md5
-      md5: ce750d1a08f1d51fc671f3615250da9f.dir
-      size: 5439150
-      nfiles: 132
+      md5: 013e0e7e9884a4ff43d866b291d25ec1.dir
+      size: 63687
+      nfiles: 3
   hmm_scan_all_phage:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && python -u workflows/orchestrator/run_hmm_scan_pipeline.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
     deps:
     - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
       hash: md5
-      md5: 9b6b66290a78fbac9dcb0085a6d2b7c9
-      size: 904
+      md5: 89ae602fa01a2399a70af3690958fedd
+      size: 964
     - path: ml_assets/data/processed/phage/proteins
       hash: md5
-      md5: ce750d1a08f1d51fc671f3615250da9f.dir
-      size: 5439150
-      nfiles: 132
+      md5: 013e0e7e9884a4ff43d866b291d25ec1.dir
+      size: 63687
+      nfiles: 3
     - path: packages/data_contracts/hmm_lake.py
       hash: md5
       md5: d5e5bd3e79c3e63bedacde5f8c741a22
@@ -92,14 +92,14 @@ stages:
       size: 4047
     - path: workflows/orchestrator/run_hmm_scan_pipeline.py
       hash: md5
-      md5: 8463ea008596a34ff6887dc362b3a26f
-      size: 4230
+      md5: 57bdd928786650a44e9efec8cbb3ccfa
+      size: 4245
     outs:
     - path: ml_assets/data/processed/phage/hmm_scan_lake
       hash: md5
-      md5: d702ef1c32c6ba62e79af096adeefd36.dir
-      size: 6936739
-      nfiles: 132
+      md5: 257f36e321f2c48b731404dfb9a198e1.dir
+      size: 104895
+      nfiles: 3
   build_phage_hmm_summary:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && python -u workflows/hmm_parquet_to_summary_tbl.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml
@@ -107,17 +107,17 @@ stages:
     deps:
     - path: ml_assets/data/processed/phage/hmm_scan_lake
       hash: md5
-      md5: d702ef1c32c6ba62e79af096adeefd36.dir
-      size: 6936739
-      nfiles: 132
+      md5: 257f36e321f2c48b731404dfb9a198e1.dir
+      size: 104895
+      nfiles: 3
     - path: packages/data_contracts/hmm_lake.py
       hash: md5
       md5: d5e5bd3e79c3e63bedacde5f8c741a22
       size: 1637
     - path: packages/hmm/duckdb_io.py
       hash: md5
-      md5: 602a8ca4993f70f57b85a6cd0a13637f
-      size: 11818
+      md5: e2df97dd086af40d213fb3d4450dcf55
+      size: 13507
     - path: workflows/hmm_parquet_to_summary_tbl.py
       hash: md5
       md5: fdb8a4fef17de5a03640a4ab51ca4fb2
@@ -125,5 +125,28 @@ stages:
     outs:
     - path: ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
       hash: md5
-      md5: 74ac2d09c02be870ba20319f6be9ca24
+      md5: f7b46aca2df3f31c64df343e27df1484
       size: 188
+  extract_phage_hmm_fastas:
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_hmm_fastas.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml'\n"
+    deps:
+    - path: ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
+      hash: md5
+      md5: f7b46aca2df3f31c64df343e27df1484
+      size: 188
+    - path: packages/hmm/duckdb_io.py
+      hash: md5
+      md5: e2df97dd086af40d213fb3d4450dcf55
+      size: 13507
+    - path: workflows/create_hmm_fastas.py
+      hash: md5
+      md5: cbaf1d4eae11756d4924d1bc562e6488
+      size: 2941
+    outs:
+    - path: ml_assets/data/processed/phage/hmm_fasta
+      hash: md5
+      md5: ef335c19a1289a046f52efb9d3da04ec.dir
+      size: 3531901
+      nfiles: 1876

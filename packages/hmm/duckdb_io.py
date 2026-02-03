@@ -22,9 +22,8 @@ already been performed and that input data is provided in tabular
 """
 
 import hashlib
-import math
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable, List
 
 import duckdb
 import pandas as pd
@@ -227,18 +226,90 @@ def build_hmm_summary_table(
     con.close()
 
 
+def get_distinct_hmms(
+    db_path: Path,
+    table_name: str,
+) -> List[str]:
+    """
+    Return a sorted list of distinct HMM domain names from a summary table.
+
+    This is intended for orchestrators to parallelise downstream work
+    (e.g. exporting FASTA files per HMM).
+
+    Parameters
+    ----------
+    db_path : Path
+        Path to the DuckDB database.
+    table_name : str
+        Name of the summary table.
+
+    Returns
+    -------
+    List[str]
+        Sorted list of unique hmm_domain_name values.
+    """
+
+    con = duckdb.connect(str(db_path), read_only=True)
+
+    query = f"""
+        SELECT DISTINCT hmm_domain_name
+        FROM {table_name}
+        ORDER BY hmm_domain_name
+    """
+
+    hmms = [row[0] for row in con.execute(query).fetchall()]
+
+    con.close()
+    return hmms
+
+
 def extract_hmm_sequences_for_msa(
-    hmm_annotation: str,
-    db: DuckDBClient,
-    db_table_name: str,
-    out_folder_path: str,
-    min_bit_score=0,  # the score is always > 0, so default to no score filter
-    out_file_extension: str = "fa",
-):
+    db_path: Path,
+    table_name: str,
+    hmm_domain_name: str,
+    out_fasta: Path,
+) -> None:
     """
-    TODO: Extract sequences matching a specific HMM for MSA generation.
+    Export all proteins matching a given HMM from a DuckDB summary table to a FASTA file.
+    These will be used to construct an MSA for the HMM.
+
+    FASTA header format:
+        >organism_name;protein_name
+
+    Parameters
+    ----------
+    db_path : Path
+        Path to the DuckDB database file.
+    table_name : str
+        Name of the summary table (e.g. "hmm_summary").
+    hmm_domain_name : str
+        HMM domain to filter on.
+    out_fasta : Path
+        Output FASTA file path.
     """
-    raise NotImplementedError
+
+    con = duckdb.connect(str(db_path), read_only=True)
+
+    query = f"""
+        SELECT
+            protein_name,
+            organism_name,
+            sequence
+        FROM {table_name}
+        WHERE hmm_domain_name = ?
+        ORDER BY organism_name, protein_name
+    """
+
+    out_fasta.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(out_fasta, "w") as fasta_file:
+        for protein_name, organism_name, sequence in con.execute(
+            query, [hmm_domain_name]
+        ).fetchall():
+            fasta_file.write(f">{organism_name};{protein_name}\n")
+            fasta_file.write(f"{sequence}\n")
+
+    con.close()
 
 
 def extract_combined_summary(
@@ -248,67 +319,6 @@ def extract_combined_summary(
     TODO: Extract the combined hmm annotations across multiple organisms in the db.
     """
     raise NotImplementedError
-
-
-# def read_hmm_list(db_table_name,
-#                  db_file_path,
-#                  min_bit_score=0):
-#     """
-#     Get the list of unique/distinct HMM annotations in the table where the min_bit_score is
-#     greater than the given value or the HMM is the best hit for a given protein.
-#     """
-#     this_file_dir = os.path.dirname(os.path.abspath(__file__))
-#     logger.info(f'The table to query for hmm hits is {db_table_name}')
-#     template_file_path = os.path.join(this_file_dir, 'data_utils/sql_scripts/select_unique_hmms.sql')
-#     replacements = {
-#         "TABLE_NAME": db_table_name,
-#         "MIN_SCORE": f'{min_bit_score}'}
-#     query = sql_utils.read_and_replace_query(template_file_path, replacements)
-#     hmm_tbl = sql_utils.run_sql_query(db_file_path, query)
-
-#     logger.info(f'The hmm query results are {hmm_tbl}')
-#     logger.info(f'hmm result type: {type(hmm_tbl)}')
-#     hmm_list = hmm_tbl['hmm_domain_name'].to_list()
-
-#     return hmm_list
-
-
-# def extract_hmm_sequences_for_msa(hmm_annotation: str,
-#                                            db_file_path: str,
-#                                            db_table_name: str,
-#                                            out_folder_path: str,
-#                                            min_bit_score=0, # the score is always > 0, so default to no score filter
-#                                            out_file_extension: str='fa'):
-#     """
-#     Get all hits of a particular HMM, eg "phrog_1"
-#     This step is required to get the data for an MSA
-
-#     If you want a subset of organisms. The optimal thing to do is to make a new table
-#     i.e. an inner join of a table with a organisms lookup and the sequence hmm hits table
-#     then use that table in this query (db_table_name)
-#     """
-
-#     this_file_dir = os.path.dirname(os.path.abspath(__file__))
-#     logger.info(f'The table to query for hmm hits is {db_table_name}')
-#     template_file_path = os.path.join(this_file_dir,'data_utils/sql_scripts/select_hmm_sequences.sql')
-#     replacements = {
-#         "TABLE_NAME": db_table_name,
-#         "HMM_ANNOT": hmm_annotation,
-#         "MIN_SCORE": f'{min_bit_score}'}
-#     query = sql_utils.read_and_replace_query(template_file_path, replacements)
-#     hhm_seq_tbl = sql_utils.run_sql_query(db_file_path, query)
-
-#     os.makedirs(out_folder_path, exist_ok=True)
-#     out_hmm_fasta = os.path.join(out_folder_path, f'{hmm_annotation}.{out_file_extension}')
-
-#     # write the sql output to a fasta file
-#     with open(out_hmm_fasta, 'w') as hmm_fasta_file:
-#         for _, row in hhm_seq_tbl.iterrows():
-#             query_genome = row['organism_name']
-#             query_prot = row['protein_name']
-#             sequence = row['sequence']
-#             hmm_fasta_file.write(f'>{query_genome};{query_prot}\n')
-#             hmm_fasta_file.write(f'{sequence}\n')
 
 
 # def extract_combined_summary(db_file_path: str,

@@ -73,6 +73,19 @@ stages:
     outs:
       - ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
 
+  extract_phage_hmm_fastas:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/create_hmm_fastas.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml'
+    deps:
+      - ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
+      - workflows/create_hmm_fastas.py
+      - packages/hmm/duckdb_io.py
+    outs:
+      - ml_assets/data/processed/phage/hmm_fasta
 # Hashing the next stages out for now
 # will bring them in systematically as the code is implemented
 

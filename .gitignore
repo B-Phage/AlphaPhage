@@ -65,6 +65,9 @@ models/*
 results/
 artifacts/
 
+# ignore all .hmm_id files anywhere, these are temporary DVC files
+*.hmm_id
+
 # Testing and Coverage
 .coverage
 htmlcov/

@@ -9,7 +9,9 @@ import pytest
 from data_contracts.hmm_lake import HMM_LAKE_PRIMARY_KEYS, HMM_LAKE_SCHEMA
 from hmm.duckdb_io import (
     build_hmm_summary_table,
+    extract_hmm_sequences_for_msa,
     fingerprint_hmm_table,
+    get_distinct_hmms,
     hash_file,
     hash_lake,
     write_hmm_results_with_sequences,
@@ -546,3 +548,147 @@ def test_build_hmm_summary_table_score_filter(tmp_path: Path):
     result_names = [r[0] for r in result]
     expected_names = [r[0] for r in expected]
     assert result_names == expected_names
+
+
+# --------------------------------------------------
+# Helper to create a test DuckDB summary table
+# --------------------------------------------------
+def create_test_hmm_table(db_path: Path, table_name: str, data: pd.DataFrame):
+    con = duckdb.connect(str(db_path))
+    # Create table with required columns
+    con.execute(
+        f"""
+        CREATE TABLE {table_name} (
+            protein_name VARCHAR,
+            organism_name VARCHAR,
+            hmm_domain_name VARCHAR,
+            annot VARCHAR,
+            sequence VARCHAR
+        )
+    """
+    )
+    # Insert data
+    for row in data.itertuples(index=False):
+        con.execute(
+            f"""
+            INSERT INTO {table_name} (protein_name, organism_name, hmm_domain_name, annot, sequence)
+            VALUES (?, ?, ?, ?, ?)
+        """,
+            row,
+        )
+    con.close()
+
+
+# --------------------------------------------------
+# Tests for get_distinct_hmms
+# --------------------------------------------------
+def test_get_distinct_hmms_basic(tmp_path: Path):
+    db_path = tmp_path / "test.db"
+    table_name = "hmm_summary"
+
+    data = pd.DataFrame(
+        {
+            "protein_name": ["p1", "p2", "p3"],
+            "organism_name": ["org1", "org2", "org3"],
+            "hmm_domain_name": ["hmmB", "hmmA", "hmmC"],
+            "annot": ["a1", "a2", "a3"],
+            "sequence": ["AAA", "BBB", "CCC"],
+        }
+    )
+
+    create_test_hmm_table(db_path, table_name, data)
+
+    hmms = get_distinct_hmms(db_path, table_name)
+    assert hmms == ["hmmA", "hmmB", "hmmC"]  # should be sorted
+
+
+def test_get_distinct_hmms_empty(tmp_path: Path):
+    db_path = tmp_path / "test.db"
+    table_name = "hmm_summary"
+
+    # Create empty table
+    create_test_hmm_table(
+        db_path,
+        table_name,
+        pd.DataFrame(
+            columns=["protein_name", "organism_name", "hmm_domain_name", "annot", "sequence"]
+        ),
+    )
+
+    hmms = get_distinct_hmms(db_path, table_name)
+    assert hmms == []
+
+
+# --------------------------------------------------
+# Tests for extract_hmm_sequences_for_msa
+# --------------------------------------------------
+def test_extract_hmm_sequences_for_msa_basic(tmp_path: Path):
+    db_path = tmp_path / "test.db"
+    table_name = "hmm_summary"
+    out_fasta = tmp_path / "output.fasta"
+
+    data = pd.DataFrame(
+        {
+            "protein_name": ["p1", "p2", "p3", "p4"],
+            "organism_name": ["org1", "org1", "org2", "org3"],
+            "hmm_domain_name": ["hmmX", "hmmX", "hmmY", "hmmX"],
+            "annot": ["a1", "a2", "a3", "a4"],
+            "sequence": ["AAA", "BBB", "CCC", "DDD"],
+        }
+    )
+
+    create_test_hmm_table(db_path, table_name, data)
+
+    # Extract sequences for hmmX
+    extract_hmm_sequences_for_msa(db_path, table_name, "hmmX", out_fasta)
+
+    # Read fasta
+    fasta_lines = out_fasta.read_text().splitlines()
+    expected_lines = [">org1;p1", "AAA", ">org1;p2", "BBB", ">org3;p4", "DDD"]
+    assert fasta_lines == expected_lines
+
+
+def test_extract_hmm_sequences_for_msa_empty(tmp_path: Path):
+    db_path = tmp_path / "test.db"
+    table_name = "hmm_summary"
+    out_fasta = tmp_path / "output.fasta"
+
+    data = pd.DataFrame(
+        {
+            "protein_name": [],
+            "organism_name": [],
+            "hmm_domain_name": [],
+            "annot": [],
+            "sequence": [],
+        }
+    )
+
+    create_test_hmm_table(db_path, table_name, data)
+
+    extract_hmm_sequences_for_msa(db_path, table_name, "hmmZ", out_fasta)
+    assert out_fasta.exists()
+    assert out_fasta.read_text() == ""
+
+
+def test_extract_hmm_sequences_for_msa_multiple_same_org(tmp_path: Path):
+    db_path = tmp_path / "test.db"
+    table_name = "hmm_summary"
+    out_fasta = tmp_path / "output.fasta"
+
+    data = pd.DataFrame(
+        {
+            "protein_name": ["p1", "p2"],
+            "organism_name": ["org1", "org1"],
+            "hmm_domain_name": ["hmmA", "hmmA"],
+            "annot": ["a1", "a2"],
+            "sequence": ["AAA", "BBB"],
+        }
+    )
+
+    create_test_hmm_table(db_path, table_name, data)
+
+    extract_hmm_sequences_for_msa(db_path, table_name, "hmmA", out_fasta)
+
+    fasta_lines = out_fasta.read_text().splitlines()
+    expected_lines = [">org1;p1", "AAA", ">org1;p2", "BBB"]
+    assert fasta_lines == expected_lines
