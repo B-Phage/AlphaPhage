@@ -56,9 +56,10 @@ jobs:
             env_file: conda_envs/root_dev.yml
             packages: "utils orchestration"
 
-          - env_name: preprocessing
-            env_file: conda_envs/preprocessing.yml
-            packages: "preprocessing"
+          ## No unit test for preprocessing package for now
+          # - env_name: preprocessing
+          #   env_file: conda_envs/preprocessing.yml
+          #   packages: "preprocessing"
 
           - env_name: training
             env_file: conda_envs/training.yml
