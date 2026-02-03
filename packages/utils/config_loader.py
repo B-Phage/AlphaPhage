@@ -51,9 +51,6 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
     return _load_vocab_file(vocab_cfg.file)
 
 
-# Other configs
-
-
 def get_prodigal_config(override_path: str | None = None):
     """
     Loads prodigal config from params.yaml or override file
@@ -67,28 +64,3 @@ def get_prodigal_config(override_path: str | None = None):
         raise KeyError(f"prodigal_config section missing in config file {params}")
 
     return params.prodigal_config
-
-
-# TODO: Test this functionality with the transformer archtecture
-# We might want to have the vocab as a dict rather than a DictConfig
-# if we want to load a vocab in as a dict
-# this would then be a swap out for _load_vocab_file
-# def _load_vocab_file_as_dict(str_path: str):
-#     path = Path(str_path)
-#     if not path.exists():
-#         raise FileNotFoundError(path)
-#     dict_config_vocab = OmegaConf.load(path)
-#     # convert to a standard Python dict
-#     converted_vocab = {}
-#     # loop through the top-level keys
-#     for key, value in dict_config_vocab.items():
-#         # Convert the nested DictConfig/ListConfig to a standard Python container.
-#         # resolve=True ensures any string interpolations are processed.
-#         converted_value = OmegaConf.to_container(
-#             value,
-#             resolve=True,
-#             # structured_config=True is the default, ensuring conversion
-#         )
-#         # Store the converted standard dict back into the new dictionary
-#         converted_vocab[key] = converted_value
-#     return converted_vocab
