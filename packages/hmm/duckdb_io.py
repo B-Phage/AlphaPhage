@@ -7,7 +7,7 @@ boundary between HMM analysis (e.g. pyhmmer scans) and downstream
 processing steps such as multiple sequence alignment (MSA).
 
 Responsibilities:
-- Writing HMM scan outputs to DuckDB
+- Writing HMM scan outputs parquet lake
 - Joining HMM hits with protein sequence data
 - Creating tables on demand when they do not yet exist
 
@@ -38,43 +38,6 @@ from storage_io.duckdb_client import DuckDBClient
 from storage_io.parquet_lake import enforce_schema, write_parquet_partition
 
 logger = log.get_logger(level=log.DEBUG)
-
-
-def hash_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while chunk := f.read(1024 * 1024):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def hash_lake(lake_root: Path) -> str:
-    """Hash all parquet files deterministically."""
-    hashes = []
-    for p in sorted(lake_root.rglob("*.parquet")):
-        hashes.append(hash_file(p))
-    return hashlib.sha256("".join(hashes).encode()).hexdigest()
-
-
-def fingerprint_hmm_table(con: duckdb.DuckDBPyConnection, table: str) -> str:
-    """Get a deterministic fingerprint of the table contents."""
-
-    row = con.execute(
-        f"""
-        SELECT sha256(string_agg(
-            protein_name || organism_name || hmm_domain_name || sequence,
-            ''
-            ORDER BY protein_name, organism_name, hmm_domain_name
-        ))
-        FROM {table};
-    """
-    ).fetchone()
-
-    # row could be None or row[0] could be None if table is empty
-    if row is None or row[0] is None:
-        return "0" * 64  # or some sentinel hash for empty table
-
-    return row[0]
 
 
 def write_hmm_results_with_sequences(
@@ -312,34 +275,43 @@ def extract_hmm_sequences_for_msa(
     con.close()
 
 
-def extract_combined_summary(
-    db: DuckDBClient, db_table_name: str, out_folder_path: Path, min_bit_score=0
-):
+# ------------------------
+# Hash / Fingerprint Functions
+# ------------------------
+
+
+def hash_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(1024 * 1024):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def hash_lake(lake_root: Path) -> str:
+    """Hash all parquet files deterministically."""
+    hashes = []
+    for p in sorted(lake_root.rglob("*.parquet")):
+        hashes.append(hash_file(p))
+    return hashlib.sha256("".join(hashes).encode()).hexdigest()
+
+
+def fingerprint_hmm_table(con: duckdb.DuckDBPyConnection, table: str) -> str:
+    """Get a deterministic fingerprint of the table contents."""
+
+    row = con.execute(
+        f"""
+        SELECT sha256(string_agg(
+            protein_name || organism_name || hmm_domain_name || sequence,
+            ''
+            ORDER BY protein_name, organism_name, hmm_domain_name
+        ))
+        FROM {table};
     """
-    TODO: Extract the combined hmm annotations across multiple organisms in the db.
-    """
-    raise NotImplementedError
+    ).fetchone()
 
+    # row could be None or row[0] could be None if table is empty
+    if row is None or row[0] is None:
+        return "0" * 64  # or some sentinel hash for empty table
 
-# def extract_combined_summary(db_file_path: str,
-#                                     db_table_name: str,
-#                                     out_folder_path: str,
-#                                     min_bit_score=0):
-#     """
-#     This is intended as a replacement for the combine step in the snakemake annotation pipelines
-#     It is not an exact replacement because the outputs are dependedant on the values already in the database
-#     This is a design decision. SQL operations and MSA logic need to keep the DB content in mind
-#     """
-#     this_file_dir = os.path.dirname(os.path.abspath(__file__))
-#     logger.info(f'The table to query for hmm hits is {db_table_name}')
-#     template_file_path = os.path.join(this_file_dir,'data_utils/sql_scripts/select_all_domain_n_genome.sql')
-#     replacements = {
-#         "TABLE_NAME": db_table_name,
-#         "MIN_SCORE": f'{min_bit_score}'}
-#     query = sql_utils.read_and_replace_query(template_file_path, replacements)
-#     hhm_scan_tbl = sql_utils.run_sql_query(db_file_path, query)
-#     counts_table_crosstab = pd.crosstab(hhm_scan_tbl['organism_name'], hhm_scan_tbl['hmm_domain_name'])
-
-#     os.makedirs(out_folder_path, exist_ok=True)
-#     out_hmm_fasta = os.path.join(out_folder_path, 'hmm_scan.csv')
-#     counts_table_crosstab.to_csv(out_hmm_fasta)
+    return row[0]
