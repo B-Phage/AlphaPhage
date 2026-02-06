@@ -13,36 +13,6 @@ from training.embeddings import RotaryPositionalEmbeddings
 logger = log.get_logger(level=log.WARNING)
 
 
-class MLPHead(nn.Module):
-    def __init__(self, dim_in, dim_out, num_layers, norm_type=None):
-        super().__init__()
-        layers = []
-
-        # Determine how many hidden layers (total layers - 1 final)
-        # e.g., if num_layers=4, we do 3 hidden + 1 output
-        for i in range(num_layers):
-            is_last = i == num_layers - 1
-            out_features = dim_out if is_last else dim_in
-
-            # 1. Add Linear
-            layers.append(nn.Linear(dim_in, out_features))
-
-            # 2. Add Norm (if not the last layer)
-            if not is_last:
-                if norm_type == "bn":
-                    layers.append(nn.BatchNorm1d(dim_in))
-                elif norm_type == "ln":
-                    layers.append(nn.LayerNorm(dim_in))
-
-                # You'll likely want an activation here too!
-                layers.append(nn.ReLU())
-
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.model(x)
-
-
 class TransformerXClassifier(nn.Module):
     """Builds a Transformer-based classifier.
 
@@ -151,11 +121,7 @@ class TransformerXClassifier(nn.Module):
             self.Linaggr = nn.Linear(self.dim1, self.dim2)
 
         # Parse number of layers from "L4", "L3", "L2", "L1", etc.
-        # Fallback to 1 if a valid number cannot be assigned
-        try:
-            self.num_mlp_layers = int(self.call[1:])
-        except (ValueError, TypeError, IndexError):
-            self.num_mlp_layers = 1
+        self.num_mlp_layers = int(self.call[1:])
 
         # Build MLP Layers Dynamically
         self.linears = nn.ModuleList()

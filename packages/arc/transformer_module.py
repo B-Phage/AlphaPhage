@@ -1,6 +1,4 @@
-""" """
-
-# import sys
+"""TransformerX module for training a Transformer model using PyTorch Lightning."""
 
 import pytorch_lightning as pl
 import torch
@@ -55,44 +53,26 @@ class TransformerX(pl.LightningModule):
 
         # Perform architecture setting checks
         if self.positional_encoding not in ["rope", None]:
-            # logger.error(f"Error: self.positional_encoding {self.positional_encoding} not recognised. Exiting.")
-            print(f"Error: self.positional_encoding '{self.positional_encoding}' not recognised.")
             raise ValueError(
                 f"Error: self.positional_encoding '{self.positional_encoding}' not recognised."
             )
         if self.layer_method not in ["torch_transformer", None]:
-            # logger.error(f"Error: self.layer_method {self.layer_method} not recognised. Exiting.")
-            print(f"Error: self.layer_method '{self.layer_method}' not recognised.")
             raise ValueError(f"Error: self.layer_method '{self.layer_method}' not recognised.")
         if self.norm_post_layers not in [True, False]:
-            # logger.error(f"Error: self.norm_post_layers {self.norm_post_layers} not recognised. Exiting.")
-            print(f"Error: self.norm_post_layers '{self.norm_post_layers}' not recognised.")
             raise ValueError(
                 f"Error: self.norm_post_layers '{self.norm_post_layers}' not recognised."
             )
         if self.aggr_attention_method not in ["view", "sum", "cls_token"]:
-            # logger.error(f"Error: self.aggr_attention_method {self.aggr_attention_method} not recognised. Exiting.")
-            print(
-                f"Error: self.aggr_attention_method '{self.aggr_attention_method}' not recognised."
-            )
             raise ValueError(
                 f"Error: self.aggr_attention_method '{self.aggr_attention_method}' not recognised."
             )
-        if self.call not in ["L4", "L3", "L2", "L1"]:
-            # logger.error(f"Error: self.call {self.call} not recognised. Exiting.")
-            print(f"Error: self.call '{self.call}' not recognised.")
-            raise ValueError(f"Error: self.call '{self.call}' not recognised.")
         if self.n not in ["bn", "ln", "nn"]:
-            # logger.error(f"Error: self.n {self.n} not recognised. Exiting.")
-            print(f"Error: self.n '{self.n}' not recognised.")
             raise ValueError(f"Error: self.n '{self.n}' not recognised.")
 
         if self.depth == 0 and self.layer_method is not None:
-            print("Error: self.depth == 0 and self.layer_method is not None")
             raise ValueError(f"Error: self.depth == 0 and self.layer_method is not None")
 
         if self.layer_method is not None and self.dim1 != self.dim:
-            print(f"self.layer_method is not None and self.dim1 != self.dim.")
             raise ValueError(f"self.layer_method is not None and self.dim1 != self.dim.")
 
         self.model = TransformerXClassifier(

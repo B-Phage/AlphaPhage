@@ -159,8 +159,6 @@ archspecs2 = {
     "L2_ln": {"call": "L2", "n": "ln"},
     "L2_nn": {"call": "L2", "n": "nn"},
     "L1_nn": {"call": "L1", "n": "nn"},
-    # "invalid_call" : {"call": "invalid", "n": "bn"},
-    # "invalid_n" : {"call": "L4", "n": "invalid"}
 }
 archspec_list = [
     "rope_tt_normpostl_view",
