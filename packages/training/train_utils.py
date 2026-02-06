@@ -72,7 +72,8 @@ def get_datamodule(cfg: DictConfig) -> IterableDataset:
 def get_model(cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int):
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
-        from arc.TransformerX import TransformerX, TransformerXClassifier, archspecs, archspecs2
+        from arc.transformer_archspecs import archspecs, archspecs2
+        from arc.transformer_module import TransformerX
 
         return TransformerX(cfg, num_tokens, vocab_size_out, length_padded, archspecs, archspecs2)
     else:
