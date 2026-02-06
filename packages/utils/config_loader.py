@@ -1,4 +1,3 @@
-# packages/utils/config_loader.py
 """
 This utility is dependent on DVC's params.yml pipeline file where the active vocab is defined.
 If you wish to change the active vocab, change it there.
