@@ -48,6 +48,7 @@ outputs/
 outputs/*
 # data/
 # data/*
+dvc_plots/
 
 # Trained model artifacts
 models/
