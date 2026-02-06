@@ -20,7 +20,7 @@ trainer:
   experiment_tracker_method : "DVCLiveLogger"
   experiment_tracker_dir : "ml_assets/data/training/"
   run_name : "default_run"
-  epochs : 10
+  epochs : 100
   accelerator : "cpu"
   devices : 1
   precision : 32

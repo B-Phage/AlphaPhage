@@ -72,11 +72,11 @@ stages:
     deps:
     - path: ml_assets/config/train_v0.0.1.yaml
       hash: md5
-      md5: 3775add5ad74b6946078a1b7231aad7c
-      size: 983
+      md5: dc7a311524a84643f0fb679e13c03887
+      size: 984
     outs:
     - path: ml_assets/data/training/default_run/checkpoints
       hash: md5
-      md5: 9ff800430435016ac01ea427cfcc800c.dir
-      size: 3582783
+      md5: 0272317af27c82886d07931229e4d53f.dir
+      size: 3582911
       nfiles: 3

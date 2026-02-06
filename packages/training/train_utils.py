@@ -52,6 +52,7 @@ def get_experiment_tracker_method(cfg: DictConfig, experiment_tracker_dir=str):
             dir=experiment_tracker_dir,
             log_model=False,  # Optionally log model checkpoints as DVC artifacts
             dvcyaml=False,  # Optionally track params/metrics in dvc.yaml
+            report="html",  # This generates the 'report.html' automatically
         )
         return experiment_tracker
     else:
