@@ -66,6 +66,6 @@ stages:
     outs:
     - path: ml_assets/data/training/default_run/checkpoints
       hash: md5
-      md5: f0091526ab4136fdf7689c4323f04c9c.dir
-      size: 4776726
-      nfiles: 4
+      md5: 507109ed5ae6dd50d15681ca5528ace1.dir
+      size: 3583615
+      nfiles: 3
