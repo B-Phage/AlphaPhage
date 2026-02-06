@@ -15,15 +15,16 @@ stages:
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'
     deps:
-    - workflows/run_prodigal.py
-    - packages/orchestration/orchestrator.py
-    - ml_assets/data/sequence_data/bacteria   # see NOTE above
-    - params.yaml
-    - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
-    outs:
-    - ml_assets/data/processed/bacteria/proteins
+      - workflows/run_prodigal.py
+      - packages/orchestration/orchestrator.py
+      - ml_assets/data/sequence_data/bacteria     # see NOTE above
+      - params.yaml
+      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+    # outs:
+      # - ml_assets/data/processed/bacteria/proteins
 
   prodigal_phage:
     # required:
@@ -34,13 +35,13 @@ stages:
       conda activate preprocessing &&
       python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'
     deps:
-    - workflows/run_prodigal.py
-    - packages/orchestration/orchestrator.py
-    - ml_assets/data/sequence_data/phage
-    - params.yaml
-    - ml_assets/config/prodigal_phage_v0.0.1.yaml
-    outs:
-    - ml_assets/data/processed/phage/proteins
+      - workflows/run_prodigal.py
+      - packages/orchestration/orchestrator.py
+      - ml_assets/data/sequence_data/phage
+      - params.yaml
+      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+    # outs:
+    #   - ml_assets/data/processed/phage/proteins
 
 # Hashing the next stages out for now
 # will bring them in systematically as the code is implemented
@@ -70,18 +71,22 @@ stages:
   #   outs:
   #     - ml_assets/data/features
 
-  # train_model:
-  #   cmd: python packages/training/train.py \
-  #           --config configs/training.yaml \
-  #           --data ml_assets/data/features \
-  #           --model_out ml_assets/models/model.pkl \
-  #           --live_dir ml_assets/experiments
-  #   deps:
-  #     - packages/training/
-  #     - ml_assets/data/features
-  #     - configs/training.yaml
-  #   outs:
-  #     - ml_assets/models/model.pkl
+  train_model:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate training &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows &&
+      export CUDA_VISIBLE_DEVICES="" &&
+      python workflows/run_train.py --config params.yaml '
+    deps:
+    - ml_assets/config/train_v0.0.1.yaml
+    outs:
+    - ml_assets/data/training/default_run/checkpoints
+
+      # - ml_assets/data/training/checkpoints #/model_v0.0.1.pkl
+      # - packages/arc/TransformerX.py
+      #- ml_assets/data/features
 
   # evaluate:
   #   cmd: python packages/inference/evaluate.py \
@@ -97,34 +102,11 @@ stages:
   #   # DVCLive outputs directory
   #   outs:
   #     - ml_assets/experiments
-params:
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-20-53/mlrun/params.yaml
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-25-06/mlrun/params.yaml
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-27-01/mlrun/params.yaml
-- outputs/2026-01-10/08-35-50/mlrun/params.yaml
-- outputs/2026-01-12/12-36-51/mlrun/params.yaml
-- outputs/2026-01-15/13-08-06/mlrun/params.yaml
-- outputs/2026-01-15/13-09-37/mlrun/params.yaml
-metrics:
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-20-53/mlrun/metrics.json
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-25-06/mlrun/metrics.json
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-27-01/mlrun/metrics.json
-- outputs/2026-01-10/08-35-50/mlrun/metrics.json
-- outputs/2026-01-12/12-36-51/mlrun/metrics.json
-- outputs/2026-01-15/13-08-06/mlrun/metrics.json
-- outputs/2026-01-15/13-09-37/mlrun/metrics.json
-plots:
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-20-53/mlrun/plots/metrics:
-    x: step
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-25-06/mlrun/plots/metrics:
-    x: step
-- file:/Users/dutoitschabort/Documents/bp/AlphaPhage/outputs/2026-01-10/08-27-01/mlrun/plots/metrics:
-    x: step
-- outputs/2026-01-10/08-35-50/mlrun/plots/metrics:
-    x: step
-- outputs/2026-01-12/12-36-51/mlrun/plots/metrics:
-    x: step
-- outputs/2026-01-15/13-08-06/mlrun/plots/metrics:
-    x: step
-- outputs/2026-01-15/13-09-37/mlrun/plots/metrics:
-    x: step
+# params:
+# - ml_assets/data/training/params.yaml
+# - ml_assets/data/training/default_run/tracker/params.yaml
+# metrics:
+# - ml_assets/data/training/default_run/tracker/metrics.json
+# plots:
+# - ml_assets/data/training/default_run/tracker/plots/metrics:
+#     x: step
