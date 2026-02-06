@@ -43,6 +43,7 @@ Thumbs.db                           # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
+ml_assets/data/
 outputs/
 outputs/*
 # data/
