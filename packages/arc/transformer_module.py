@@ -9,10 +9,6 @@ import utils.consol_log as log
 from arc.transformer_classifier import TransformerXClassifier
 from omegaconf import DictConfig, OmegaConf
 
-# from torch import Tensor, nn
-# from training.embeddings import RotaryPositionalEmbeddings
-
-
 logger = log.get_logger(level=log.WARNING)
 
 
