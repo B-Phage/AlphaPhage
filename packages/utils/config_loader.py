@@ -1,6 +1,6 @@
 # packages/utils/config_loader.py
 """
-This utility is dependent on DVC's params.yml pipleine file where the active vocab is defined.
+This utility is dependent on DVC's params.yml pipeline file where the active vocab is defined.
 If you wish to change the active vocab, change it there.
 
 Example usage for this utility:
@@ -51,7 +51,7 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
     return _load_vocab_file(vocab_cfg.file)
 
 
-def get_prodigal_config(override_path: str | None = None):
+def get_config(override_path: str | None = None, params_set: str = "prodigal_config"):
     """
     Loads prodigal config from params.yaml or override file
     """
@@ -60,7 +60,24 @@ def get_prodigal_config(override_path: str | None = None):
         raise FileNotFoundError(cfg_path)
 
     params = OmegaConf.load(cfg_path)
-    if "prodigal_config" not in params:
-        raise KeyError(f"prodigal_config section missing in config file {params}")
+    if params_set not in params:
+        raise KeyError(f"{params_set} section missing in config file {params}")
 
-    return params.prodigal_config
+    return params[params_set]  # type: ignore[reportArgumentType]
+
+
+def get_train_config(override_path: str | None = None):
+    """
+    Loads train config from params.yaml or override file
+    """
+    cfg_par_path = Path(override_path) if override_path else PARAMS_PATH
+    if not cfg_par_path.exists():
+        raise FileNotFoundError(cfg_par_path)
+
+    params = OmegaConf.load(cfg_par_path)
+    if "train" not in params:  # or "train_config" not in params.train:
+        raise KeyError(f"'train' section missing in config file {params}")
+
+    cfg_path = params.train.train_config
+
+    return cfg_path, OmegaConf.load(cfg_path)

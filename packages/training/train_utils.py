@@ -1,6 +1,10 @@
+import os
+
 import h5py
 import numpy as np
 import utils.consol_log as log
+from omegaconf import DictConfig, OmegaConf
+from torch.utils.data import DataLoader, IterableDataset
 
 logger = log.get_logger(level=log.WARNING)
 
@@ -36,3 +40,39 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         logger.info(f"num_tokens  : {num_tokens}")
 
     return length_padded, num_tokens, tokens_in_data
+
+
+def get_experiment_tracker_method(cfg: DictConfig, experiment_tracker_dir=str):
+    if cfg.trainer.experiment_tracker_method == "DVCLiveLogger":
+        from pathlib import Path
+
+        from dvclive.lightning import DVCLiveLogger
+
+        experiment_tracker = DVCLiveLogger(
+            dir=experiment_tracker_dir,
+            log_model=False,  # Optionally log model checkpoints as DVC artifacts
+            dvcyaml=False,  # Optionally track params/metrics in dvc.yaml
+        )
+        return experiment_tracker
+    else:
+        raise ValueError(f"Unknown logger method: {cfg.trainer.experiment_tracker_method}")
+
+
+def get_datamodule(cfg: DictConfig) -> IterableDataset:
+    # Only BinaryPairkeyDataModule is implemented.
+    if cfg.reader_mode == "binary_pairkey":
+        from dataloaders.dataloaders import BinaryPairkeyDataModule
+
+        return BinaryPairkeyDataModule(cfg)
+    else:
+        raise ValueError(f"Unknown reader_mode: {cfg.reader_mode}")
+
+
+def get_model(cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int):
+    # Only TransformerX is implemented.
+    if cfg.architecture == "TransformerX":
+        from arc.TransformerX import TransformerX, TransformerXClassifier, archspecs, archspecs2
+
+        return TransformerX(cfg, num_tokens, vocab_size_out, length_padded, archspecs, archspecs2)
+    else:
+        raise ValueError(f"Unknown architecture: {cfg.architecture}")

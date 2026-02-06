@@ -64,3 +64,19 @@ stages:
       md5: 875f7b1e53e944d2dd3390cc8f172398.dir
       size: 5439150
       nfiles: 132
+  train_model:
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate training
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows
+      && export CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config
+      params.yaml '\n"
+    deps:
+    - path: ml_assets/config/train_v0.0.1.yaml
+      hash: md5
+      md5: 3775add5ad74b6946078a1b7231aad7c
+      size: 983
+    outs:
+    - path: ml_assets/data/training/default_run/checkpoints
+      hash: md5
+      md5: 9ff800430435016ac01ea427cfcc800c.dir
+      size: 3582783
+      nfiles: 3
