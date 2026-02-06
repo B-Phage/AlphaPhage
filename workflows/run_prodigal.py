@@ -44,7 +44,7 @@ N_JOBS = run_cfg.n_jobs
 CODE_VERSION = gen_cfg.code_version
 
 GENOME_DIR = Path(cfg.genome_dir)
-OUTPUT_DIR = Path(cfg.output_dir)
+OUTPUT_DIR = Path(cfg.proteins_dir)
 HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 
 

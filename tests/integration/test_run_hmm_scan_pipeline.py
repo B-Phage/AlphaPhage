@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-PIPELINE_PATH = Path("workflows/orchestrator/run_hmm_scan_pipeline.py")
+PIPELINE_PATH = Path("workflows/run_hmm_scan_pipeline.py")
 
 
 # ---------------------------------------------------------------------
@@ -28,10 +28,10 @@ general:
   code_version: "test-code-v1"
 
 prodigal_config:
-  output_dir: "{proteins_dir}"
+  proteins_dir: "{proteins_dir}"
 
 hmm_config:
-  output_dir: "{results_dir}"
+  hmm_scan_dir: "{results_dir}"
   data_lake: "{data_lake}"
   hmm_multifile: "tests/fixtures/phrog_126.hmm"
   annotations: "tests/fixtures/phrog_annot_test.tsv"
@@ -81,11 +81,11 @@ def test_hmm_pipeline_runs_and_creates_outputs(tmp_path):
     """
     proteins_path = Path("tests/fixtures")
     results = tmp_path / "results"
-    duckdb = tmp_path / "data_lake"
+    data_lake = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
 
     # Write YAML config
-    config_path = write_test_config(tmp_path, proteins_path, results, duckdb, lst_genomes)
+    config_path = write_test_config(tmp_path, proteins_path, results, data_lake, lst_genomes)
 
     # Run pipeline
     run_pipeline(config_path)
@@ -95,7 +95,7 @@ def test_hmm_pipeline_runs_and_creates_outputs(tmp_path):
         assert (results / f"{genome}.csv").exists()
 
     # DuckDB file created
-    assert duckdb.exists()
+    assert data_lake.exists()
 
     # Hash store created
     hash_store = Path("ml_assets/data/workflow/hashes")
@@ -108,10 +108,10 @@ def test_pipeline_skips_unchanged_inputs(tmp_path):
     """
     proteins_path = Path("tests/fixtures").resolve()
     results = tmp_path / "results"
-    duckdb = tmp_path / "data_lake"
+    data_lake = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
 
-    config_path = write_test_config(tmp_path, proteins_path, results, duckdb, lst_genomes)
+    config_path = write_test_config(tmp_path, proteins_path, results, data_lake, lst_genomes)
 
     # First run
     run_pipeline(config_path)

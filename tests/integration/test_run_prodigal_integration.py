@@ -19,10 +19,10 @@ class TestRunProdigalIntegration(unittest.TestCase):
         self.tempdir = Path(tempfile.mkdtemp())
         self.config_file = self.tempdir / "prodigal_test_config.yaml"
         self.input_dir = self.tempdir / "genomes"
-        self.output_dir = self.tempdir / "proteins"
+        self.proteins_dir = self.tempdir / "proteins"
 
         self.input_dir.mkdir()
-        self.output_dir.mkdir()
+        self.proteins_dir.mkdir()
 
         # Create a tiny dummy genome
         self.genome_file = self.input_dir / "genome1.fasta"
@@ -33,7 +33,7 @@ class TestRunProdigalIntegration(unittest.TestCase):
             f"""
 prodigal_config:
   genome_dir: "{self.input_dir}"
-  output_dir: "{self.output_dir}"
+  proteins_dir: "{self.proteins_dir}"
 general:
   lst_genomes: []
   code_version: "integration-test-v1"
@@ -69,5 +69,5 @@ general:
         self.assertEqual(result.returncode, 0, msg="run_prodigal.py failed")
 
         # Check that the output protein file exists
-        expected_protein = self.output_dir / "genome1.fa"
+        expected_protein = self.proteins_dir / "genome1.fa"
         self.assertTrue(expected_protein.exists(), msg=f"{expected_protein} not created")

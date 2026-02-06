@@ -3,27 +3,29 @@
 # dvc repro  # this runs all changed piplines, see https://doc.dvc.org/command-reference/repro#options
 
 
-# preprocessing stage
 stages:
 
-  # prodigal_ecoli:
-  #   # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
-  #   # Example
-  #   #   dvc add ../databases/production/sequence_data/bacteria --out ml_assets/data/sequence_data
-  #   # If it is the first run you need to add two files to git as well:
-  #   #   git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
-  #   cmd: >
-  #     bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
-  #     conda activate preprocessing &&
-  #     python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'
-  #   deps:
-  #     - workflows/run_prodigal.py
-  #     - packages/orchestration/orchestrator.py
-  #     - ml_assets/data/sequence_data/bacteria # see NOTE above
-  #     - params.yaml
-  #     - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
-  #   outs:
-  #     - ml_assets/data/processed/bacteria/proteins
+  code_hashes:
+  # Hash up front to help stitch DVC and underlying orchestration
+  # A package hash is also more convenient to use as a dep than
+  # listing multiple interconnected code files
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/hash_pipeline_packages.py
+      --packages packages/hmm packages/data_contracts packages/utils packages/storage_io
+      --output-dir ml_assets/data/artifacts/code_hashes'
+    deps:
+      - packages/hmm
+      - packages/data_contracts
+      - packages/utils
+      - packages/storage_io
+    outs:
+      - ml_assets/data/artifacts/code_hashes/hmm.hash
+      - ml_assets/data/artifacts/code_hashes/data_contracts.hash
+      - ml_assets/data/artifacts/code_hashes/utils.hash
+      - ml_assets/data/artifacts/code_hashes/storage_io.hash
 
   prodigal_phage:
     # required:
@@ -47,11 +49,13 @@ stages:
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
-      python -u workflows/orchestrator/run_hmm_scan_pipeline.py --config ml_assets/config/prodigal_phage_v0.0.1.yaml'
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/run_hmm_scan_pipeline.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml
+      '
     deps:
-      - workflows/orchestrator/run_hmm_scan_pipeline.py
-      - packages/hmm/search.py
-      - workflows/cli/hmm_scan.py
+      - workflows/run_hmm_scan_pipeline.py
+      - ml_assets/data/artifacts/code_hashes/hmm.hash
       - ml_assets/data/processed/phage/proteins
       - ml_assets/config/prodigal_phage_v0.0.1.yaml
       - packages/data_contracts/hmm_lake.py
@@ -59,9 +63,11 @@ stages:
       - ml_assets/data/processed/phage/hmm_scan_lake
 
   build_phage_hmm_summary:
+  # Summarise the parquet lake to optimise the next HMM extraction step
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/hmm_parquet_to_summary_tbl.py
       --config ml_assets/config/prodigal_phage_v0.0.1.yaml
       --fingerprint ml_assets/data/artifacts/hmm_phrog_summary.fingerprint'
@@ -71,6 +77,7 @@ stages:
       - packages/hmm/duckdb_io.py
       - ml_assets/data/processed/phage/hmm_scan_lake        # parquet-producing stage output
     outs:
+    # We are intentionally not tracking the DuckDB table itself in DVC. The parquet lake already has all the info.
       - ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
 
   extract_phage_hmm_fastas:
@@ -86,58 +93,41 @@ stages:
       - packages/hmm/duckdb_io.py
     outs:
       - ml_assets/data/processed/phage/hmm_fasta
-# Hashing the next stages out for now
-# will bring them in systematically as the code is implemented
 
-  # preprocess:
-  #   cmd: python packages/preprocessing/run_preprocessing.py \
-  #           --config configs/preprocessing.yaml \
-  #           --input ml_assets/data/raw \
-  #           --output ml_assets/data/clean
-  #   deps:
-  #     - packages/preprocessing/
-  #     - ml_assets/data/raw
-  #     - configs/preprocessing.yaml
-  #   outs:
-  #     - ml_assets/data/clean
+  create_phage_msas:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/create_msas.py
+      --config ml_assets/config/prodigal_phage_v0.0.1.yaml'
+    deps:
+      - workflows/create_msas.py
+      - ml_assets/data/processed/phage/hmm_fasta
+      - packages/hmm/msa.py
+    params:
+    # just trigger a rerun if the specific folder changes
+      - ml_assets/config/prodigal_phage_v0.0.1.yaml:
+        - hmm_config.hmm_multifile
+    outs:
+      - ml_assets/data/processed/phage/msa_csa
 
-  # feature_engineering:
-  #   cmd: python packages/feature_engineering/run_feature_engineering.py \
-  #           --config configs/feature_engineering.yaml \
-  #           --input ml_assets/data/clean \
-  #           --output ml_assets/data/features
-  #   deps:
-  #     - packages/feature_engineering/
-  #     - ml_assets/data/clean
-  #     - configs/feature_engineering.yaml
-  #     - ${vocab.file}
-  #   outs:
-  #     - ml_assets/data/features
 
-  # train_model:
-  #   cmd: python packages/training/train.py \
-  #           --config configs/training.yaml \
-  #           --data ml_assets/data/features \
-  #           --model_out ml_assets/models/model.pkl \
-  #           --live_dir ml_assets/experiments
+  # prodigal_ecoli:
+  #   # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
+  #   # Example
+  #   #   dvc add ../databases/production/sequence_data/bacteria --out ml_assets/data/sequence_data
+  #   # If it is the first run you need to add two files to git as well:
+  #   #   git add ml_assets/data/sequence_data/bacteria/.gitignore ml_assets/data/sequence_data/bacteria/bacteria.dvc
+  #   cmd: >
+  #     bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+  #     conda activate preprocessing &&
+  #     python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'
   #   deps:
-  #     - packages/training/
-  #     - ml_assets/data/features
-  #     - configs/training.yaml
+  #     - workflows/run_prodigal.py
+  #     - packages/orchestration/orchestrator.py
+  #     - ml_assets/data/sequence_data/bacteria # see NOTE above
+  #     - params.yaml
+  #     - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
   #   outs:
-  #     - ml_assets/models/model.pkl
-
-  # evaluate:
-  #   cmd: python packages/inference/evaluate.py \
-  #           --config configs/evaluation.yaml \
-  #           --model ml_assets/models/model.pkl \
-  #           --data ml_assets/data/features \
-  #           --live_dir ml_assets/experiments
-  #   deps:
-  #     - packages/inference/
-  #     - ml_assets/models/model.pkl
-  #     - ml_assets/data/features
-  #     - configs/evaluation.yaml
-  #   # DVCLive outputs directory
-  #   outs:
-  #     - ml_assets/experiments
+  #     - ml_assets/data/processed/bacteria/proteins

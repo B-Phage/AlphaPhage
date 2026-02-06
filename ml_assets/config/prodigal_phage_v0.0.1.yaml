@@ -1,14 +1,13 @@
 general:
-  lst_genomes:      ["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes, useful for testing
+  lst_genomes:      [] #["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes, useful for testing
   code_version:     "prodigal-gv-v1.0"
 
 prodigal_config:
 
   # from the ann_hmm snakemake config
   checkpoint:       null
-  data_dir:         "../../../databases"
-  genome_dir:       "../databases/production/sequence_data/phage"
-  output_dir:       "ml_assets/data/processed/phage/proteins"
+  genome_dir:        "../databases/production/sequence_data/phage"
+  proteins_dir:      "ml_assets/data/processed/phage/proteins"
 
 hmm_config:
   hmm_multifile:    "../databases/hmm/pharokka_v1.4.0_databases/all_phrogs.h3m"
@@ -17,9 +16,13 @@ hmm_config:
   sql_tbl_sufix:    ""
   min_bit_score:    50
 
-  output_dir:       "ml_assets/data/processed/phage/hmm_scan"
+  hmm_scan_dir:     "ml_assets/data/processed/phage/hmm_scan"
   data_lake:        "ml_assets/data/processed/phage/hmm_scan_lake"
   duckdb:           "../databases/production/duckdb/proteins.duckdb"
   summary_tbl:      "hmm_phrog_summary"
 
   hmm_fasta_dir:    "ml_assets/data/processed/phage/hmm_fasta"
+
+msa_config:
+  split_hmm_dir:    "../databases/hmm/pharokka_v1.4.0_databases/split"
+  msa_csa_dir:      "ml_assets/data/processed/phage/msa_csa"

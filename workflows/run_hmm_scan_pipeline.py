@@ -6,11 +6,10 @@ Tracks per-file outputs in a parquet data lake and summary CSVs.
 
 import argparse
 import hashlib
-import subprocess
-import sys
 from functools import partial
 from pathlib import Path
 
+from hmm.api import run_hmm_scan_on_file
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config  # YAML loader
 
@@ -22,46 +21,37 @@ def run_hmm_worker(
     protein_file: Path,
     outputs: list,
     *,
-    hmm: str,
-    annotations: str,
+    hmm: Path,
+    annotations: Path,
     method: str,
     data_lake: Path,
 ):
+    # Make sure the data lake folder exists
+    data_lake.mkdir(parents=True, exist_ok=True)
+
     summary_csv = outputs[0]
     summary_csv.parent.mkdir(exist_ok=True, parents=True)
+    csv_file = summary_csv / f"{protein_file.stem}.csv"
 
-    cmd = [
-        sys.executable,
-        "workflows/cli/hmm_scan.py",
-        "-f",
-        protein_file,
-        "-hp",
-        hmm,
-        "-a",
-        annotations,
-        "-m",
-        method,
-        "-o",
-        summary_csv,
-        "-db",
-        data_lake,
-    ]
-
-    # subprocess.run(cmd, capture_output=True, text=True, check=True)
-    subprocess.run(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        # stderr is not defined, so it "inherits" the terminal
-        check=True,
+    run_hmm_scan_on_file(
+        in_fasta=protein_file,
+        hmm_path=hmm,
+        annotation_file=annotations,
+        method=method,
+        out_csv=csv_file,
+        out_database=data_lake,
     )
-    return outputs
+
+    # Return the folder as the "output" for the orchestrator
+    return [data_lake]
 
 
 # -----------------------------
 # Top-level output function
 # -----------------------------
 def hmm_output_func(protein_file: Path, result_dir: Path):
-    return [result_dir / f"{protein_file.stem}.csv"]
+    # All protein files contribute to the same data lake
+    return [result_dir]
 
 
 # -----------------------------
@@ -93,19 +83,23 @@ def main(argv: list[str] | None = None) -> None:
     prot_cfg = get_config(override_path=args.config, params_set="prodigal_config")
     hmm_cfg = get_config(override_path=args.config, params_set="hmm_config")
 
-    protein_dir = Path(prot_cfg.output_dir)
-    result_dir = Path(hmm_cfg.output_dir)
+    protein_dir = Path(prot_cfg.proteins_dir)
+    result_dir = Path(hmm_cfg.hmm_scan_dir)
     result_dir.mkdir(exist_ok=True, parents=True)
     data_lake = Path(hmm_cfg.data_lake)
+    data_lake.mkdir(parents=True, exist_ok=True)
     hash_store_dir = Path("ml_assets/data/workflow/hashes")
 
     # -----------------------------
     # Resolve input proteins
     # -----------------------------
+    print(f"Protein directory: {protein_dir}")
     if gen_cfg.lst_genomes:
         protein_files = [protein_dir / f"{g}.fa" for g in gen_cfg.lst_genomes]
     else:
         protein_files = sorted(protein_dir.glob("*.fa"))
+
+    print(f"Protein files: {protein_files}")
 
     # -----------------------------
     # Create pickleable worker/output using functools.partial
@@ -134,6 +128,8 @@ def main(argv: list[str] | None = None) -> None:
         config_hash = hashlib.sha256(f.read()).hexdigest()
 
     full_code_id = f"{gen_cfg.code_version}_{config_hash}"
+    # Let orchestrator turn that into a hash for per-file tracking
+    code_hash = orch._hash_code_reference(full_code_id)
 
     orch.run(
         inputs=protein_files,

@@ -83,7 +83,7 @@ class AnnotationProvider:
 
     _registry: Dict[str, Type[AnnotationSource]] = {"phrogs": PhrogSource, "pfam": PfamSource}
 
-    def __init__(self, source_type: str, file_path: str):
+    def __init__(self, source_type: str, file_path: Path):
         self.path = Path(file_path)
         self._cache: Optional[Dict[str, str]] = None
 
