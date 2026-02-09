@@ -8,38 +8,55 @@ on:
       - "tests/integration/**"
       - ".github/workflows/integration-tests.yml"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: training
+            env_file: conda_envs/training.yml
+            test_files: >-
+              tests/integration/test_run_train_integration.py
+
+          - env_name: preprocessing
+            env_file: conda_envs/preprocessing.yml
+            test_files: >-
+              tests/integration/test_run_prodigal_integration.py
 
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache conda packages
-        uses: actions/cache@v4
+      - name: 🐍 Setup Micromamba (Cached)
+        uses: mamba-org/setup-micromamba@v1
         with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ hashFiles('conda_envs/preprocessing.yml') }}
+          environment-file: ${{ matrix.env_file }}
+          environment-name: ${{ matrix.env_name }}
+          # Logic: Cache is based on the OS and the hash of the specific env file
+          cache-environment: true # Set to false to disable caching of the entire environment
+          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
+          cache-downloads: true # Set to false to force download of packages every time
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          python-version: 3.11                     # or your required version
-          environment-file: conda_envs/preprocessing.yml
-          activate-environment: preprocessing      # name of the env
-
-      - name: 🐍 Install additional Python deps (pytest, etc.)
+      - name: 🛠️ Install Package dependencies
+        shell: bash -l {0}
         run: |
-          conda activate preprocessing
+          # Ensure coverage and essential test tools are present in the env
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov
+          pip install coverage
 
-      - name: 🏃 Run integration tests
+      - name: 🏃 Run Integration Tests
+        shell: bash -l {0}
         run: |
-          conda activate preprocessing
-          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v
+          echo "--- Running ${{ matrix.env_name }} Integration Tests ---"
+          # Set PYTHONPATH to include project root and packages
+          export PYTHONPATH=$PYTHONPATH:$(pwd):$(pwd)/packages
+
+          # Using the coverage run -m unittest method as requested previously
+          coverage run -m unittest ${{ matrix.test_file }}
+
+          # Show summary in console
+          coverage report -m
