@@ -30,7 +30,7 @@ jobs:
           - env_name: training
             env_file: conda_envs/training.yml
             # List of folders in ./packages/ to pip install
-            install_packages: ["training", "dataloaders"]
+            install_packages: ["training", "dataloaders", "arc", "utils"]
             # Specific source folder for coverage tracking
             cov_source: "packages/arc,packages/dataloaders"
             # Explicit list of test files
@@ -74,6 +74,7 @@ jobs:
           # 2. Run Unittests with Coverage
           # We use the specific list of files provided in the matrix
           echo "--- Running Tests for ${{ matrix.env_name }} ---"
+          # export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
           coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
 
           # 3. Generate Reports
