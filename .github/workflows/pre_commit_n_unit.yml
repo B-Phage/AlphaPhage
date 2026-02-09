@@ -58,9 +58,9 @@ jobs:
         with:
           environment-file: ${{ matrix.env_file }}
           environment-name: ${{ matrix.env_name }}
-          cache-environment: true
+          cache-environment: true # Set to false to disable caching of the entire environment
           cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
-          cache-downloads: true
+          cache-downloads: true # Set to false to force download of packages every time
 
       - name: 🛠️ Install Packages & Run Tests
         shell: bash -l {0}
