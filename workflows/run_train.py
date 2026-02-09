@@ -30,47 +30,18 @@ from training.train_utils import (
     get_model,
     get_token_basics,
 )
-from utils.config_loader import get_train_config
 
 logger = log.get_logger(level=log.ERROR)
 
 # -----------------------------
-# Command-line args
-# -----------------------------
-
-config = "params.yaml"
-force = False
-parser = argparse.ArgumentParser(description="Run Trainer")
-parser.add_argument(
-    "--config",
-    type=str,
-    required=False,
-    help="Path to the YAML config file for this run",
-)
-parser.add_argument(
-    "--force",
-    action="store_true",
-    # type=bool,
-    help="Force rerun all genomes regardless of hash",
-)
-args = parser.parse_args()
-if args.config:
-    config = args.config
-if args.force and args.force == True:
-    force = True
-
-# -----------------------------
 # Load configuration
 # -----------------------------
-cfg_path, cfg = get_train_config(override_path=args.config)
 
-EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
-RUN_NAME = cfg.trainer.get("run_name", "default_run")
-output_dir = os.path.join(EXP_TRACK_DIR, RUN_NAME)
-# Note: output_dir->os.path.join(OUTPUT_DIR, RUN_NAME, "checkpoints")
-N_JOBS = cfg.num_workers
-CODE_VERSION = cfg.code_version
-HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
+
+def get_output_dir(cfg):
+    EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
+    RUN_NAME = cfg.trainer.get("run_name", "default_run")
+    return os.path.join(EXP_TRACK_DIR, RUN_NAME)
 
 
 def run_trainer(input_path: str, outputs: list):
@@ -78,6 +49,8 @@ def run_trainer(input_path: str, outputs: list):
     # A. Setup Logging and Reproducibility
     # ----------------------------------------------------
     cfg = OmegaConf.load(input_path)
+    output_dir = get_output_dir(cfg)
+
     logger = log.get_logger(level=cfg.verboselevel)
 
     logger.info(f"\n{OmegaConf.to_yaml(cfg)}")  # Print final merged config
@@ -150,20 +123,64 @@ def run_trainer(input_path: str, outputs: list):
 # Output function
 # -----------------------------
 def trainer_output_func(input_path: Path):
+    cfg = OmegaConf.load(input_path)
+    output_dir = get_output_dir(cfg)
     training_run_name = Path(input_path).stem
     training_run_name_file = os.path.join(output_dir, f"{training_run_name}.csv")
     return [Path(training_run_name_file)]
 
 
 # -----------------------------
-# Prepare inputs
-# -----------------------------
-lst_training_inputs = [cfg_path]
-
-# -----------------------------
 # Run orchestrator
 # -----------------------------
 if __name__ == "__main__":
+
+    from utils.config_loader import get_train_config
+
+    config = "params.yaml"
+    force = False
+
+    # -----------------------------
+    # Command-line args
+    # -----------------------------
+
+    parser = argparse.ArgumentParser(description="Run Trainer")
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=False,
+        help="Path to the YAML config file for this run",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        # type=bool,
+        help="Force rerun all genomes regardless of hash",
+    )
+    args = parser.parse_args()
+    if args.config:
+        config = args.config
+    if args.force and args.force == True:
+        force = True
+
+    cfg_path, cfg = get_train_config(override_path=args.config)
+
+    # -----------------------------
+    # Prepare inputs
+    # -----------------------------
+    lst_training_inputs = [cfg_path]
+
+    EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
+    RUN_NAME = cfg.trainer.get("run_name", "default_run")
+
+    # output_dir = os.path.join(EXP_TRACK_DIR, RUN_NAME)
+    output_dir = get_output_dir(cfg)
+
+    # Note: output_dir->os.path.join(OUTPUT_DIR, RUN_NAME, "checkpoints")
+    N_JOBS = cfg.num_workers
+    CODE_VERSION = cfg.code_version
+    HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
+
     os.makedirs(output_dir, exist_ok=True)
     orch = Orchestrator(
         workflow_name=f"train_{cfg.get('name', 'default')}",
