@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing training #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing training models #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -90,9 +90,6 @@ setup-training:
 	$(call ensure_env,$(ENV_TRAINING))
 	@echo "=== Installing training package ==="
 	conda run -n $(ENV_TRAINING) pip install -e packages/training
-
-
-
 
 .PHONY: setup-inference
 setup-inference:
@@ -184,7 +181,8 @@ dvc-clean:
 .PHONY: test
 
 test: ## Run unit tests with correct path
-	PYTHONPATH=./packages pytest tests/
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+	coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
 
 # =====================
 # Cleanup

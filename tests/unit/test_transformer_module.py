@@ -1,7 +1,7 @@
 import unittest
 
 import torch
-from arc.transformer_module import TransformerX
+from models.transformer_module import TransformerX
 from omegaconf import OmegaConf
 
 

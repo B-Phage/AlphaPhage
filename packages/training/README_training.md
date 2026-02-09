@@ -88,22 +88,30 @@ with any archspec2 string. You could perform an exhaustive scan for optimised
 sub-architectures along with other hyperparamers (see below).
 
 arcspec strings:
-  "rope_tt_normpostl_view"
-  "rope_tt_normpostl_sum"
-  "rope_tt_nonormpostl_view"
-  "rope_tt_nonormpostl_sum"
-  "rope_nt_normpostl_view"
-  "rope_nt_normpostl_sum"
-  "rope_nt_nonormpostl_view"
-  "rope_nt_nonormpostl_sum"
-  "nope_tt_normpostl_view"
-  "nope_tt_normpostl_sum"
-  "nope_tt_nonormpostl_view"
-  "nope_tt_nonormpostl_sum"
-  "nope_nt_normpostl_view"
-  "nope_nt_normpostl_sum"
-  "nope_nt_nonormpostl_view"
-  "nope_nt_nonormpostl_sum"
+  "rope_tt_normpostl_view",
+  "rope_tt_normpostl_sum",
+  "rope_tt_normpostl_cls",
+  "rope_tt_nonormpostl_view",
+  "rope_tt_nonormpostl_sum",
+  "rope_tt_nonormpostl_cls",
+  "rope_nt_normpostl_view",
+  "rope_nt_normpostl_sum",
+  "rope_nt_normpostl_cls",
+  "rope_nt_nonormpostl_view",
+  "rope_nt_nonormpostl_sum",
+  "rope_nt_nonormpostl_cls",
+  "nope_tt_normpostl_view",
+  "nope_tt_normpostl_sum",
+  "nope_tt_normpostl_cls",
+  "nope_tt_nonormpostl_view",
+  "nope_tt_nonormpostl_sum",
+  "nope_tt_nonormpostl_cls",
+  "nope_nt_normpostl_view",
+  "nope_nt_normpostl_sum",
+  "nope_nt_normpostl_cls",
+  "nope_nt_nonormpostl_view",
+  "nope_nt_nonormpostl_sum",
+  "nope_nt_nonormpostl_cls",
 
 arcspec2 strings:
   "L4_bn"
@@ -131,74 +139,52 @@ Other hyperparameters:
 A typical config file for a small test dataset would look like this, and located
 at this location:
 
-  config_path = "../../tests/unit/data"
-  config_name = "config_test_2"
+  config_path = "ml_assets/config"
+  config_name = "train_v0.0.1"
   and using the .yaml extension.
 
-  seed  : 42
-  verboselevel : "ERROR"
-  debug_mode : false
+  code_version :     "TransformerX-v1.0"
 
-  train_features_path : "../../bp/AlphaX/proc/sim_data/Tests/x_\<dataname\>.h5"
-  train_labels_path : "../../bp/AlphaX/proc/sim_data/Tests/cl_\<dataname\>.h5"
-  debug_features_path : ""
-  debug_labels_path : ""
+seed : 42
+verboselevel : "ERROR"
+debug_mode : false
 
-  pair_indices_name : "pair_indices"
-  dataset_name_host : "host_vec_1"
-  dataset_name_phage : "phage_vec_1"
-  reader_mode : "binary_pairkey"
-  architecture : "TransformerX"
-  num_workers : 0
+train_features_path : "tests/data/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+train_labels_path : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+debug_features_path : ""
+debug_labels_path : ""
 
-  trainer:
-    logger_method : "MLFlowLogger"
-    project : "AlphaPhage_Testing"
-    run_name : "test_run_2"
-    mlflow_tracking_uri : null
-    epochs : 300
-    accelerator : "cpu"
-    devices : 1
-    precision : 32
-    batch_size : 10
-    save_top_k : 3
-    patience : 5
-    val_fraction : 0.15
+pair_indices_name : "pair_indices"
+dataset_name_host : "host_vec_1"
+dataset_name_phage : "phage_vec_1"
+reader_mode : "binary_pairkey"
+architecture : "TransformerX"
+num_workers : 1
 
-  hyp:
-    archspec : "nope_nt_nonormpostl_sum"
-    archspec2 : "L4_bn"
-    dim : 8
-    lcom : 30
-    dim1 : 8
-    dim2 : 8
-    heads : 4
-    mult : 4
-    depth : 1
-    vocab_size_out : 2
+trainer:
+  experiment_tracker_method : "DVCLiveLogger"
+  experiment_tracker_dir : "ml_assets/data/training/"
+  run_name : "default_run"
+  epochs : 100
+  accelerator : "cpu"
+  devices : 1
+  precision : 32
+  batch_size : 10
+  save_top_k : 3
+  patience : 20
+  val_fraction : 0.15
 
-  optimizer:
-    lr : 0.001
+hyp:
+  archspec : "nope_tt_nonormpostl_cls"
+  archspec2 : "L4_bn"
+  dim : 8
+  lcom : 30
+  dim1 : 8
+  dim2 : 8
+  heads : 4
+  mult : 4
+  depth : 1
+  vocab_size_out : 2
 
-### Following a training run through loggers
-
-Use the trainer.logger_method to choose how you would like to report training
-results. Options are:
-
-  "MLFlowLogger" : Allows tracking on MLFlow Browser through localhost or at a
-  dedicated mlflow server, or results could be written to text files.
-    For writing to text files, set trainer.mlflow_tracking_uri to
-      http://<IP_ADDRESS>:5000.
-    For casting to localhost, set trainer.mlflow_tracking_uri to
-      http://localhost:5000/ and open your browser at http://localhost:5000/.
-    For writing to text files, set trainer.mlflow_tracking_uri : null.
-
-  "TensorBoardLogger" : Allows tracking on TensorboardX.
-    Set trainer.mlflow_tracking_uri to "TensorBoardLogger".
-
-  "WandbLogger" : Allows tracking on WandbLogger. You would sign up for an
-    account on WandbLogger first.
-    Set trainer.mlflow_tracking_uri to "WandbLogger".
-
-  "CSVLogger" : Write a CSV file containing all metrics.
-    Set trainer.mlflow_tracking_uri to "CSVLogger".
+optimizer:
+  lr : 0.001

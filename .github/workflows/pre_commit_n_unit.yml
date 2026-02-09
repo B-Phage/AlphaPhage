@@ -30,9 +30,9 @@ jobs:
           - env_name: training
             env_file: conda_envs/training.yml
             # List of folders in ./packages/ to pip install
-            install_packages: ["training", "dataloaders", "arc", "utils"]
+            install_packages: ["training", "dataloaders", "models", "utils"]
             # Specific source folder for coverage tracking
-            cov_source: "packages/arc,packages/dataloaders"
+            cov_source: "packages/models,packages/dataloaders"
             # Explicit list of test files
             test_files: >-
               tests/unit/test_transformer_archspecs.py

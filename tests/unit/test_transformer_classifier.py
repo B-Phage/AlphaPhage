@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import torch
 import torch.nn as nn
-from arc.transformer_archspecs import archspec2_list, archspec_list, archspecs, archspecs2
-from arc.transformer_module import TransformerX
+from models.transformer_archspecs import archspec2_list, archspec_list, archspecs, archspecs2
+from models.transformer_module import TransformerX
 from omegaconf import OmegaConf
 
 

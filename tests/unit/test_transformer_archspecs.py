@@ -1,6 +1,6 @@
 import unittest
 
-from arc.transformer_archspecs import archspec2_list, archspec_list, archspecs, archspecs2
+from models.transformer_archspecs import archspec2_list, archspec_list, archspecs, archspecs2
 
 
 class TestArchSpecsIntegrity(unittest.TestCase):
