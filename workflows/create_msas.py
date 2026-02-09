@@ -78,7 +78,7 @@ def run_msa_workflow(config_path: str, force: bool = False):
     output_func_with_args = partial(get_msa_outputs, output_dir=OUTPUT_DIR)
 
     orch = Orchestrator(
-        workflow_name=f"msa_{hmm_cfg.hmm_scan_method}",
+        workflow_name=f"msa_{gen_cfg.get('name', 'test')}",
         hash_store_dir=HASH_STORE_DIR,
         logger_name="msa",
     )
@@ -90,7 +90,7 @@ def run_msa_workflow(config_path: str, force: bool = False):
         code_id=gen_cfg.code_version,
         parallelism=run_cfg.n_jobs,
         force=force,
-        tqdm_desc=f"MSA processing ({hmm_cfg.hmm_scan_method})",
+        tqdm_desc=f"MSA processing ({gen_cfg.get('name', 'test')})",
     )
 
 

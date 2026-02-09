@@ -53,12 +53,10 @@ def run_hmm_scan_on_file(
     if path.is_dir():
         logger.info(f"Processing HMM directory: {hmm_path}")
         hmms = list(load_single_hmm_per_file(path, "*.hmm"))
-    elif path.is_file():
+    else:
+        # If it exists and is not a dir, it MUST be a file
         logger.info(f"Processing single HMM file: {hmm_path}")
         hmms = list(load_hmms_from_file(path))
-    else:
-        logger.error(f"HMM path is neither a file nor a directory: {hmm_path}")
-        raise ValueError("HMM path format unknown")
 
     # -----------------------------
     # Load proteins

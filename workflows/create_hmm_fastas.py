@@ -23,6 +23,7 @@ args = parser.parse_args()
 # ---------------------------------------------------------
 # Config
 # ---------------------------------------------------------
+gen_cfg = get_config(override_path=args.config, params_set="general")
 cfg = get_config(override_path=args.config, params_set="hmm_config")
 run_cfg = get_config(
     "ml_assets/config/runtime.yaml", params_set="meta"
@@ -81,7 +82,7 @@ def output_func(input_path: Path):
 # ---------------------------------------------------------
 if __name__ == "__main__":
     orch = Orchestrator(
-        workflow_name="export_hmm_fastas",
+        workflow_name=f"export_{gen_cfg.get('name', 'test')}_hmm_fastas",
         hash_store_dir=HASH_STORE_DIR,
         logger_name="hmm_fasta_export",
     )
@@ -93,5 +94,5 @@ if __name__ == "__main__":
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
         force=args.force,
-        tqdm_desc="Exporting HMM FASTAs",
+        tqdm_desc=f"Exporting {gen_cfg.get('name', 'test')} HMM FASTAs",
     )

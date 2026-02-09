@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> None:
     # Build orchestrator
     # -----------------------------
     orch = Orchestrator(
-        workflow_name=f"hmm_scan_{hmm_cfg.hmm_scan_method}",
+        workflow_name=f"hmm_scan_{gen_cfg.get('name', 'test')}",
         hash_store_dir=hash_store_dir,
         logger_name="hmm_scan",
     )
@@ -138,7 +138,7 @@ def main(argv: list[str] | None = None) -> None:
         code_id=full_code_id,
         parallelism=run_cfg.n_jobs,
         force=args.force,
-        tqdm_desc=f"HMM scanning ({hmm_cfg.hmm_scan_method})",
+        tqdm_desc=f"HMM scanning ({gen_cfg.get('name', 'test')})",
     )
 
 

@@ -49,6 +49,12 @@ Thumbs.db        # Windows
 models/
 models/*
 
+# Human readable inspection files
+*.csv
+
+# Large workflow hashes
+ml_assets/data/workflow/hashes/*
+
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS
 # ----------------------------------------------------------------------

@@ -91,7 +91,7 @@ else:
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     orch = Orchestrator(
-        workflow_name=f"prodigal_{cfg.get('name', 'default')}",
+        workflow_name=f"prodigal_{gen_cfg.get('name', 'test')}",
         hash_store_dir=HASH_STORE_DIR,
         logger_name="prodigal",
     )
@@ -102,5 +102,5 @@ if __name__ == "__main__":
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
         force=args.force,
-        tqdm_desc=f"Prodigal processing ({cfg.get('name', 'default')})",
+        tqdm_desc=f"Prodigal processing ({gen_cfg.get('name', 'test')})",
     )

@@ -1,15 +1,30 @@
-prodigal_config:
-  lst_genomes:      []        # optional whitelist of genomes
+self_path: "ml_assets/config/prodigal_ecoli_v0.0.1.yaml"
+
+general:
+  lst_genomes:      ['370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
   code_version:     "prodigal-gv-v1.0"
+  name:             "ecoli"
 
-  # from the ann_hmm snakemake config
+prodigal_config:
   checkpoint:       null
-  data_dir:         "../../../databases"
-  genome_dir:       "../databases/production/sequence_data/bacteria"
-  output_dir:       "ml_assets/data/processed/bacteria/proteins"
+  genome_dir:       "ml_assets/data/sequence_data/bacteria"
+  proteins_dir:     "ml_assets/data/processed/bacteria/proteins"
 
+hmm_config:
   hmm_multifile:    "../databases/hmm/pfam/v38.0/Pfam-A.hmm"
   annotations:      "../databases/hmm/pfam/v38.0/Pfam-A.hmm.dat"
-  hhm_scan_method:  "cogs"
+  hmm_scan_method:  "pfam"
   sql_tbl_sufix:    ""
   min_bit_score:    50
+
+  hmm_scan_dir:     "ml_assets/data/processed/bacteria/hmm_scan"
+  data_lake:        "ml_assets/data/processed/bacteria/hmm_scan_lake"
+  duckdb:           "../databases/production/duckdb/proteins.duckdb"
+  db_fingerprint:   "ml_assets/data/artifacts/hmm_pfam_summary.fingerprint"
+  summary_tbl:      "hmm_pfam_summary"
+
+  hmm_fasta_dir:    "ml_assets/data/processed/bacteria/hmm_fasta"
+
+msa_config:
+  split_hmm_dir:    "../databases/hmm/pfam/v38.0/split"
+  msa_csa_dir:      "ml_assets/data/processed/bacteria/msa_csa"

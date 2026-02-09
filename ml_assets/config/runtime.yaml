@@ -22,7 +22,7 @@
 ###############################################################################
 
 meta:
-  n_jobs:           6
+  n_jobs:           4
   log_level:        'INFO'
 
   # These could come in later:
