@@ -180,9 +180,20 @@ dvc-clean:
 # =====================
 .PHONY: test
 
+
 test: ## Run unit tests with correct path
-	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
-	coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
+	conda activate $(ENV_TRAINING) && \
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
+	python -m unittest tests/unit/test_transformer_module.py && \
+	python -m unittest tests/unit/test_transformer_classifier.py && \
+	python -m unittest tests/unit/test_transformer_archspecs.py && \
+	python -m unittest tests/unit/test_dataloaders.py && \
+	python -m unittest tests/integration/test_run_training_integration.py
+	conda activate $(ENV_PREPROCESSING) && \
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
+	python -m unittest tests/integration/test_run_prodigal_integration.py
+
+#python -m unittest discover -s tests/unit -p "test_*.py" && \
 
 # =====================
 # Cleanup
