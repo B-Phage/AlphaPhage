@@ -74,7 +74,7 @@ jobs:
           # 2. Run Unittests with Coverage
           # We use the specific list of files provided in the matrix
           echo "--- Running Tests for ${{ matrix.env_name }} ---"
-          # export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
           coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
 
           # 3. Generate Reports
