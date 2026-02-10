@@ -19,11 +19,17 @@ jobs:
         include:
           - env_name: training
             env_file: conda_envs/training.yml
+            # List of folders in ./packages/ to pip install
+            install_packages: ["training", "dataloaders", "models", "utils"]
+            # Specific source folder for coverage tracking
+            cov_source: "packages/models,packages/dataloaders"
             test_files: >-
               tests/integration/test_run_train_integration.py
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
+            install_packages: ["preprocessing"]
+            cov_source: "packages/preprocessing"
             test_files: >-
               tests/integration/test_run_prodigal_integration.py
 
@@ -36,27 +42,26 @@ jobs:
         with:
           environment-file: ${{ matrix.env_file }}
           environment-name: ${{ matrix.env_name }}
-          # Logic: Cache is based on the OS and the hash of the specific env file
           cache-environment: true # Set to false to disable caching of the entire environment
           cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
           cache-downloads: true # Set to false to force download of packages every time
 
-      - name: 🛠️ Install Package dependencies
+      - name: 🛠️ Install Package dependencies and run Integration tests
         shell: bash -l {0}
         run: |
-          # Ensure coverage and essential test tools are present in the env
-          python -m pip install --upgrade pip
-          pip install coverage
+          # 1. Install listed packages in editable mode
+          for pkg in ${{ join(matrix.install_packages, ' ') }}; do
+            echo "--- Installing Package: $pkg ---"
+            pip install -e ./packages/$pkg
+          done
 
-      - name: 🏃 Run Integration Tests
-        shell: bash -l {0}
-        run: |
-          echo "--- Running ${{ matrix.env_name }} Integration Tests ---"
-          # Set PYTHONPATH to include project root and packages
-          export PYTHONPATH=$PYTHONPATH:$(pwd):$(pwd)/packages
+          # 2. Run Integration Tests with Coverage
+          # We use the specific list of files provided in the matrix
+          echo "--- Running Tests for ${{ matrix.env_name }} ---"
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+          coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
 
-          # Using the coverage run -m unittest method as requested previously
-          coverage run -m unittest ${{ matrix.test_file }}
-
-          # Show summary in console
-          coverage report -m
+          # # 3. Generate Reports
+          # coverage report -m
+          # coverage html -d htmlcov-${{ matrix.env_name }}
+          # coverage json -o coverage-${{ matrix.env_name }}.json

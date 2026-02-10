@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing training models #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing training models dataloaders #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
