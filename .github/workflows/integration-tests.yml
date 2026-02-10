@@ -24,7 +24,7 @@ jobs:
             # Specific source folder for coverage tracking
             cov_source: "packages/models,packages/dataloaders"
             test_files: >-
-              tests/integration/test_run_train_integration.py
+              tests/integration/test_run_training_integration.py
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
