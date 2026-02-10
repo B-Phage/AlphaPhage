@@ -91,6 +91,18 @@ setup-training:
 	@echo "=== Installing training package ==="
 	conda run -n $(ENV_TRAINING) pip install -e packages/training
 
+.PHONY: setup-dataloaders
+setup-dataloaders:
+	$(call ensure_env,$(ENV_TRAINING))
+	@echo "=== Installing dataloaders package ==="
+	conda run -n $(ENV_TRAINING) pip install -e packages/dataloaders
+
+.PHONY: setup-models
+setup-models:
+	$(call ensure_env,$(ENV_TRAINING))
+	@echo "=== Installing models package ==="
+	conda run -n $(ENV_TRAINING) pip install -e packages/models
+
 .PHONY: setup-inference
 setup-inference:
 # 	$(call ensure_env,$(ENV_INFERENCE))
@@ -153,27 +165,27 @@ check-dvc-config:
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="
-	dvc pull
+	conda run -n $(ENV_DEV) dvc pull
 
 .PHONY: dvc-repro
 dvc-repro:
 	@echo "=== Reproducing DVC pipeline ==="
-	dvc repro
+	conda run -n $(ENV_DEV) dvc repro
 
 .PHONY: dvc-graph
 dvc-graph:
 	@echo "=== Showing DVC pipeline graph ==="
-	dvc dag
+	conda run -n $(ENV_DEV) dvc dag
 
 .PHONY: dvc-push
 dvc-push:
 	@echo "=== Pushing outputs to remote ==="
-	dvc push
+	conda run -n $(ENV_DEV) dvc push
 
 .PHONY: dvc-clean
 dvc-clean:
 	@echo "=== Cleaning untracked outputs ==="
-	dvc gc -w
+	conda run -n $(ENV_DEV) dvc gc -w
 
 # =====================
 # Tests
