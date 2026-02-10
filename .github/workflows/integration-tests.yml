@@ -20,7 +20,7 @@ jobs:
           - env_name: training
             env_file: conda_envs/training.yml
             # List of folders in ./packages/ to pip install
-            install_packages: ["training", "dataloaders", "models", "utils"]
+            install_packages: "training dataloaders models utils"
             # Specific source folder for coverage tracking
             cov_source: "packages/models,packages/dataloaders"
             test_files: >-
@@ -28,7 +28,7 @@ jobs:
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            install_packages: ["preprocessing"]
+            install_packages: "preprocessing"
             cov_source: "packages/preprocessing"
             test_files: >-
               tests/integration/test_run_prodigal_integration.py
@@ -46,11 +46,19 @@ jobs:
           cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
           cache-downloads: true # Set to false to force download of packages every time
 
+      # #If using dvc pull, it requires storing secrets for GDrive access
+      # - name: 📦 Setup DVC
+      #   shell: bash -l {0}
+      #   run: |
+      #     pip install dvc[gdrive]
+      #     dvc pull
+      #     #or if conda cache was always working: conda run -n root_dev dvc pull
+
       - name: 🛠️ Install Package dependencies and run Integration tests
         shell: bash -l {0}
         run: |
           # 1. Install listed packages in editable mode
-          for pkg in ${{ join(matrix.install_packages, ' ') }}; do
+          for pkg in ${{ matrix.install_packages }}; do
             echo "--- Installing Package: $pkg ---"
             pip install -e ./packages/$pkg
           done
