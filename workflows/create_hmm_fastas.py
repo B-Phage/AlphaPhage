@@ -9,6 +9,8 @@ from hmm.duckdb_io import (
 )
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config
+from utils.file_system import clear_dir
+from utils.hash import create_manifest
 
 # ---------------------------------------------------------
 # CLI
@@ -17,6 +19,13 @@ parser = argparse.ArgumentParser(
     description="Export per-HMM FASTA files from DuckDB summary table."
 )
 parser.add_argument("--config", required=True, help="Path to YAML config")
+# parser.add_argument(
+#     "--hash-file",
+#     action="append",
+#     type=Path,
+#     required=True,
+#     help="Path to a hash file (repeatable)"
+# )
 parser.add_argument("--force", action="store_true")
 args = parser.parse_args()
 
@@ -36,9 +45,11 @@ HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 HMM_ID_DIR = Path("ml_assets/data/workflow/hmm_ids")
 
 FASTA_ROOT.mkdir(parents=True, exist_ok=True)
+clear_dir(FASTA_ROOT)  # Note that the old results are cleared first
 HMM_ID_DIR.mkdir(parents=True, exist_ok=True)
+clear_dir(FASTA_ROOT)
 
-CODE_VERSION = "export_hmm_fastas_v1"  # bump if logic changes
+CODE_VERSION = gen_cfg.code_version
 N_JOBS = run_cfg.n_jobs
 
 # ---------------------------------------------------------
@@ -96,3 +107,7 @@ if __name__ == "__main__":
         force=args.force,
         tqdm_desc=f"Exporting {gen_cfg.get('name', 'test')} HMM FASTAs",
     )
+
+    fasta_files = list(FASTA_ROOT.glob("*.fasta"))
+    MANIFEST_FILE = Path(cfg.hmm_fasta_dir + "_manifest.json")
+    create_manifest(fasta_files, MANIFEST_FILE)

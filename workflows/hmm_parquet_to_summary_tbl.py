@@ -10,8 +10,9 @@ from pathlib import Path
 
 import duckdb
 import utils.consol_log as log
-from hmm.duckdb_io import build_hmm_summary_table, fingerprint_hmm_table, hash_lake
+from hmm.duckdb_io import build_hmm_summary_table, fingerprint_hmm_table
 from utils.config_loader import get_config
+from utils.hash import hash_lake
 
 logger = log.get_logger()
 
@@ -25,6 +26,13 @@ def main_cli():
         type=str,
         required=True,
         help="Path to YAML config file containing hmm_config section",
+    )
+    parser.add_argument(
+        "--code_hash",
+        action="append",
+        type=Path,
+        required=True,
+        help="Path to a hash file (repeatable)",
     )
     parser.add_argument(
         "--fingerprint",

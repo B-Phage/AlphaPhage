@@ -10,6 +10,7 @@ from pathlib import Path
 
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config
+from utils.hash import compute_combined_code_version, create_manifest
 
 # -----------------------------
 # Command-line args
@@ -20,6 +21,13 @@ parser.add_argument(
     type=str,
     required=True,
     help="Path to the YAML config file for this run",
+)
+parser.add_argument(
+    "--code_hash",
+    action="append",
+    type=Path,
+    required=True,
+    help="Path to a hash file (repeatable)",
 )
 parser.add_argument(
     "--force",
@@ -41,7 +49,15 @@ cfg = get_config(override_path=args.config, params_set="prodigal_config")
 
 LST_GENOMES = gen_cfg.lst_genomes
 N_JOBS = run_cfg.n_jobs
-CODE_VERSION = gen_cfg.code_version
+CONF_CODE_VERSION = gen_cfg.code_version
+CODE_VERSION = compute_combined_code_version(
+    base_version=CONF_CODE_VERSION,
+    hash_files=args.code_hash,
+    config_items=[
+        cfg,
+    ],
+)
+
 
 GENOME_DIR = Path(cfg.genome_dir)
 OUTPUT_DIR = Path(cfg.proteins_dir)
@@ -104,3 +120,7 @@ if __name__ == "__main__":
         force=args.force,
         tqdm_desc=f"Prodigal processing ({gen_cfg.get('name', 'test')})",
     )
+
+    protein_files = list(OUTPUT_DIR.glob("*.fa"))
+    MANIFEST_FILE = Path(cfg.proteins_dir + "_manifest.json")
+    create_manifest(protein_files, MANIFEST_FILE)

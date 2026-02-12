@@ -56,7 +56,15 @@ general:
 
         # Run the script using the same Python interpreter
         result = subprocess.run(
-            [sys.executable, str(script_path), "--config", str(self.config_file), "--force"],
+            [
+                sys.executable,
+                str(script_path),
+                "--config",
+                str(self.config_file),
+                "--code_hash",
+                str(script_path),
+                "--force",
+            ],
             capture_output=True,
             text=True,
         )

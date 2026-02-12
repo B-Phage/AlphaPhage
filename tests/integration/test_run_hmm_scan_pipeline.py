@@ -47,7 +47,14 @@ def run_pipeline(config_path):
     Execute the pipeline script as a subprocess, simulating real-world usage.
     """
     result = subprocess.run(
-        [f"{shutil.which('python3')}", str(PIPELINE_PATH), "--config", str(config_path)],
+        [
+            f"{shutil.which('python3')}",
+            str(PIPELINE_PATH),
+            "--config",
+            str(config_path),
+            "--code_hash",
+            str(config_path),
+        ],
         capture_output=True,
         text=True,
     )

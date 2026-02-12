@@ -2,10 +2,7 @@
 import gzip
 import hashlib
 import io
-import os
 import shutil
-import subprocess
-import sys
 import tarfile
 import tempfile
 import zipfile
@@ -14,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 import setup_workflows.hmm_data_setup as hms
+from utils.hash import hash_file
 
 
 # ---------------------------
@@ -59,16 +57,6 @@ def small_zip_file(tmp_dir, small_text_file):
 # ---------------------------
 # Utility function tests
 # ---------------------------
-def test_compute_and_verify_checksum(small_text_file):
-    expected = hashlib.sha256(small_text_file.read_bytes()).hexdigest()
-    assert hms.compute_sha256(small_text_file) == expected
-
-    # verify checksum passes
-    hms.verify_checksum(small_text_file, expected)
-
-    # verify checksum fails
-    with pytest.raises(ValueError):
-        hms.verify_checksum(small_text_file, "wronghash")
 
 
 def test_final_artifact_is_valid(small_text_file):
@@ -157,7 +145,7 @@ def test_fetch_and_split_hmm(mock_download, mock_split, tmp_dir, small_text_file
 
     mock_download.side_effect = fake_download
 
-    final_sha256 = hms.compute_sha256(small_text_file)
+    final_sha256 = hash_file(small_text_file)
 
     result = hms.fetch_and_split_hmm(
         hmm_name="test",

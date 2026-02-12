@@ -5,16 +5,25 @@ to separate output files for DVC.
 """
 
 import argparse
-import hashlib
 from pathlib import Path
 
+from utils.hash import hash_file, hash_package
 
-def hash_package(package_dir: Path) -> str:
-    """Return SHA256 hash of all files in a package directory."""
-    h = hashlib.sha256()
-    for f in sorted(package_dir.rglob("*.py")):
-        h.update(f.read_bytes())
-    return h.hexdigest()
+
+def hash_path(path: Path) -> str:
+    """
+    Return SHA256 hash of a file or all files in a directory.
+    - If path is a file, hashes just that file.
+    - If path is a directory, recursively hashes all .py files.
+    """
+    if path.is_file():
+        return hash_file(path)
+
+    elif path.is_dir():
+        return hash_package(path)
+
+    else:
+        raise FileNotFoundError(f"Path not found: {path}")
 
 
 def main():
@@ -29,13 +38,15 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for pkg_path in args.packages:
-        pkg = Path(pkg_path)
-        if not pkg.exists():
-            raise FileNotFoundError(f"Package directory not found: {pkg}")
-        h = hash_package(pkg)
-        hash_file = output_dir / f"{pkg.name}.hash"
+        path = Path(pkg_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Path does not exist: {path}")
+        h = hash_package(path)
+        # Use path name if file, directory name if package
+        name = path.stem if path.is_file() else path.name
+        hash_file = output_dir / f"{name}.hash"
         hash_file.write_text(h)
-        print(f"Hashed {pkg} -> {hash_file} ({h[:8]}...)")
+        print(f"Hashed {path} -> {hash_file} ({h[:8]}...)")
 
 
 if __name__ == "__main__":

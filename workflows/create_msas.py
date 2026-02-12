@@ -13,6 +13,7 @@ from pathlib import Path
 from hmm.msa import make_msa
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config
+from utils.hash import compute_combined_code_version, create_manifest
 
 # -----------------------------------------------------------------------------
 # Multiprocessing Workers (Must be top-level for 'spawn' pickling)
@@ -49,7 +50,7 @@ def get_msa_outputs(input_path: Path, output_dir: Path) -> list[Path]:
 # -----------------------------------------------------------------------------
 
 
-def run_msa_workflow(config_path: str, force: bool = False):
+def run_msa_workflow(config_path: str, code_hash, force: bool = False):
     """
     Orchestrates the MSA generation process.
 
@@ -67,6 +68,12 @@ def run_msa_workflow(config_path: str, force: bool = False):
     SPLIT_PATH = Path(msa_cfg.split_hmm_dir)
     OUTPUT_DIR = Path(msa_cfg.msa_csa_dir)
     HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
+    CONF_CODE_VERSION = gen_cfg.code_version
+    CODE_VERSION = compute_combined_code_version(
+        base_version=CONF_CODE_VERSION,
+        hash_files=args.code_hash,
+        config_items=[hmm_cfg.hmm_fasta_dir, msa_cfg],
+    )
 
     # Setup environment
     hmm_fasta_files = sorted(HMM_FILE_DIR.glob("*.fasta"))
@@ -87,11 +94,15 @@ def run_msa_workflow(config_path: str, force: bool = False):
         inputs=hmm_fasta_files,
         output_func=output_func_with_args,
         worker=worker_with_args,
-        code_id=gen_cfg.code_version,
+        code_id=CODE_VERSION,
         parallelism=run_cfg.n_jobs,
         force=force,
         tqdm_desc=f"MSA processing ({gen_cfg.get('name', 'test')})",
     )
+
+    msa_files = list(OUTPUT_DIR.glob("*.fa"))
+    MANIFEST_FILE = Path(msa_cfg.msa_csa_dir + "_manifest.json")
+    create_manifest(msa_files, MANIFEST_FILE)
 
 
 # -----------------------------------------------------------------------------
@@ -104,9 +115,16 @@ if __name__ == "__main__":
         "--config", type=str, required=True, help="Path to the YAML configuration file."
     )
     parser.add_argument(
+        "--code_hash",
+        action="append",
+        type=Path,
+        required=True,
+        help="Path to a hash file (repeatable)",
+    )
+    parser.add_argument(
         "--force", action="store_true", help="Bypass hash checks and rerun all inputs."
     )
 
     args = parser.parse_args()
 
-    run_msa_workflow(config_path=args.config, force=args.force)
+    run_msa_workflow(config_path=args.config, code_hash=args.code_hash, force=args.force)

@@ -1,5 +1,4 @@
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -7,9 +6,7 @@ import duckdb
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pytest
 import yaml
-from hmm.duckdb_io import fingerprint_hmm_table, hash_file, hash_lake
 
 
 # Helper: write a parquet file

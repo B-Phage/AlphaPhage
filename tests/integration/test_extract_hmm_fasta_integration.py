@@ -41,7 +41,7 @@ def tmp_config(tmp_path, tmp_db_and_table):
     fasta_dir = tmp_path / "fasta"
     fasta_dir.mkdir()
     cfg = {
-        "general": {"name": "test"},
+        "general": {"name": "test", "code_version": "v0.0.1"},
         "hmm_config": {
             "duckdb": str(db_path),
             "summary_tbl": table_name,

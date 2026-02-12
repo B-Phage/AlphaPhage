@@ -280,22 +280,6 @@ def extract_hmm_sequences_for_msa(
 # ------------------------
 
 
-def hash_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while chunk := f.read(1024 * 1024):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def hash_lake(lake_root: Path) -> str:
-    """Hash all parquet files deterministically."""
-    hashes = []
-    for p in sorted(lake_root.rglob("*.parquet")):
-        hashes.append(hash_file(p))
-    return hashlib.sha256("".join(hashes).encode()).hexdigest()
-
-
 def fingerprint_hmm_table(con: duckdb.DuckDBPyConnection, table: str) -> str:
     """Get a deterministic fingerprint of the table contents."""
 

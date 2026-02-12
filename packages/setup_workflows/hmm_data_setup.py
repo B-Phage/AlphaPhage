@@ -28,6 +28,7 @@ from typing import Union
 import utils.consol_log as log
 import yaml  # type: ignore[import-untyped]
 from hmm.io import split_hmms
+from utils.hash import verify_checksum
 
 logger = log.get_logger(level=log.INFO)
 
@@ -35,25 +36,6 @@ logger = log.get_logger(level=log.INFO)
 # -----------------------------
 # Utility functions
 # -----------------------------
-def compute_sha256(file_path: Path) -> str:
-    sha256 = hashlib.sha256()
-    with file_path.open("rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            sha256.update(chunk)
-    return sha256.hexdigest()
-
-
-def verify_checksum(file_path: Path, expected_sha256: str) -> None:
-    file_hash = compute_sha256(file_path)
-    if file_hash != expected_sha256:
-        logger.error(
-            f"Integrity check failed for {file_path}. Expected: {expected_sha256}, Actual: {file_hash}. "
-            "Action required: Clear cache and retry download, or verify checksum version."
-        )
-        raise ValueError(
-            f"Checksum mismatch for '{file_path}'. " f"Expected {expected_sha256}, got {file_hash}."
-        )
-    logger.info(f"Checksum verified for {file_path}")
 
 
 def final_artifact_is_valid(final_path: Path, expected_sha256: str) -> bool:

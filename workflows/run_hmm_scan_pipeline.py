@@ -12,6 +12,7 @@ from pathlib import Path
 from hmm.api import run_hmm_scan_on_file
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config  # YAML loader
+from utils.hash import compute_combined_code_version, create_manifest
 
 
 # -----------------------------
@@ -66,6 +67,13 @@ def main(argv: list[str] | None = None) -> None:
         help="Path to the YAML config file for this run",
     )
     parser.add_argument(
+        "--code_hash",
+        action="append",
+        type=Path,
+        required=True,
+        help="Path to a hash file (repeatable)",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Force rerun all protein files regardless of hash",
@@ -89,6 +97,14 @@ def main(argv: list[str] | None = None) -> None:
     data_lake = Path(hmm_cfg.data_lake)
     data_lake.mkdir(parents=True, exist_ok=True)
     hash_store_dir = Path("ml_assets/data/workflow/hashes")
+
+    # Add code hash to trigger reruns on code or config changes
+    CONF_CODE_VERSION = gen_cfg.code_version
+    CODE_VERSION = compute_combined_code_version(
+        base_version=CONF_CODE_VERSION,
+        hash_files=args.code_hash,
+        config_items=[gen_cfg, protein_dir, data_lake],
+    )
 
     # -----------------------------
     # Resolve input proteins
@@ -123,23 +139,20 @@ def main(argv: list[str] | None = None) -> None:
         logger_name="hmm_scan",
     )
 
-    # Add config hash to code ID to trigger reruns on config change
-    with open(args.config, "rb") as f:
-        config_hash = hashlib.sha256(f.read()).hexdigest()
-
-    full_code_id = f"{gen_cfg.code_version}_{config_hash}"
-    # Let orchestrator turn that into a hash for per-file tracking
-    code_hash = orch._hash_code_reference(full_code_id)
-
     orch.run(
         inputs=protein_files,
         output_func=output_fn,
         worker=worker_fn,
-        code_id=full_code_id,
+        code_id=CODE_VERSION,
         parallelism=run_cfg.n_jobs,
         force=args.force,
         tqdm_desc=f"HMM scanning ({gen_cfg.get('name', 'test')})",
     )
+
+    # create the manifest file for DVC pipeline tracking
+    parquet_files = list(data_lake.rglob("*.parquet"))
+    MANIFEST_FILE = Path(hmm_cfg.data_lake + "_manifest.json")
+    create_manifest(parquet_files, MANIFEST_FILE)
 
 
 # -----------------------------

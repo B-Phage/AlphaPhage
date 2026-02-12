@@ -12,8 +12,6 @@ from hmm.duckdb_io import (
     extract_hmm_sequences_for_msa,
     fingerprint_hmm_table,
     get_distinct_hmms,
-    hash_file,
-    hash_lake,
     write_hmm_results_with_sequences,
 )
 
@@ -155,90 +153,6 @@ def sample_hmm_df():
         "sequence": ["MKT"] * 4,
     }
     return pd.DataFrame(data)
-
-
-# -------------------------------
-# Tests for hash_file
-# -------------------------------
-
-
-def test_hash_file_single_file(tmp_path: Path):
-    # create a temporary file
-    file_path = tmp_path / "test.txt"
-    file_path.write_text("hello world")
-
-    expected = hashlib.sha256(b"hello world").hexdigest()
-    assert hash_file(file_path) == expected
-
-
-def test_hash_file_empty_file(tmp_path: Path):
-    file_path = tmp_path / "empty.txt"
-    file_path.touch()  # empty file
-
-    expected = hashlib.sha256(b"").hexdigest()
-    assert hash_file(file_path) == expected
-
-
-def test_hash_file_changes(tmp_path: Path):
-    file_path = tmp_path / "file.txt"
-    file_path.write_text("foo")
-    hash1 = hash_file(file_path)
-
-    file_path.write_text("bar")
-    hash2 = hash_file(file_path)
-
-    assert hash1 != hash2
-
-
-# -------------------------------
-# Tests for hash_lake
-# -------------------------------
-
-
-def create_parquet_file(path: Path, df) -> None:
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    table = pa.Table.from_pandas(df)
-    pq.write_table(table, path)
-
-
-def test_hash_lake_single_file(tmp_path: Path):
-    import pandas as pd
-
-    df = pd.DataFrame({"col": [1, 2, 3]})
-    file_path = tmp_path / "file.parquet"
-    create_parquet_file(file_path, df)
-
-    # hash_lake should equal hash_file for single parquet
-    expected = hash_file(file_path)
-    assert hash_lake(tmp_path) == hashlib.sha256(expected.encode()).hexdigest()
-
-
-def test_hash_lake_multiple_files_order(tmp_path: Path):
-    import pandas as pd
-
-    # two files
-    df1 = pd.DataFrame({"a": [1]})
-    df2 = pd.DataFrame({"a": [2]})
-
-    f1 = tmp_path / "b.parquet"
-    f2 = tmp_path / "a.parquet"
-
-    create_parquet_file(f1, df1)
-    create_parquet_file(f2, df2)
-
-    # sorted by filename
-    expected_ordered = [hash_file(f2), hash_file(f1)]
-    expected_hash = hashlib.sha256("".join(expected_ordered).encode()).hexdigest()
-
-    assert hash_lake(tmp_path) == expected_hash
-
-
-def test_hash_lake_empty_dir(tmp_path: Path):
-    # should return hash of empty string
-    expected = hashlib.sha256("".encode()).hexdigest()
-    assert hash_lake(tmp_path) == expected
 
 
 # -------------------------------
