@@ -46,8 +46,8 @@ Thumbs.db        # Windows
 # data/*
 
 # Trained model artifacts
-models/
-models/*
+ml_assets/
+ml_assets/*
 
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS
