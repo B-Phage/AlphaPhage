@@ -6,7 +6,7 @@ on:
       - "workflows/**"
       - "packages/**"
       - "tests/integration/**"
-      - "tests/fixtures/**"
+      - "tests/data/**"
       - ".github/workflows/integration-tests.yml"
   pull_request:
 

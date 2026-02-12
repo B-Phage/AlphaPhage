@@ -33,8 +33,8 @@ prodigal_config:
 hmm_config:
   hmm_scan_dir: "{results_dir}"
   data_lake: "{data_lake}"
-  hmm_multifile: "tests/fixtures/phrog_126.hmm"
-  annotations: "tests/fixtures/phrog_annot_test.tsv"
+  hmm_multifile: "tests/data/phrog_126.hmm"
+  annotations: "tests/data/phrog_annot_test.tsv"
   hmm_scan_method: "phrogs"
   min_bit_score: {min_bit_score}
 """
@@ -86,7 +86,7 @@ def test_hmm_pipeline_runs_and_creates_outputs(tmp_path):
     Test that the pipeline runs with the small real HMM and protein files,
     and creates expected CSV outputs, DuckDB file, and hash store.
     """
-    proteins_path = Path("tests/fixtures")
+    proteins_path = Path("tests/data")
     results = tmp_path / "results"
     data_lake = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
@@ -113,7 +113,7 @@ def test_pipeline_skips_unchanged_inputs(tmp_path):
     """
     Test that the pipeline skips rerunning proteins if inputs are unchanged.
     """
-    proteins_path = Path("tests/fixtures").resolve()
+    proteins_path = Path("tests/data").resolve()
     results = tmp_path / "results"
     data_lake = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]
@@ -144,8 +144,8 @@ def test_new_protein_triggers_partial_rerun(tmp_path):
     duckdb = tmp_path / "data_lake"
     proteins_path.mkdir()
 
-    # Copy small real protein files from fixtures
-    fixture_dir = Path("tests/fixtures").resolve()
+    # Copy small real protein files from data
+    fixture_dir = Path("tests/data").resolve()
     for genome in ["phrog_126"]:
         shutil.copy(fixture_dir / f"{genome}.fa", proteins_path / f"{genome}.fa")
         shutil.copy(fixture_dir / f"{genome}.fa", proteins_path / f"{genome}_copy.fa")
@@ -172,7 +172,7 @@ def test_config_change_forces_rerun(tmp_path):
     """
     Changing the config (even with same protein) should force rerun.
     """
-    proteins_path = Path("tests/fixtures")
+    proteins_path = Path("tests/data")
     results = tmp_path / "results"
     duckdb = tmp_path / "data_lake"
     lst_genomes = ["phrog_126"]

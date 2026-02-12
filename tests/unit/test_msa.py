@@ -20,12 +20,12 @@ from utils.msa_io import export_msa_as_fasta, read_msa_table
 # -----------------------
 @pytest.fixture
 def phrog_126_hmm():
-    return Path("tests/fixtures/phrog_126.hmm")
+    return Path("tests/data/phrog_126.hmm")
 
 
 @pytest.fixture
 def phrog_126_fa():
-    return Path("tests/fixtures/phrog_126.fa")
+    return Path("tests/data/phrog_126.fa")
 
 
 @pytest.fixture
@@ -46,18 +46,18 @@ def sample_msa_df():
     "hmm_path, fasta_path",
     [
         (
-            Path("tests/fixtures/phrog_126.hmm"),
-            Path("tests/fixtures/phrog_126.fa"),
+            Path("tests/data/phrog_126.hmm"),
+            Path("tests/data/phrog_126.fa"),
         ),
         (
-            Path("tests/fixtures/DUF1244.hmm"),
-            Path("tests/fixtures/DUF1244.fa"),
+            Path("tests/data/DUF1244.hmm"),
+            Path("tests/data/DUF1244.fa"),
         ),
     ],
 )
 def test_make_msa_table_format(tmp_path: Path, hmm_path: Path, fasta_path: Path):
     """
-    Integration-style test using real HMM and FASTA fixtures.
+    Integration-style test using real HMM and FASTA data.
 
     Verifies:
     - MSA table file is created

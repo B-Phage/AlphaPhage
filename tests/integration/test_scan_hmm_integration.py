@@ -16,8 +16,8 @@ def small_phrog_test_data(tmp_path):
         ">ECP1;NC_049926.1_13\nMKMPEKNDLLAAILAAKEQGIGAILAFAMAYLRGRYNGGAFTKTVIDATMCAIIAWFIRDLLGFAGLSSNLAYITSVFIGYIGTDSIGSLIKRFAAKKAGVEDGGNQ*\n>411_P1;411_P1_68\nMKMPEKHDLLAAILAAKEQGIGAILAFAMAYLRGRYNGGAFTKTVIDATMCAIIAWFIRDLLDFAGLSSNLAYITSVFIGYIGTDSIGSLIKRFAAKKAGIEDGGNQ*\n"
     )
 
-    # Use real HMM file from fixtures
-    hmm_file = Path("tests/fixtures/phrog_126.hmm")
+    # Use real HMM file from data
+    hmm_file = Path("tests/data/phrog_126.hmm")
 
     # Annotation CSV matching the HMM domain
     annotation_file = tmp_path / "annotations.csv"
@@ -36,12 +36,12 @@ def small_phrog_test_data(tmp_path):
 def small_pfam_test_data(tmp_path):
     """Integration fixture: tiny FASTA, real HMM, and annotation CSV."""
 
-    # Use real HMM file from fixtures
-    hmm_file = Path("tests/fixtures/DUF1244.hmm")
-    fasta_file = Path("tests/fixtures/DUF1244.fa")
+    # Use real HMM file from data
+    hmm_file = Path("tests/data/DUF1244.hmm")
+    fasta_file = Path("tests/data/DUF1244.fa")
 
     # Annotation dat file matching the HMM domain
-    annotation_file = Path("tests/fixtures/Pfam-A_test.hmm.dat")
+    annotation_file = Path("tests/data/Pfam-A_test.hmm.dat")
 
     return {
         "fasta": fasta_file,

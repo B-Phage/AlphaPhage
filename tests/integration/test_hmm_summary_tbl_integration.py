@@ -87,6 +87,8 @@ def test_hmm_summary_workflow(tmp_path: Path):
         str(config_file),
         "--fingerprint",
         str(fingerprint_path),
+        "--code_hash",
+        str(config_file),
     ]
 
     try:
