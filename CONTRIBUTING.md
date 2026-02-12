@@ -124,7 +124,7 @@ Place new code in _packages/<module_name>/_.
 
 Track datasets and models with DVC under _ml_assets/_.
 
-Add environment dependencies to _envs/<module>.yml_.
+Add environment dependencies to _conda_envs/<module_name>.yml_.
 
 ## 4. Coding Standards
 
@@ -233,13 +233,13 @@ setup-<module>:
 
 * The CI workflow includes:
 
-* Unit and integration tests
+  * Unit and integration tests
 
-* Code coverage
+  * Code coverage
 
-* Pre-commit hook validation
+  * Pre-commit hook validation
 
-* DVC reproducibility check
+  * DVC reproducibility check
 
 ## 10. References & Resources
 

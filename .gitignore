@@ -32,8 +32,9 @@ pip-delete-this-arg.txt
 *.swp            # Vim/NeoVim
 
 # Operating System files
-.DS_Store        # macOS
-Thumbs.db        # Windows
+.DS_Store                           # macOS
+#**/.DS_Store                         # macOS
+Thumbs.db                           # Windows
 
 # ----------------------------------------------------------------------
 # 3. DATA AND MODEL ASSETS (DVC-MANAGED)
@@ -42,12 +43,15 @@ Thumbs.db        # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
+ml_assets/data/
+outputs/
+outputs/*
 # data/
 # data/*
+dvc_plots/
 
 # Trained model artifacts
-models/
-models/*
+# ml_assets/data/training/default_run/checkpoints
 
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS
@@ -55,6 +59,10 @@ models/*
 
 # Ignore temporary DVC cache folders (local-only storage)
 .dvc/cache
+
+# Ignore personal .dcv config file and template file
+.dvc/config.local
+.dvc/config.local.template
 
 # Ignore DVCLive internal state folder (often used for plotting)
 .dvclive/

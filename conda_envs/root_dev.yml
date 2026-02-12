@@ -3,11 +3,11 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - pre_commit
+  - pre-commit
   - pytest
-  - omegaconf
   - coverage
   - pytest-cov
+  - omegaconf
   - tqdm
   - colorlog
   - "dvc[gdrive]"

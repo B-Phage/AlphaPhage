@@ -8,38 +8,60 @@ on:
       - "tests/integration/**"
       - ".github/workflows/integration-tests.yml"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: training
+            env_file: conda_envs/training.yml
+            # List of folders in ./packages/ to pip install
+            install_packages: "training dataloaders models utils"
+            # Specific source folder for coverage tracking
+            cov_source: "packages/models,packages/dataloaders"
+            test_files: >-
+              tests/integration/test_run_training_integration.py
+
+          - env_name: preprocessing
+            env_file: conda_envs/preprocessing.yml
+            install_packages: "preprocessing"
+            cov_source: "packages/preprocessing"
+            test_files: >-
+              tests/integration/test_run_prodigal_integration.py
 
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache conda packages
-        uses: actions/cache@v4
+      - name: 🐍 Setup Micromamba (Cached)
+        uses: mamba-org/setup-micromamba@v1
         with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ hashFiles('conda_envs/preprocessing.yml') }}
+          environment-file: ${{ matrix.env_file }}
+          environment-name: ${{ matrix.env_name }}
+          cache-environment: true # Set to false to disable caching of the entire environment
+          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
+          cache-downloads: true # Set to false to force download of packages every time
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          python-version: 3.11                     # or your required version
-          environment-file: conda_envs/preprocessing.yml
-          activate-environment: preprocessing      # name of the env
-
-      - name: 🐍 Install additional Python deps (pytest, etc.)
+      - name: 🛠️ Install Package dependencies and run Integration tests
+        shell: bash -l {0}
         run: |
-          conda activate preprocessing
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
+          # 1. Install listed packages in editable mode
+          for pkg in ${{ matrix.install_packages }}; do
+            echo "--- Installing Package: $pkg ---"
+            pip install -e ./packages/$pkg
+          done
 
-      - name: 🏃 Run integration tests
-        run: |
-          conda activate preprocessing
-          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v
+          # 2. Run Integration Tests with Coverage
+          # We use the specific list of files provided in the matrix
+          echo "--- Running Tests for ${{ matrix.env_name }} ---"
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+          coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
+
+          # # 3. Generate Reports
+          # coverage report -m
+          # coverage html -d htmlcov-${{ matrix.env_name }}
+          # coverage json -o coverage-${{ matrix.env_name }}.json

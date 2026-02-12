@@ -2,7 +2,8 @@ schema: '2.0'
 stages:
   prodigal_ecoli:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
-      && python -u workflows/run_prodigal.py --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'\n"
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_prodigal.py
+      --config ml_assets/config/prodigal_ecoli_v0.0.1.yaml'\n"
     deps:
     - path: ml_assets/config/prodigal_ecoli_v0.0.1.yaml
       hash: md5
@@ -19,18 +20,12 @@ stages:
       size: 5619
     - path: params.yaml
       hash: md5
-      md5: 6ac52bb71ef5384cb26120a334698b16
-      size: 405
+      md5: a61847b2fb1c6850cbfd0863c76af6e2
+      size: 478
     - path: workflows/run_prodigal.py
       hash: md5
       md5: c2f3e5451bc3a853c2f34431a5f655e6
       size: 2614
-    outs:
-    - path: ml_assets/data/processed/bacteria/proteins
-      hash: md5
-      md5: 14d283dab996e9546e5a951ca045b57f.dir
-      size: 936098836
-      nfiles: 413
   test_output:
     cmd: "/bin/bash -c \"for i in {1..10}; do echo 'Line $i'; sleep 0.5; done\"\n"
   prodigal_phage:
@@ -52,15 +47,25 @@ stages:
       size: 5619
     - path: params.yaml
       hash: md5
-      md5: 6ac52bb71ef5384cb26120a334698b16
-      size: 405
+      md5: a61847b2fb1c6850cbfd0863c76af6e2
+      size: 478
     - path: workflows/run_prodigal.py
       hash: md5
       md5: c2f3e5451bc3a853c2f34431a5f655e6
       size: 2614
-    outs:
-    - path: ml_assets/data/processed/phage/proteins
+  train_model:
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate training
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows
+      && export CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config
+      params.yaml '\n"
+    deps:
+    - path: ml_assets/config/train_v0.0.1.yaml
       hash: md5
-      md5: 875f7b1e53e944d2dd3390cc8f172398.dir
-      size: 5439150
-      nfiles: 132
+      md5: 9b9d3549c41fcd389a7ae38b77edde2e
+      size: 985
+    outs:
+    - path: ml_assets/data/training/default_run/checkpoints
+      hash: md5
+      md5: 507109ed5ae6dd50d15681ca5528ace1.dir
+      size: 3583615
+      nfiles: 3
