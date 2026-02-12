@@ -46,14 +46,6 @@ jobs:
           cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
           cache-downloads: true # Set to false to force download of packages every time
 
-      # #If using dvc pull, it requires storing secrets for GDrive access
-      # - name: 📦 Setup DVC
-      #   shell: bash -l {0}
-      #   run: |
-      #     pip install dvc[gdrive]
-      #     dvc pull
-      #     #or if conda cache was always working: conda run -n root_dev dvc pull
-
       - name: 🛠️ Install Package dependencies and run Integration tests
         shell: bash -l {0}
         run: |
