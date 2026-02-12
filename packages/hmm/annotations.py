@@ -41,6 +41,8 @@ class PhrogSource(AnnotationSource):
             return df.set_index("phrog")["annot"].fillna("-").to_dict()
         except Exception as e:
             logger.error(f"Failed to load PHROG annotations from {path}: {e}")
+            # an annotation is not critical to the workflow but it does point to
+            # a misconfiguration error. So we log a message but do not exit the code
             return {}
 
     def normalize_id(self, domain_id: str) -> str:
@@ -69,6 +71,7 @@ class PfamSource(AnnotationSource):
             return records
         except (IOError, ValueError, pd.errors.ParserError) as e:
             logger.error(f"Failed to load Pfam annotations from {path}: {e}")
+            # an annotation is not critical to the workflow
             return {}
 
     def normalize_id(self, domain_id: str) -> str:
@@ -104,6 +107,7 @@ class AnnotationProvider:
         if self._cache is None:
             if not self.path.exists():
                 logger.error(f"Cannot load annotations: {self.path} does not exist.")
+                # an annotation is not critical to the workflow
                 self._cache = {}
             else:
                 logger.info(f"Lazy-loading {self.engine.__class__.__name__} from {self.path}")

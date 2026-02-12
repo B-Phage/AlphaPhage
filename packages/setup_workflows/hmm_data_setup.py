@@ -39,6 +39,30 @@ logger = log.get_logger(level=log.INFO)
 
 
 def final_artifact_is_valid(final_path: Path, expected_sha256: str) -> bool:
+    """Validates the existence and integrity of a final output artifact.
+
+    Checks if the file at the specified path exists and performs a SHA-256
+    checksum verification to ensure the file has not been corrupted or
+    tampered with.
+
+    Args:
+        final_path (Path): The filesystem path to the artifact being checked.
+        expected_sha256 (str): The hex-encoded SHA-256 hash expected for the file.
+
+    Returns:
+        bool: True if the file exists and the checksum matches the expected value.
+            Returns False if the file is missing or if the checksum is incorrect.
+
+    Note:
+        This function internally catches `ValueError` from ``verify_checksum``
+        to provide a boolean result instead of raising an exception.
+
+    Example:
+        >>> path = Path("output/model.hmm")
+        >>> hash_val = "hash"
+        >>> if final_artifact_is_valid(path, hash_val):
+        ...     print("Artifact is ready for deployment.")
+    """
     if not final_path.exists():
         return False
     try:
@@ -49,11 +73,36 @@ def final_artifact_is_valid(final_path: Path, expected_sha256: str) -> bool:
 
 
 def download_file(url: str, dest_path: Path) -> Path:
-    """Download a file if missing."""
+    """Downloads a file from a URL to a local destination if it does not already exist.
+
+    This function checks for the presence of a file at the target destination.
+    If missing, it streams the content from the provided URL and writes it
+    to the filesystem. It uses a buffered copy to remain memory-efficient
+    for large files.
+
+    Args:
+        url (str): The web address (HTTP/HTTPS/FTP) of the file to download.
+        dest_path (Path): A ``pathlib.Path`` object representing where the
+            file should be saved.
+
+    Returns:
+        Path: The path to the downloaded (or already existing) file.
+
+    Raises:
+        urllib.error.URLError: If the connection fails or the URL is invalid.
+        OSError: If there is an issue writing the file to the local disk.
+
+    Example:
+        >>> remote_url = "https://example.com/data.hmm"
+        >>> local_path = Path("downloads/data.hmm")
+        >>> download_file(remote_url, local_path)
+        PosixPath('downloads/data.hmm')
+    """
     if dest_path.exists():
         logger.info(f"{dest_path} already exists, skipping download.")
         return dest_path
     logger.info(f"Downloading from {url} to {dest_path}")
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url) as r, dest_path.open("wb") as f:
         shutil.copyfileobj(r, f)
     return dest_path

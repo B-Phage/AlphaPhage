@@ -30,4 +30,4 @@ Therefore the following is required:
            * At the terminal run `sha256sum /path/to/your/hmm_file.tar` the zip format is irrelevant for the checksum. Then store this in the *"source_sha256"* config item
            * And again run `sha256sum /path/to/your/hmm_file.hmm` . Then store this in the *"final_sha256"* config item.
     5. Test that the Makefile setup-hmm-data option still functions
-    6. The version of the
+    6. The tag version of the main branch will also need to be bumped

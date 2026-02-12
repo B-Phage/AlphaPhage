@@ -23,16 +23,39 @@ logger = log.get_logger(level=log.INFO)
 
 
 def load_single_hmm_per_file(hmm_dir, patt):
-    """Load the first HMM from an HMM file located on the local filesystem: (hmmer3 format).
-    Example patt: "*.hhm"
+    """Loads the first HMM profile from every file matching a pattern in a directory.
+
+    Iterates through a directory, identifies files matching the glob pattern,
+    and extracts only the first HMM profile from each file. This is useful
+    when HMMs are stored individually rather than in a multi-HMM database.
+
+    Args:
+        hmm_dir (str): Path to the directory containing HMM files.
+        patt (str): Glob pattern to match files (e.g., "*.hmm").
+
+    Returns:
+        list[pyhmmer.plan7.HMM]: A list of HMM objects, one from each matched file.
+
+    Raises:
+        ValueError: If no files are found matching the pattern in the directory.
+        EOFError: If a matched file is empty or improperly formatted.
+
+    Warning:
+        Input files must be in HMMER3 format. Other formats, such as
+        PHROGs-specific HMM formats, may not be compatible with ``hmm_file.read()``.
+
+    Example:
+        >>> hmms = load_single_hmm_per_file("./models", "*.hmm")
+        >>> print(f"Collected {len(hmms)} individual models.")
     """
     hmms = []
+    # Using os.path.join is generally safer for cross-platform compatibility
     lst_hmm_files = glob.glob(hmm_dir + "/" + patt)
-    if lst_hmm_files == []:
+    if not lst_hmm_files:
         logger.error(f"No hmms found at {hmm_dir} with pattern {patt}. Exiting.")
         raise ValueError("No HMMs found")
     for f in lst_hmm_files:
-        # Note: Needs to be hmmer3 format - phrogs format does not work
+        # .read() gets the next (in this case, first) HMM in the file
         with pyhmmer.plan7.HMMFile(f) as hmm_file:
             hmm = hmm_file.read()
             hmms.append(hmm)
@@ -40,8 +63,27 @@ def load_single_hmm_per_file(hmm_dir, patt):
 
 
 def load_hmms_from_file(hmm_multifile):
-    """Load the all HMMs from an HMM file located on the local filesystem: (hmmer3 format).
-    Example patt: "*.hhm"
+    """Loads all HMMs from a standard HMMER3 file into memory.
+
+    Reads a HMMER3 format file (typically with .hmm extensions) and parses
+    all contained profiles into a list of HMM objects.
+
+    Args:
+        hmm_multifile (str): Path to the HMM file on the local filesystem.
+
+    Returns:
+        list[pyhmmer.plan7.HMM]: A list containing all HMM profiles
+            parsed from the file.
+
+    Note:
+        Unlike the pressed file loader, this function reads the entire
+        contents into memory as a list. For very large databases,
+        consider using the iterator-based approach or pressed formats
+        to save memory.
+
+    Example:
+        >>> hmms = load_hmms_from_file("profiles.hmm")
+        >>> print(f"Loaded {len(hmms)} profiles.")
     """
     with pyhmmer.plan7.HMMFile(hmm_multifile) as hmm_file:
         hmms = list(hmm_file)
@@ -89,10 +131,28 @@ def split_hmms(hmm_multifile: Union[str, Path], out_dir: Union[str, Path]) -> No
 
 
 def load_pressed_hmms(hmm_pressed_file):
-    """Get an iterator over the OptimizedProfile in the HMM database.
-    A call to find hits like below given hmms as optimized_profiles would be faster than when the models are an iterator (e.g. list) of hmms which has to be converted from file.
-    hits = next(pyhmmer.hmmsearch(hmms, proteins))
-    #"""
+    """Loads optimized HMM profiles from a pressed HMM file.
+
+    Retrieves an iterator over the `OptimizedProfile` objects within a database.
+    Using pressed files and optimized profiles is significantly faster for
+    searches (e.g., ``pyhmmer.hmmsearch``) compared to reading standard HMM
+    files, as it avoids on-the-fly conversion.
+
+    Args:
+        hmm_pressed_file (str): Path to the pressed HMMER3 database file.
+
+    Returns:
+        pyhmmer.plan7.OptimizedProfiles: An iterator over the optimized
+            HMM profiles in the database.
+
+    Raises:
+        ValueError: If the provided file is not in the pressed format.
+        FileNotFoundError: If the specified file path does not exist.
+
+    Example:
+        >>> hmms = load_pressed_hmms("path/to/database.h3m")
+        >>> hits = next(pyhmmer.hmmsearch(hmms, proteins))
+    """
     with pyhmmer.plan7.HMMFile(hmm_pressed_file) as hmm_file:
         if not hmm_file.is_pressed():
             logger.error(
