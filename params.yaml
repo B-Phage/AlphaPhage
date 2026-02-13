@@ -11,9 +11,8 @@ preprocess:
 feature_engineering:
   method: "default"
 
-training:
-  epochs: 20
-  lr: 1e-4
+kapsid:
+  kapsid_config: "ml_assets/config/kapsid3_config.yaml"
 
 model:
   name: "transformer_v3"

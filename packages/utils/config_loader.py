@@ -51,9 +51,6 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
     return _load_vocab_file(vocab_cfg.file)
 
 
-# Other configs
-
-
 def get_prodigal_config(override_path: str | None = None):
     """
     Loads prodigal config from params.yaml or override file
@@ -67,6 +64,23 @@ def get_prodigal_config(override_path: str | None = None):
         raise KeyError(f"prodigal_config section missing in config file {params}")
 
     return params.prodigal_config
+
+
+def get_kapsid_config(override_path: str | None = None):
+    """
+    Loads kapsid config from params.yaml or override file
+    """
+    cfg_par_path = Path(override_path) if override_path else PARAMS_PATH
+    if not cfg_par_path.exists():
+        raise FileNotFoundError(cfg_par_path)
+
+    params = OmegaConf.load(cfg_par_path)
+    if "kapsid" not in params:
+        raise KeyError(f"'kapsid' section missing in config file {params}")
+
+    cfg_path = params.kapsid.kapsid_config
+
+    return cfg_path, OmegaConf.load(cfg_path)
 
 
 # TODO: Test this functionality with the transformer archtecture
