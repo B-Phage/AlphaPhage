@@ -4,6 +4,11 @@
 source =
     packages
     workflows
+
+parallel = true
+concurrency = multiprocessing
+sigterm = true
+
 # Exclude files that you never want to measure
 omit =
     # Example: Exclude database migrations

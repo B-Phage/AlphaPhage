@@ -110,7 +110,10 @@ jobs:
           # to prevent conflicts with the manual coverage run command.
 
           export COVERAGE_FILE=".coverage.${{ matrix.env_name }}"
-          coverage run --parallel-mode --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
+          coverage run --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
+
+          echo "Coverage files present:"
+          ls -la .coverage*
 
       - name: 📤 Upload Coverage Data
         uses: actions/upload-artifact@v4
