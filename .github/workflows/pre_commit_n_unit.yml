@@ -112,18 +112,20 @@ jobs:
           export COVERAGE_FILE="${GITHUB_WORKSPACE}/.coverage.${{ matrix.env_name }}"
           coverage run --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
 
+
           echo "Coverage files present:"
           ls -la .coverage*
           echo "PWD during tests:"
           pwd
 
-      - name: 📤 Upload Coverage Data
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Combine coverage
+        run: |
+          coverage combine
+          coverage xml -o coverage.${{ matrix.env_name }}.xml
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-data-${{ matrix.env_name }}
-          path: "${{ github.workspace }}/.coverage.${{ matrix.env_name }}*"
-          retention-days: 1
+          name: coverage-${{ matrix.env_name }}
+          path: coverage.${{ matrix.env_name }}.xml
 
   coverage-summary:
     needs: test
