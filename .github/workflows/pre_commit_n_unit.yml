@@ -79,54 +79,39 @@ jobs:
           environment-name: ${{ matrix.env_name }}
           cache-environment: true
 
-      - name: 🛠️ Install & Run Tests
+      - name: 🧪 Run Tests
         shell: bash -l {0}
         run: |
-          # 1. Install listed packages in editable mode
-          for pkg in ${{ matrix.install_packages }}; do
-            echo "--- Installing Package: $pkg ---"
-            pip install -e ./packages/$pkg
-          done
-
-          # 2. Run Tests with Coverage
-          # We use the specific list of files provided in the matrix
-          echo "--- Running Tests for ${{ matrix.env_name }} ---"
-          export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
           export KMP_DUPLICATE_LIB_OK=TRUE
 
+          # 1. Ensure coverage tracks sub-processes by using the --parallel flag
+          # 2. We still set the base COVERAGE_FILE name
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
+
           if [ "${{ matrix.test_files }}" = "all_remaining" ]; then
-            # EXCLUSION LOGIC: Find all unit tests EXCEPT those handled by 'training'
-            EXCLUDE=(tests/unit/test_transformer_archspecs.py tests/unit/test_transformer_classifier.py tests/unit/test_transformer_module.py tests/unit/test_dataloaders.py)
-            FIND_CMD="find tests/unit -name 'test_*.py'"
-            for f in "${EXCLUDE[@]}"; do FIND_CMD+=" ! -path '$f'"; done
-            TARGETS=$(eval $FIND_CMD | tr '\n' ' ')
+            TARGETS=$(find tests/integration -name "test_*.py" ! -name "test_run_training_integration.py" | tr '\n' ' ')
           else
             TARGETS="${{ matrix.test_files }}"
           fi
 
-          # 3. Execution
-          # We use pytest instead of unittest to support function-based tests.
-          # We disable the internal coverage plugin (-p no:cov) and clear config flags (-o "addopts=")
-          # to prevent conflicts with the manual coverage run command.
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" $TARGETS
 
-          export COVERAGE_FILE="${GITHUB_WORKSPACE}/.coverage.${{ matrix.env_name }}"
-          coverage run --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
-
-
-          echo "Coverage files present:"
-          ls -la .coverage*
-          echo "PWD during tests:"
-          pwd
-
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
           coverage combine
-          coverage xml -o coverage.${{ matrix.env_name }}.xml
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
 
       - name: 📤 Upload Coverage Piece
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-${{ matrix.env_name }}
-          path: "*.coverage.${{ matrix.env_name }}*"
+          name: coverage-data-${{ matrix.env_name }}
+          # Use the new non-hidden filename
+          path: coverage_data_${{ matrix.env_name }}
           retention-days: 1
 
   coverage-summary:
