@@ -93,7 +93,7 @@ jobs:
           export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
 
           if [ "${{ matrix.test_files }}" = "all_remaining" ]; then
-            TARGETS=$(find tests/integration -name "test_*.py" ! -name "test_run_training_integration.py" | tr '\n' ' ')
+            TARGETS=$(find tests/unit -name "test_*.py" ! -name "test_transformer_*.py" ! -name "test_dataloaders.py" | tr '\n' ' ')
           else
             TARGETS="${{ matrix.test_files }}"
           fi
