@@ -226,22 +226,21 @@ dvc-clean:
 # =====================
 # Tests
 # =====================
-.PHONY: test
+.PHONY: test test-unit test-int test-all
 
+# Default 'test' command (runs only unit tests for speed)
+test: test-unit
 
-test: ## Run unit tests with correct path
-	conda activate $(ENV_TRAINING) && \
-	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
-	python -m unittest tests/unit/test_transformer_module.py && \
-	python -m unittest tests/unit/test_transformer_classifier.py && \
-	python -m unittest tests/unit/test_transformer_archspecs.py && \
-	python -m unittest tests/unit/test_dataloaders.py && \
-	python -m unittest tests/integration/test_run_training_integration.py
-	conda activate $(ENV_PREPROCESSING) && \
-	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
-	python -m unittest tests/integration/test_run_prodigal_integration.py
+test-unit: ## Run all unit tests via the shell script
+	@echo "🧪 Running Unit Test Suite..."
+	@bash tests/utils/run_all_unit_tests.sh
 
-#python -m unittest discover -s tests/unit -p "test_*.py" && \
+test-int: ## Run all integration tests via the shell script
+	@echo "🪡 Running Integration Test Suite..."
+	@bash tests/utils/run_all_integration_tests.sh
+
+test-all: test-unit test-int ## Run both suites sequentially
+	@echo "✅ All test suites completed."
 
 # =====================
 # Cleanup
