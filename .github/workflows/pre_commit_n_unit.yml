@@ -109,14 +109,14 @@ jobs:
           # We disable the internal coverage plugin (-p no:cov) and clear config flags (-o "addopts=")
           # to prevent conflicts with the manual coverage run command.
 
-          # Force the filename into a variable to ensure consistency
-          OUTPUT_FILE=".coverage.${{ matrix.env_name }}"
+          export COVERAGE_FILE=".coverage.${{ matrix.env_name }}"
 
-          coverage run --data-file="$OUTPUT_FILE" --source=packages \
-            -m pytest -v -p no:cov -o "addopts=" $TARGETS
+          coverage run --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
 
+          coverage combine
           # debug check
-          ls -la .coverage*
+          echo "--- Verifying Final Coverage File ---"
+          ls -la .coverage.${{ matrix.env_name }}
 
       - name: 📤 Upload Coverage Data
         uses: actions/upload-artifact@v4
