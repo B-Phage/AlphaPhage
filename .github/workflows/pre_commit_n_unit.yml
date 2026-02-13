@@ -120,7 +120,7 @@ jobs:
         if: always()
         with:
           name: coverage-data-${{ matrix.env_name }}
-          path: .coverage.${{ matrix.env_name }}*
+          path: "*coverage.${{ matrix.env_name }}*"
           retention-days: 1
 
   coverage-summary:
