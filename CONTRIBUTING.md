@@ -124,7 +124,7 @@ Place new code in _packages/<module_name>/_.
 
 Track datasets and models with DVC under _ml_assets/_.
 
-Add environment dependencies to _envs/<module>.yml_.
+Add environment dependencies to _conda_envs/<module_name>.yml_.
 
 ## 4. Coding Standards
 
@@ -233,13 +233,13 @@ setup-<module>:
 
 * The CI workflow includes:
 
-* Unit and integration tests
+  * Unit and integration tests
 
-* Code coverage
+  * Code coverage
 
-* Pre-commit hook validation
+  * Pre-commit hook validation
 
-* DVC reproducibility check
+  * DVC reproducibility check
 
 ## 10. References & Resources
 
@@ -267,3 +267,11 @@ Thank you for contributing to AlphaPhage! Your work helps maintain a robust, rel
 pip install -e ./packages/utils
 pip install -e ./packages/preprocessing
 ```
+
+## Versioning & Releases
+
+We follow (Semantic Versioning)[https://semver.org/].
+All changes must go through reviewed Pull Requests.
+
+For details on how releases are prepared and tagged, see:
+docs/releasing.md

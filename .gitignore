@@ -42,12 +42,15 @@ Thumbs.db        # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
+ml_assets/data/
+outputs/
+outputs/*
 # data/
 # data/*
+dvc_plots/
 
 # Trained model artifacts
-models/
-models/*
+
 
 # Human readable inspection files
 *.csv
@@ -61,6 +64,10 @@ ml_assets/data/workflow/hashes/*
 
 # Ignore temporary DVC cache folders (local-only storage)
 .dvc/cache
+
+# Ignore personal .dcv config file
+# NB. We leave the template in the repo so new developers see a reference
+.dvc/config.local
 
 # Ignore DVCLive internal state folder (often used for plotting)
 .dvclive/

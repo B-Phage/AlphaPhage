@@ -32,17 +32,6 @@ stages:
       - workflows/create_msas.py
     outs:
       - ml_assets/data/artifacts/code_hashes # whole directory
-      # Some examples:
-      # - ml_assets/data/artifacts/code_hashes/hmm.hash
-      # - ml_assets/data/artifacts/code_hashes/data_contracts.hash
-      # - ml_assets/data/artifacts/code_hashes/utils.hash
-      # - ml_assets/data/artifacts/code_hashes/storage_io.hash
-      # - ml_assets/data/artifacts/code_hashes/run_prodigal.hash
-      # - ml_assets/data/artifacts/code_hashes/run_hmm_scan_pipeline.hash
-      # - ml_assets/data/artifacts/code_hashes/duckdb_io.hash
-      # - ml_assets/data/artifacts/code_hashes/msa.hash
-      # - ml_assets/data/artifacts/code_hashes/create_msas.hash
-      # - ml_assets/data/artifacts/code_hashes/hmm_parquet_to_summary_tbl.hash
 
 # -----------------------------------------------------------------------------
 # Phage Preprocessing
@@ -272,3 +261,56 @@ stages:
           persist: true
     vars:
       - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+
+  # feature_engineering:
+  #   cmd: python packages/feature_engineering/run_feature_engineering.py \
+  #           --config configs/feature_engineering.yaml \
+  #           --input ml_assets/data/clean \
+  #           --output ml_assets/data/features
+  #   deps:
+  #     - packages/feature_engineering/
+  #     - ml_assets/data/clean
+  #     - configs/feature_engineering.yaml
+  #     - ${vocab.file}
+  #   outs:
+  #     - ml_assets/data/features
+
+  train_model:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate training &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows &&
+      export CUDA_VISIBLE_DEVICES="" &&
+      python workflows/run_train.py --config params.yaml '
+    deps:
+    - ml_assets/config/train_v0.0.1.yaml
+    outs:
+    - ml_assets/data/training/default_run/checkpoints
+
+      # - ml_assets/data/training/checkpoints #/model_v0.0.1.pkl
+      # - packages/arc/TransformerX.py
+      #- ml_assets/data/features
+
+  # evaluate:
+  #   cmd: python packages/inference/evaluate.py \
+  #           --config configs/evaluation.yaml \
+  #           --model ml_assets/models/model.pkl \
+  #           --data ml_assets/data/features \
+  #           --live_dir ml_assets/experiments
+  #   deps:
+  #     - packages/inference/
+  #     - ml_assets/models/model.pkl
+  #     - ml_assets/data/features
+  #     - configs/evaluation.yaml
+  #   # DVCLive outputs directory
+  #   outs:
+  #     - ml_assets/experiments
+# params:
+# - ml_assets/data/training/params.yaml
+# - ml_assets/data/training/default_run/tracker/params.yaml
+# metrics:
+# - ml_assets/data/training/default_run/tracker/metrics.json
+# plots:
+# - ml_assets/data/training/default_run/tracker/plots/metrics:
+#     x: step

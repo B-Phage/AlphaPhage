@@ -1,4 +1,4 @@
-🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥈![Coverage feature_hmm_annot](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_hmm_annot.svg) | 🥈![Coverage mlops-dtdev](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops-dtdev.svg)
+🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥇![Coverage dev](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-dev.svg) | 🥈![Coverage feature_hmm_annot](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_hmm_annot.svg) | 🥈![Coverage mlops-dtdev](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops-dtdev.svg)
 
 # AlphaPhage: Production Machine Learning Model 🧪
 
@@ -47,6 +47,7 @@ repo/
 ├── conda_envs/     # Conda environment files
 ├── workflows/
 ├── tests/          # Unit and Integration test
+├── docs/           # Processes, long-form reference, and cross-cutting guides
 ├── dvc.yaml
 └── Makefile # Setup & pipeline commands
 ```

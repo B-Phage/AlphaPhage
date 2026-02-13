@@ -12,9 +12,9 @@ prep:
 feature_engineering:
   method: "default"
 
-training:
-  epochs: 20
-  lr: 1e-4
+train:
+  train_config: "ml_assets/config/train_v0.0.1.yaml"
+  output_train_dir: "ml_assets/data/training/"
 
 model:
   name: "transformer_v3"

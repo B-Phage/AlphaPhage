@@ -7,7 +7,8 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
+
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -21,7 +22,7 @@ ENV_DEV = root_dev
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
 
 # HMM Data
 HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
@@ -80,11 +81,6 @@ setup-orchestration:
 	@echo "=== Installing orchestration package ==="
 	conda run -n $(ENV_DEV) pip install -e packages/orchestration
 
-# TODO: Implement the remaining packages
-# manual conda env creation:
-#conda env create -f conda_envs/preprocessing.yml -n preprocessing
-# or
-#conda env update -f conda_envs/preprocessing.yml -n preprocessing
 .PHONY: setup-preprocessing
 setup-preprocessing:
 	$(call ensure_env,$(ENV_PREPROCESSING))
@@ -117,9 +113,21 @@ setup-feature_engineering:
 
 .PHONY: setup-training
 setup-training:
-# 	$(call ensure_env,$(ENV_TRAINING))
+	$(call ensure_env,$(ENV_TRAINING))
 	@echo "=== Installing training package ==="
-# 	conda run -n $(ENV_TRAINING) pip install -e packages/training
+	conda run -n $(ENV_TRAINING) pip install -e packages/training
+
+.PHONY: setup-dataloaders
+setup-dataloaders:
+	$(call ensure_env,$(ENV_TRAINING))
+	@echo "=== Installing dataloaders package ==="
+	conda run -n $(ENV_TRAINING) pip install -e packages/dataloaders
+
+.PHONY: setup-models
+setup-models:
+	$(call ensure_env,$(ENV_TRAINING))
+	@echo "=== Installing models package ==="
+	conda run -n $(ENV_TRAINING) pip install -e packages/models
 
 .PHONY: setup-inference
 setup-inference:
@@ -193,35 +201,47 @@ check-dvc-config:
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="
-	dvc pull
+	conda run -n $(ENV_DEV) dvc pull
 
 .PHONY: dvc-repro
 dvc-repro:
 	@echo "=== Reproducing DVC pipeline ==="
-	dvc repro
+	conda run -n $(ENV_DEV) dvc repro
 
 .PHONY: dvc-graph
 dvc-graph:
 	@echo "=== Showing DVC pipeline graph ==="
-	dvc dag
+	conda run -n $(ENV_DEV) dvc dag
 
 .PHONY: dvc-push
 dvc-push:
 	@echo "=== Pushing outputs to remote ==="
-	dvc push
+	conda run -n $(ENV_DEV) dvc push
 
 .PHONY: dvc-clean
 dvc-clean:
 	@echo "=== Cleaning untracked outputs ==="
-	dvc gc -w
+	conda run -n $(ENV_DEV) dvc gc -w
 
 # =====================
 # Tests
 # =====================
 .PHONY: test
 
+
 test: ## Run unit tests with correct path
-	PYTHONPATH=./packages pytest tests/
+	conda activate $(ENV_TRAINING) && \
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
+	python -m unittest tests/unit/test_transformer_module.py && \
+	python -m unittest tests/unit/test_transformer_classifier.py && \
+	python -m unittest tests/unit/test_transformer_archspecs.py && \
+	python -m unittest tests/unit/test_dataloaders.py && \
+	python -m unittest tests/integration/test_run_training_integration.py
+	conda activate $(ENV_PREPROCESSING) && \
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
+	python -m unittest tests/integration/test_run_prodigal_integration.py
+
+#python -m unittest discover -s tests/unit -p "test_*.py" && \
 
 # =====================
 # Cleanup

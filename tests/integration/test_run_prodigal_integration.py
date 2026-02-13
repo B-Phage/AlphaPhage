@@ -1,7 +1,8 @@
 """
 Run with:
 conda activate preprocessing
-PYTHONPATH=./packages pytest tests/integration/ --cov=preprocessing --cov-report=html
+export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+python -m unittest tests/integration/test_run_prodigal_integration.py
 """
 
 import shutil

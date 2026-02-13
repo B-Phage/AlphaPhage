@@ -28,10 +28,11 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.pytest.ini_options]
+
 # Automatically look for tests in these directories
 testpaths = ["tests"]
 # Add the packages directory to sys.path so 'import setup_workflows' works
-pythonpath = ["packages"]
+pythonpath = ["packages", "workflows"]
 # Default CLI flags:
 # --cov points to the code you want to track
 # --cov-report ensures you see the results in the terminal

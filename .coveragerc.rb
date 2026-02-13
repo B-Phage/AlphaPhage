@@ -1,7 +1,9 @@
 # .coveragerc
 [run]
 # Specify the location of your source code (useful if not using --cov flag)
-source = utils
+source =
+    packages
+    workflows
 # Exclude files that you never want to measure
 omit =
     # Example: Exclude database migrations
@@ -14,6 +16,7 @@ omit =
     __init__.py
 
 [report]
+ignore_errors = True # This prevents the "No source for code" crash
 # Require a minimum coverage percentage for the entire project
 fail_under = 80 # TODO: up this
 
@@ -23,3 +26,8 @@ show_missing = True
 [html]
 # Directory where the HTML report will be generated
 directory = htmlcov
+
+[paths]
+source =
+    packages/
+    */site-packages/
