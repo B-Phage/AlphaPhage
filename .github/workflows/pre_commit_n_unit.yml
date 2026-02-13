@@ -116,6 +116,7 @@ jobs:
           coverage combine
           # debug check
           echo "--- Verifying Final Coverage File ---"
+          pwd
           ls -la .coverage.${{ matrix.env_name }}
 
       - name: 📤 Upload Coverage Data
@@ -123,7 +124,7 @@ jobs:
         if: always()
         with:
           name: coverage-data-${{ matrix.env_name }}
-          path: .coverage.${{ matrix.env_name }}
+          path: ./.coverage.${{ matrix.env_name }}
           retention-days: 1
 
   coverage-summary:
