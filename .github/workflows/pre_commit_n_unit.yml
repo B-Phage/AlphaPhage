@@ -55,6 +55,7 @@ jobs:
         include:
           - env_name: training
             env_file: conda_envs/training.yml
+            cov_source: "packages"
             # List of folders in ./packages/ to pip install
             install_packages: "training dataloaders models utils"
             test_files: >-
@@ -65,6 +66,8 @@ jobs:
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
+
+            cov_source: "packages"
             install_packages: "utils orchestration hmm storage_io setup_workflows"
             test_files: "all_remaining"
 
@@ -128,32 +131,33 @@ jobs:
       - name: 📥 Download All Data
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-*
+          pattern: coverage-data-*
           merge-multiple: true
 
       - name: 📊 Combine & Enforcement
         id: final_cov
+        # We use 'continue-on-error' so a failure here doesn't skip the badge upload
+        continue-on-error: true
         run: |
           pip install "coverage[toml]"
 
-          # Initialize with 0 in case the next steps fail
+          # Initialize default value
           echo "TOTAL_COV=0" >> $GITHUB_OUTPUT
 
-          # We use "|| true" to ensure the script keeps running even if combine fails
-          coverage combine .coverage.* || echo "⚠️ No coverage files found to combine"
+          # Combine renamed files
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            coverage report -m
 
-          # Attempt to extract the percentage
-          # If this fails, the shell will move on, leaving the 0 we set above
-          if coverage report -m; then
+            # Extract number
             PERCENT=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
-            # Overwrite the 0 with the actual value if we successfully found it
             echo "TOTAL_COV=$PERCENT" >> $GITHUB_OUTPUT
           else
-            echo "❌ Coverage measurement failed. Defaulting badge to 0%."
+            echo "⚠️ No coverage fragments found."
           fi
 
       - name: 🎖️ Generate Combined Badge
-        if: always() # <--- Crucial: Run even if tests or coverage failed
+        if: always() # Run even if 'Combine' failed
         run: |
           mkdir -p badges
           BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
@@ -161,22 +165,23 @@ jobs:
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
 
-          # Use the output from the previous step (defaults to 0 if failed)
-          COV_VAL="${{ steps.final_cov.outputs.TOTAL_COV || 0 }}"
+          # Use the output, or default to 0 if the previous step failed/was skipped
+          COV_VAL="${{ steps.final_cov.outputs.TOTAL_COV }}"
+          if [ -z "$COV_VAL" ]; then COV_VAL=0; fi
+
           "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV_VAL" "badges/coverage-${BRANCH_SAFE}.svg"
+
       - name: ⬆️ Commit and push SVG badge
-        if: always()
+        if: always() # Ensure the 0% badge actually makes it to the repo
         run: |
-          # Push to the badges branch to update the README status
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git fetch origin badges2
-          git checkout -f badges2
-          git reset --hard origin/badges2
+          git checkout badges2 || git checkout -b badges2
           cp badges/*.svg .
           git add *.svg
-          git commit -m "Update combined coverage badge [${{ steps.final_cov.outputs.TOTAL_COV }}%]" || echo "No changes"
-          git push origin badges2 --force
+          git commit -m "Update coverage badge [${{ steps.final_cov.outputs.TOTAL_COV || 0 }}%]" || echo "No changes"
+          git push origin badges2
 
       - name: 🚨 Final Gate
         run: |
