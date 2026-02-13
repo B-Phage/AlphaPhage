@@ -112,11 +112,6 @@ jobs:
           export COVERAGE_FILE=".coverage.${{ matrix.env_name }}"
           coverage run --parallel-mode --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
 
-          # debug check
-          echo "--- Verifying Final Coverage File ---"
-          pwd
-          ls -la .coverage.${{ matrix.env_name }}
-
       - name: 📤 Upload Coverage Data
         uses: actions/upload-artifact@v4
         if: always()
