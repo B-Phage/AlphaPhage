@@ -5,6 +5,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
 python -m unittest tests/integration/test_run_prodigal_integration.py
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -58,7 +59,10 @@ general:
         # Run the script using the same Python interpreter
         result = subprocess.run(
             [
-                sys.executable,
+                "coverage",
+                "run",
+                "-p",  # -p is crucial: it creates unique data files
+                "--source=workflows",
                 str(script_path),
                 "--config",
                 str(self.config_file),
@@ -68,6 +72,7 @@ general:
             ],
             capture_output=True,
             text=True,
+            env={**os.environ, "COVERAGE_FILE": ".coverage.subs"},  # Direct data to a specific file
         )
 
         # Print stdout/stderr for debugging

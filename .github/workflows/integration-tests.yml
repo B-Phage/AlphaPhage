@@ -72,6 +72,7 @@ jobs:
 
       - name: 📤 Upload Coverage Piece
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage-data-${{ matrix.env_name }}
           path: .coverage.${{ matrix.env_name }}
