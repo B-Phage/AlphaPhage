@@ -110,10 +110,8 @@ jobs:
           # to prevent conflicts with the manual coverage run command.
 
           export COVERAGE_FILE=".coverage.${{ matrix.env_name }}"
+          coverage run --parallel-mode --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
 
-          coverage run --source=packages -m pytest -v -p no:cov -o "addopts=" $TARGETS
-
-          coverage combine
           # debug check
           echo "--- Verifying Final Coverage File ---"
           pwd
@@ -124,7 +122,7 @@ jobs:
         if: always()
         with:
           name: coverage-data-${{ matrix.env_name }}
-          path: ./.coverage.${{ matrix.env_name }}
+          path: .coverage.${{ matrix.env_name }}*
           retention-days: 1
 
   coverage-summary:
