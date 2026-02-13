@@ -97,9 +97,10 @@ jobs:
 
       - name: 📊 Combine & Report
         run: |
-          pip install coverage
+          # The [toml] extra is required to read pyproject.toml
+          pip install "coverage[toml]"
+
           # Merges .coverage.training and .coverage.preprocessing
-          # This also triggers the [paths] remapping if defined in .coveragerc
           coverage combine .coverage.*
           echo "--- FINAL COMBINED INTEGRATION COVERAGE ---"
           coverage report -m

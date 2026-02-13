@@ -137,31 +137,38 @@ jobs:
       - name: 📊 Combine & Enforcement
         id: final_cov
         run: |
-          pip install coverage
-          # Merges the matrix results and applies [paths] mapping from .coveragerc
-          coverage combine .coverage.*
-          coverage report -m
+          pip install "coverage[toml]"
 
-          # Extract percentage and check threshold
-          PERCENT=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
-          echo "TOTAL_COV=$PERCENT" >> $GITHUB_OUTPUT
+          # Initialize with 0 in case the next steps fail
+          echo "TOTAL_COV=0" >> $GITHUB_OUTPUT
 
-          if [ "$PERCENT" -lt 90 ]; then
-            echo "❌ Coverage ($PERCENT%) is below 90% threshold!"
-            # We don't exit 1 yet so we can still push the "failing" badge
+          # We use "|| true" to ensure the script keeps running even if combine fails
+          coverage combine .coverage.* || echo "⚠️ No coverage files found to combine"
+
+          # Attempt to extract the percentage
+          # If this fails, the shell will move on, leaving the 0 we set above
+          if coverage report -m; then
+            PERCENT=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+            # Overwrite the 0 with the actual value if we successfully found it
+            echo "TOTAL_COV=$PERCENT" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Coverage measurement failed. Defaulting badge to 0%."
           fi
 
       - name: 🎖️ Generate Combined Badge
+        if: always() # <--- Crucial: Run even if tests or coverage failed
         run: |
           mkdir -p badges
           BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
           chmod +x "$BASH_SCRIPT_PATH"
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
-          # Pass the combined coverage percentage to the badge generator
-          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "${{ steps.final_cov.outputs.TOTAL_COV }}" "badges/coverage-${BRANCH_SAFE}.svg"
 
+          # Use the output from the previous step (defaults to 0 if failed)
+          COV_VAL="${{ steps.final_cov.outputs.TOTAL_COV || 0 }}"
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV_VAL" "badges/coverage-${BRANCH_SAFE}.svg"
       - name: ⬆️ Commit and push SVG badge
+        if: always()
         run: |
           # Push to the badges branch to update the README status
           git config user.name "github-actions"
