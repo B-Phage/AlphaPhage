@@ -51,7 +51,8 @@ outputs/*
 dvc_plots/
 
 # Trained model artifacts
-# ml_assets/data/training/default_run/checkpoints
+ml_assets/
+ml_assets/*
 
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS

@@ -11,9 +11,9 @@ preprocess:
 feature_engineering:
   method: "default"
 
-train:
-  train_config: "ml_assets/config/train_v0.0.1.yaml"
-  output_train_dir: "ml_assets/data/training/"
+
+kapsid:
+  kapsid_config: "ml_assets/config/kapsid3_config.yaml"
 
 model:
   name: "transformer_v3"
