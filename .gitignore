@@ -81,7 +81,7 @@ artifacts/
 *.hmm_id
 
 # Testing and Coverage
-.coverage
+.coverage*
 htmlcov/
 *.svg
 *.xml

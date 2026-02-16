@@ -15,5 +15,6 @@
     "files.associations": {
         "*.dvc": "yaml",
         ".dvc/config": "ini"
-    }
+    },
+    "python.analysis.typeCheckingMode": "basic",
 }

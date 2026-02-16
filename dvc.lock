@@ -153,24 +153,24 @@ stages:
     deps:
     - path: packages/data_contracts
       hash: md5
-      md5: 182e7d4117ca8b9e666a1b0b206ffa3b.dir
+      md5: 6037e35080a02439784535364d27c4bb.dir
       size: 2440
       nfiles: 5
     - path: packages/hmm
       hash: md5
-      md5: d234d6b104cd60926a3c5180fb2b4424.dir
-      size: 191199
-      nfiles: 24
+      md5: e3f99877da066a99aaa4b9f2abb6a134.dir
+      size: 210977
+      nfiles: 30
     - path: packages/storage_io
       hash: md5
-      md5: 630159d915afda3a3d48fa1d222197be.dir
-      size: 30882
-      nfiles: 11
+      md5: 8d0aad49bbe5a100b75a4b3eb67b22db.dir
+      size: 34109
+      nfiles: 13
     - path: packages/utils
       hash: md5
-      md5: 0a0b77db7cf7d14761dbb3c4df4d4cef.dir
-      size: 207741
-      nfiles: 32
+      md5: c8ed0a284c70cddd2e6d7f734592648f.dir
+      size: 217313
+      nfiles: 34
     - path: workflows/create_msas.py
       hash: md5
       md5: 903843bb5ded68ce51b221439c968c40
@@ -190,7 +190,7 @@ stages:
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: 015ba9089c47f41a8f4d8247e244a9df.dir
+      md5: febe8a8740a39cd7f17b76830b478981.dir
       size: 640
       nfiles: 10
   create_phage_msas:
