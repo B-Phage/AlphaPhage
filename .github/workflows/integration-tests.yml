@@ -21,13 +21,13 @@ jobs:
             install_packages: "training dataloaders models utils"
             # We track the whole source so the final report knows what we missed
             cov_source: "packages,workflows"
-            test_files: "tests/integration/test_run_training_integration.py"
+            test_files: "tests/integration/training"
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
             install_packages: "utils orchestration hmm storage_io setup_workflows"
             cov_source: "packages, workflows"
-            test_files: "all_remaining"
+            test_files: "tests/integration/preprocessing"
 
     steps:
       - name: ⬇️ Checkout Code
@@ -51,31 +51,26 @@ jobs:
         shell: bash -l {0}
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
-          # Standardise behaviour with local script to avoid OpenMP crashes
           export KMP_DUPLICATE_LIB_OK=TRUE
 
-          if [ "${{ matrix.test_files }}" = "all_remaining" ]; then
-            echo "🔎 Discovering all remaining integration tests..."
-            # Strictly find files in tests/integration/ that aren't the training test
-            # We use tr to ensure a clean space-separated list for pytest
-            TARGETS=$(find tests/integration -name "test_*.py" ! -name "test_run_training_integration.py" | tr '\n' ' ')
-          else
-            echo "🎯 Running specific test: ${{ matrix.test_files }}"
-            TARGETS="${{ matrix.test_files }}"
-          fi
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
 
-          # Use pytest instead of unittest.
-          # We disable the internal coverage plugin (-p no:cov) and clear config flags (-o "addopts=")
-          # to prevent conflicts with the manual coverage run command.
-          COVERAGE_FILE=.coverage.${{ matrix.env_name }} coverage run --source=${{ matrix.cov_source }} \
-            -m pytest -v -p no:cov -o "addopts=" $TARGETS
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
+
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
+          coverage combine
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
 
       - name: 📤 Upload Coverage Piece
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-data-${{ matrix.env_name }}
-          path: "*coverage.${{ matrix.env_name }}*"
+          path: coverage_data_${{ matrix.env_name }}
           retention-days: 1
 
   coverage-report:
@@ -102,6 +97,10 @@ jobs:
           pip install "coverage[toml]"
 
           # Merges .coverage.training and .coverage.preprocessing
-          coverage combine .coverage.*
-          echo "--- FINAL COMBINED INTEGRATION COVERAGE ---"
-          coverage report -m
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            echo "--- FINAL COMBINED INTEGRATION COVERAGE ---"
+            coverage report -m
+          else
+            echo "⚠️ No coverage fragments found."
+          fi

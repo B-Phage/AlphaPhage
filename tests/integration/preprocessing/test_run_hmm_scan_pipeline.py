@@ -12,6 +12,15 @@ PIPELINE_PATH = Path("workflows/run_hmm_scan_pipeline.py")
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+@pytest.fixture
+def cleanup_hash_files():
+    # --- setup (optional) ---
+    yield
+    # --- teardown ---
+    dvc_dir = Path("path/to/dvc/hash_dir")
+    if dvc_dir.exists():
+        for p in dvc_dir.glob("*.hash"):
+            p.unlink()
 
 
 def write_test_config(
