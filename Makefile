@@ -37,7 +37,7 @@ help:
 	@echo "  make setup-all       		- Setup all environments, install packages, and setup hooks"
 	@echo "  make setup-<pkg>     		- Setup a single package environment and install it"
 	@echo "  make check-dvc-config     	- Check the dvc OAuth"
-	@echo "  make hooks           		- Install pre-commit hooks in the current environment"
+	@echo "  make hooks           		- Install pre-commit and pre-push hooks in the current environment"
 	@echo "  make secrets-cli     		- Installing detect-secrets CLI tool"
 	@echo "  make secrets-baseline      	- Scanning repository and generating .secrets.baseline file..."
 	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
@@ -139,15 +139,17 @@ setup-inference:
 # =====================
 .PHONY: hooks
 hooks:
-	@echo "=== Installing pre-commit hooks in all environments ==="
+	@echo "=== Installing pre-commit and pre-push hooks in all environments ==="
 	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
-	@echo "Pre-commit hooks installed successfully."
+	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install --hook-type pre-push;)
+	@echo "Pre-commit hooks and pre-push installed successfully."
 
 .PHONY: hooks-update
 hooks-update:
 	@echo "=== Updating pre-commit hooks in all environments ==="
 	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit autoupdate;)
 	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
+	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install --hook-type pre-push;)
 	@echo "Pre-commit hooks updated successfully."
 
 # =====================
