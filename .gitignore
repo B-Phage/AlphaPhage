@@ -44,12 +44,11 @@ Thumbs.db        # Windows
 # Data folders
 outputs/
 outputs/*
-# data/
-# data/*
 dvc_plots/
 
 # Trained model artifacts
-
+models/
+models/*
 
 # Human readable inspection files
 *.csv

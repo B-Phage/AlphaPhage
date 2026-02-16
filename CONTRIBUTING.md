@@ -208,6 +208,22 @@ Integration tests should cover full pipeline stages with small test datasets.
 DVCLive metrics:
 All metric logging must go to ml_assets/experiments/ as configured in each pipeline stage.
 
+### 7.1. Critical Rules for DVC & Git Coexistence
+To prevent data loss and broken pointers, strictly follow these rules:
+
+* *Never manually ignore* `ml_assets/data/` or `ml_assets/models/` in the root `.gitignore`. DVC creates its own internal `.gitignore` files to handle the raw data.
+  * If you ignore the entire directory in Git, you will accidentally delete the `.dvc` metadata files from source control, making it impossible for others to pull the data.
+
+* *The `.dvc` files are code.* Treat them like `.py` files. They must be committed to Git so the repo knows which version of the data matches which version of the code.
+
+* *Post-Merge Workflow:* After every `git pull` or `git merge`, you must run `make dvc-pull`. Git updates the pointers; DVC updates the actual files.
+
+| Asset Type | Stored In | Tracked By |
+| :--- | :--- | :--- |
+| **Source Code** (`.py`, `.yml`) | GitHub | **Git** |
+| **Metadata Pointers** (`.dvc`) | GitHub | **Git** |
+| **Large Datasets / Weights** | Google Drive | **DVC** |
+
 ## 8. Adding New Packages / Modules
 
 1. Create _packages/<module>/_ folder.
