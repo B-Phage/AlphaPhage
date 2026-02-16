@@ -36,7 +36,7 @@
    * Unlike unit tests, you rarely aim for 100% line coverage in integration tests.
    * Focus on critical workflows, edge cases, and interaction between modules.
 
-## 3️⃣ Practical integration test philosophy
+## 3️⃣ Practical test philosophy
 * Unit tests = 100% coverage of package code
     * Small, fast, deterministic, mock external dependencies
 * Integration tests = high confidence in workflow correctness
@@ -47,7 +47,7 @@
 **Rule of thumb:**
 Integration tests should focus on _“does the workflow deliver correct results with all dependencies in place?”_ rather than _“does every line of orchestrator code execute?”_
 
-## 4️⃣ Examples of good integration test scenarios for your repo
+## 4️⃣ Examples of good integration test scenarios for our repo
 1. Small genome → prodigal → proteins
    * Ensure proteins exist, correct number of sequences, hashes updated
 2. Multiple genomes with different config files

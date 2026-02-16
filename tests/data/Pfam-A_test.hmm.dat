@@ -1,0 +1,25 @@
+# STOCKHOLM 1.0
+#=GF ID   1-cysPrx_C
+#=GF AC   PF10417.15
+#=GF DE   C-terminal domain of 1-Cys peroxiredoxin
+#=GF GA   21.1; 21.1;
+#=GF TP   Domain
+#=GF ML   41
+//
+# STOCKHOLM 1.0
+#=GF ID   DUF1244
+#=GF AC   PF06844.17
+#=GF DE   Protein of unknown function (DUF1244)
+#=GF GA   27; 27;
+#=GF TP   Family
+#=GF ML   67
+//
+# STOCKHOLM 1.0
+#=GF ID   DUF1246
+#=GF AC   PF06849.19
+#=GF DE   Protein of unknown function (DUF1246)
+#=GF GA   25; 25;
+#=GF TP   Family
+#=GF ML   122
+#=GF CL   CL0063
+//

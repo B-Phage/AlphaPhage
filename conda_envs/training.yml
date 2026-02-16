@@ -28,5 +28,3 @@ dependencies:
       - tensorboardX
       - "dvclive[lightning]"
       - dvc-gdrive
-
-#prefix: /Users/dutoitschabort/miniforge3/envs/training

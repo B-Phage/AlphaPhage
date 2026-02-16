@@ -50,7 +50,10 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
     return _load_vocab_file(vocab_cfg.file)
 
 
-def get_prodigal_config(override_path: str | None = None, params_set: str = "prodigal_config"):
+# Other configs
+
+
+def get_config(override_path: str | None = None, params_set: str = "prodigal_config"):
     """
     Loads prodigal config from params.yaml or override file
     """

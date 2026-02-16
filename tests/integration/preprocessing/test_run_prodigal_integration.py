@@ -5,6 +5,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
 python -m unittest tests/integration/test_run_prodigal_integration.py
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -20,10 +21,10 @@ class TestRunProdigalIntegration(unittest.TestCase):
         self.tempdir = Path(tempfile.mkdtemp())
         self.config_file = self.tempdir / "prodigal_test_config.yaml"
         self.input_dir = self.tempdir / "genomes"
-        self.output_dir = self.tempdir / "proteins"
+        self.proteins_dir = self.tempdir / "proteins"
 
         self.input_dir.mkdir()
-        self.output_dir.mkdir()
+        self.proteins_dir.mkdir()
 
         # Create a tiny dummy genome
         self.genome_file = self.input_dir / "genome1.fasta"
@@ -34,9 +35,9 @@ class TestRunProdigalIntegration(unittest.TestCase):
             f"""
 prodigal_config:
   genome_dir: "{self.input_dir}"
-  output_dir: "{self.output_dir}"
+  proteins_dir: "{self.proteins_dir}"
+general:
   lst_genomes: []
-  n_jobs: 1
   code_version: "integration-test-v1"
 """
         )
@@ -57,9 +58,21 @@ prodigal_config:
 
         # Run the script using the same Python interpreter
         result = subprocess.run(
-            [sys.executable, str(script_path), "--config", str(self.config_file), "--force"],
+            [
+                "coverage",
+                "run",
+                "-p",  # -p is crucial: it creates unique data files
+                "--source=workflows",
+                str(script_path),
+                "--config",
+                str(self.config_file),
+                "--code_hash",
+                str(script_path),
+                "--force",
+            ],
             capture_output=True,
             text=True,
+            env={**os.environ, "COVERAGE_FILE": ".coverage.subs"},  # Direct data to a specific file
         )
 
         # Print stdout/stderr for debugging
@@ -70,5 +83,5 @@ prodigal_config:
         self.assertEqual(result.returncode, 0, msg="run_prodigal.py failed")
 
         # Check that the output protein file exists
-        expected_protein = self.output_dir / "genome1.faa"
+        expected_protein = self.proteins_dir / "genome1.fa"
         self.assertTrue(expected_protein.exists(), msg=f"{expected_protein} not created")

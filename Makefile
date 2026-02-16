@@ -7,20 +7,26 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing training models dataloaders #feature_engineering training inference
+PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
+
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
+ENV_HMM = hmmr_env
 ENV_FE = feature_engineering
 ENV_TRAINING = training
 ENV_INFERENCE = inference
-ENV_DEV = root_dev
 
 # Define the config file path
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
+ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
+
+# HMM Data
+HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
+PYTHON := $(shell which python)  # uses the environment's python
+
 
 # =====================
 # Help
@@ -33,9 +39,10 @@ help:
 	@echo "  make check-dvc-config     	- Check the dvc OAuth"
 	@echo "  make hooks           		- Install pre-commit hooks in the current environment"
 	@echo "  make secrets-cli     		- Installing detect-secrets CLI tool"
-	@echo "  make secrets-baseline      - Scanning repository and generating .secrets.baseline file..."
+	@echo "  make secrets-baseline      	- Scanning repository and generating .secrets.baseline file..."
 	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
 	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
+	@echo "  make setup-hmm-data		- Pull the HMM data from Google Drive and extract"
 	@echo "  make clean           		- Remove all conda environments"
 
 # =====================
@@ -55,7 +62,7 @@ endef
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull
+setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull setup-hmm-data
 	@echo "All environments, packages, hooks, and DVC data are ready."
 
 # =====================
@@ -63,21 +70,39 @@ setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pu
 # =====================
 .PHONY: setup-utils
 setup-utils:
-	$(call ensure_env,$(ENV_DEV))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing utils package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/utils
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/utils
 
 .PHONY: setup-orchestration
 setup-orchestration:
-	$(call ensure_env,$(ENV_DEV))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing orchestration package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/orchestration
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/orchestration
 
 .PHONY: setup-preprocessing
 setup-preprocessing:
 	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing preprocessing package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
+
+.PHONY: setup-hmm
+setup-hmm:
+	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing hmm preprocessing package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/hmm
+
+.PHONY: setup-setup_workflows
+setup-setup_workflows:
+	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing worflow setup package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/setup_workflows
+
+.PHONY: setup-storage_io
+setup-storage_io:
+	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing storage input/output package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/storage_io
 
 .PHONY: setup-feature_engineering
 setup-feature_engineering:
@@ -130,14 +155,24 @@ hooks-update:
 # =====================
 .PHONY: secrets-cli
 install-secrets-cli:
-	@echo "Installing detect-secrets CLI in $(ENV_DEV)..."
-	conda run -n $(ENV_DEV) pip install detect-secrets
+	@echo "Installing detect-secrets CLI in $(ENV_PREPROCESSING)..."
+	conda run -n $(ENV_PREPROCESSING) pip install detect-secrets
 
 .PHONY: secrets-baseline
 init-secrets-baseline: install-secrets-cli
 	@echo "Generating .secrets.baseline..."
-	conda run -n $(ENV_DEV) detect-secrets scan > .secrets.baseline
+	conda run -n $(ENV_PREPROCESSING) detect-secrets scan > .secrets.baseline
 	@echo "Baseline created. Add and commit .secrets.baseline"
+
+# =====================
+# Raw Google Drive Data
+# =====================
+
+.PHONY: setup-hmm-data
+setup-hmm-data:
+	@echo "WARNING: This setup will only work if the dependencies: setup-utils, setup-hmm and setup-setup_workflows have already run"
+	@echo "Setting up HMM reference data YAML config: $(HMM_YAML)"
+	python -m setup_workflows.hmm_data_setup --yaml-registry $(HMM_YAML)
 
 # =====================
 # DVC targets
@@ -165,47 +200,46 @@ check-dvc-config:
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="
-	conda run -n $(ENV_DEV) dvc pull
+	conda run -n $(ENV_PREPROCESSING) dvc pull
 
 .PHONY: dvc-repro
 dvc-repro:
 	@echo "=== Reproducing DVC pipeline ==="
-	conda run -n $(ENV_DEV) dvc repro
+	conda run -n $(ENV_PREPROCESSING) dvc repro
 
 .PHONY: dvc-graph
 dvc-graph:
 	@echo "=== Showing DVC pipeline graph ==="
-	conda run -n $(ENV_DEV) dvc dag
+	conda run -n $(ENV_PREPROCESSING) dvc dag
 
 .PHONY: dvc-push
 dvc-push:
 	@echo "=== Pushing outputs to remote ==="
-	conda run -n $(ENV_DEV) dvc push
+	conda run -n $(ENV_PREPROCESSING) dvc push
 
 .PHONY: dvc-clean
 dvc-clean:
 	@echo "=== Cleaning untracked outputs ==="
-	conda run -n $(ENV_DEV) dvc gc -w
+	conda run -n $(ENV_PREPROCESSING) dvc gc -w
 
 # =====================
 # Tests
 # =====================
-.PHONY: test
+.PHONY: test test-unit test-int test-all
 
+# Default 'test' command (runs only unit tests for speed)
+test: test-unit
 
-test: ## Run unit tests with correct path
-	conda activate $(ENV_TRAINING) && \
-	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
-	python -m unittest tests/unit/test_transformer_module.py && \
-	python -m unittest tests/unit/test_transformer_classifier.py && \
-	python -m unittest tests/unit/test_transformer_archspecs.py && \
-	python -m unittest tests/unit/test_dataloaders.py && \
-	python -m unittest tests/integration/test_run_training_integration.py
-	conda activate $(ENV_PREPROCESSING) && \
-	export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages && \
-	python -m unittest tests/integration/test_run_prodigal_integration.py
+test-unit: ## Run all unit tests via the shell script
+	@echo "🧪 Running Unit Test Suite..."
+	@bash tests/utils/run_all_unit_tests.sh
 
-#python -m unittest discover -s tests/unit -p "test_*.py" && \
+test-int: ## Run all integration tests via the shell script
+	@echo "🪡 Running Integration Test Suite..."
+	@bash tests/utils/run_all_integration_tests.sh
+
+test-all: test-unit test-int ## Run both suites sequentially
+	@echo "✅ All test suites completed."
 
 # =====================
 # Cleanup

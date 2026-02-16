@@ -1,25 +1,51 @@
 name: 🧩🚨 Unit Tests & Pre-Commit Checks
 
 on:
+    # Run on every push to a branch
   push:
-    branches-ignore: ['archive', 'badges2']
+    # Use branches-ignore to exclude specific branches
+    branches-ignore:
+      - 'archive'           # Example: Ignore a specific archive branch
+      - 'badges2'           # Tests should never be merged into badges anyway
+  # Run when a Pull Request is opened or updated
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # needed to push to badges branch
 
 jobs:
   linting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.10' }
-      - uses: pre-commit/action@v3.0.1
 
-  #parallel, but with a more structured matrix to handle multiple packages and their specific test files
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 🏃 Run Pre-Commit Checks
+        uses: pre-commit/action@v3.0.1
+        id: run_hooks
+        continue-on-error: true
+
+      - name: ❌🪲 Show Modified Files and Differences
+        if: steps.run_hooks.outcome == 'failure'
+        run: |
+          echo "Hooks failed because they modified these files:"
+          git status --porcelain
+          echo "--- Full Git Diff ---"
+          git diff
+
+      - name: ☠️ Check (Fail Job if Hooks Modified Files)
+        if: steps.run_hooks.outcome == 'failure'
+        run: |
+          echo "Failing job because pre-commit checks failed or modified files."
+          exit 1
+
+  # parallel, but with a more structured matrix to handle multiple packages and their specific test files
   test:
     needs: linting
     runs-on: ubuntu-latest
@@ -29,98 +55,127 @@ jobs:
         include:
           - env_name: training
             env_file: conda_envs/training.yml
+            cov_source: "packages"
             # List of folders in ./packages/ to pip install
             install_packages: "training dataloaders models utils"
-            # Specific source folder for coverage tracking
-            cov_source: "packages/models,packages/dataloaders"
-            # Explicit list of test files
-            test_files: >-
-              tests/unit/test_transformer_archspecs.py
-              tests/unit/test_transformer_classifier.py
-              tests/unit/test_transformer_module.py
-              tests/unit/test_dataloaders.py
+            test_files: "tests/unit/training"
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            install_packages: "preprocessing"
-            cov_source: "packages/preprocessing"
-            test_files: >-
-              tests/unit/test_a.py
-              tests/unit/test_b.py
+
+            cov_source: "packages"
+            install_packages: "utils orchestration hmm storage_io setup_workflows"
+            test_files: "tests/unit/preprocessing"
 
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
 
       - name: 🐍 Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: ${{ matrix.env_file }}
           environment-name: ${{ matrix.env_name }}
-          cache-environment: true # Set to false to disable caching of the entire environment
-          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
-          cache-downloads: true # Set to false to force download of packages every time
+          cache-environment: true
 
-      - name: 🛠️ Install Packages & Run Tests
+      - name: 🧪 Run Tests
         shell: bash -l {0}
         run: |
-          # 1. Install listed packages in editable mode
-          for pkg in ${{ matrix.install_packages }}; do
-            echo "--- Installing Package: $pkg ---"
-            pip install -e ./packages/$pkg
-          done
-
-          # 2. Run Unittests with Coverage
-          # We use the specific list of files provided in the matrix
-          echo "--- Running Tests for ${{ matrix.env_name }} ---"
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
-          coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
+          export KMP_DUPLICATE_LIB_OK=TRUE
 
-          # 3. Generate Reports
-          coverage report -m
-          coverage html -d htmlcov-${{ matrix.env_name }}
-          coverage json -o coverage-${{ matrix.env_name }}.json
+          # 1. Ensure coverage tracks sub-processes by using the --parallel flag
+          # 2. We still set the base COVERAGE_FILE name
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
 
-      - name: ⬆️ Upload Coverage Artifacts
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
+
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
+          coverage combine
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
+
+      - name: 📤 Upload Coverage Piece
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: html-coverage-${{ matrix.env_name }}
-          path: htmlcov-*
+          name: coverage-data-${{ matrix.env_name }}
+          # Use the new non-hidden filename
+          path: coverage_data_${{ matrix.env_name }}
+          retention-days: 1
 
-      - name: 💯 Extract Total Coverage
-        id: extract
-        shell: bash -l {0}
+  coverage-summary:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
+
+      - name: 📥 Download All Data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: 📊 Combine & Enforcement
+        id: final_cov
+        # We use 'continue-on-error' so a failure here doesn't skip the badge upload
+        continue-on-error: true
         run: |
-          JSON_FILE="coverage-${{ matrix.env_name }}.json"
-          COV=$(python -c "import json; print(json.load(open('$JSON_FILE'))['totals']['percent_covered_display'])")
-          echo "coverage=$COV" >> $GITHUB_OUTPUT
+          pip install "coverage[toml]"
 
-      # --- Badge Generation Logic (same as before) ---
-      - name: 🎖️ Generate SVG Badge
+          # Initialize default value
+          echo "TOTAL_COV=0" >> $GITHUB_OUTPUT
+
+          # Combine renamed files
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            coverage report -m
+
+            # Extract number
+            PERCENT=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+            echo "TOTAL_COV=$PERCENT" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No coverage fragments found."
+          fi
+
+      - name: 🎖️ Generate Combined Badge
+        if: always() # Run even if 'Combine' failed
         run: |
           mkdir -p badges
           BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
           chmod +x "$BASH_SCRIPT_PATH"
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
-          COV="${{ steps.extract.outputs.coverage }}"
-          BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
-          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
+
+          # Use the output, or default to 0 if the previous step failed/was skipped
+          COV_VAL="${{ steps.final_cov.outputs.TOTAL_COV }}"
+          if [ -z "$COV_VAL" ]; then COV_VAL=0; fi
+
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV_VAL" "badges/coverage-${BRANCH_SAFE}.svg"
 
       - name: ⬆️ Commit and push SVG badge
+        if: always() # Ensure the 0% badge actually makes it to the repo
         run: |
-          # Use the environment name in the badge push to avoid collisions
-          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          BRANCH_SAFE="${BRANCH_SAFE//\//_}_${{ matrix.env_name }}"
-          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
-
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git fetch origin badges2
-          git checkout -f badges2
-          git reset --hard origin/badges2
+          git checkout badges2 || git checkout -b badges2
           cp badges/*.svg .
           git add *.svg
-          git commit -m "Update coverage badge for ${{ matrix.env_name }} on ${BRANCH_SAFE}" || echo "No changes"
-          git push origin badges2 --force
+          git commit -m "Update coverage badge [${{ steps.final_cov.outputs.TOTAL_COV || 0 }}%]" || echo "No changes"
+          git push origin badges2
+
+      - name: 🚨 Final Gate
+        run: |
+          # Now we fail the workflow if the percentage was insufficient
+          if [ "${{ steps.final_cov.outputs.TOTAL_COV }}" -lt 90 ]; then
+            exit 1
+          fi

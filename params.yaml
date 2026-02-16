@@ -5,8 +5,9 @@ vocab:
   version: "v0.0.1"
   file: "ml_assets/vocab/vocab_phage_tokens_v0.0.1.yaml"
 
-preprocess:
+prep:
   prodigal_file: "ml_assets/config/prodigal_v0.0.1.yaml"
+
 
 feature_engineering:
   method: "default"
@@ -20,3 +21,5 @@ model:
 
 inference:
   batch_size: 64
+
+phage_config:  ml_assets/config/prodigal_phage_v0.0.1.yaml

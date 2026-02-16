@@ -9,7 +9,8 @@ import subprocess
 from pathlib import Path
 
 from orchestration.orchestrator import Orchestrator
-from utils.config_loader import get_prodigal_config
+from utils.config_loader import get_config
+from utils.hash import compute_combined_code_version, create_manifest
 
 # -----------------------------
 # Command-line args
@@ -22,6 +23,13 @@ parser.add_argument(
     help="Path to the YAML config file for this run",
 )
 parser.add_argument(
+    "--code_hash",
+    action="append",
+    type=Path,
+    required=True,
+    help="Path to a hash file (repeatable)",
+)
+parser.add_argument(
     "--force",
     action="store_true",
     help="Force rerun all genomes regardless of hash",
@@ -31,13 +39,28 @@ args = parser.parse_args()
 # -----------------------------
 # Load configuration
 # -----------------------------
-cfg = get_prodigal_config(override_path=args.config)
+run_cfg = get_config(
+    "ml_assets/config/runtime.yaml", params_set="meta"
+)  # config that does not affect outputs
+gen_cfg = get_config(override_path=args.config, params_set="general")
+
+cfg = get_config(override_path=args.config, params_set="prodigal_config")
+
+
+LST_GENOMES = gen_cfg.lst_genomes
+N_JOBS = run_cfg.n_jobs
+CONF_CODE_VERSION = gen_cfg.code_version
+CODE_VERSION = compute_combined_code_version(
+    base_version=CONF_CODE_VERSION,
+    hash_files=args.code_hash,
+    config_items=[
+        cfg,
+    ],
+)
+
 
 GENOME_DIR = Path(cfg.genome_dir)
-OUTPUT_DIR = Path(cfg.output_dir)
-LST_GENOMES = cfg.lst_genomes
-N_JOBS = cfg.n_jobs
-CODE_VERSION = cfg.code_version
+OUTPUT_DIR = Path(cfg.proteins_dir)
 HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 
 
@@ -66,7 +89,7 @@ def run_prodigal(input_path: Path, outputs: list):
 # -----------------------------
 def prodigal_output_func(input_path: Path):
     genome_name = input_path.stem
-    protein_file = OUTPUT_DIR / f"{genome_name}.faa"
+    protein_file = OUTPUT_DIR / f"{genome_name}.fa"
     return [protein_file]
 
 
@@ -84,7 +107,7 @@ else:
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     orch = Orchestrator(
-        workflow_name=f"prodigal_{cfg.get('name', 'default')}",
+        workflow_name=f"prodigal_{gen_cfg.get('name', 'test')}",
         hash_store_dir=HASH_STORE_DIR,
         logger_name="prodigal",
     )
@@ -95,5 +118,9 @@ if __name__ == "__main__":
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
         force=args.force,
-        tqdm_desc=f"Prodigal processing ({cfg.get('name', 'default')})",
+        tqdm_desc=f"Prodigal processing ({gen_cfg.get('name', 'test')})",
     )
+
+    protein_files = list(OUTPUT_DIR.glob("*.fa"))
+    MANIFEST_FILE = Path(cfg.proteins_dir + "_manifest.json")
+    create_manifest(protein_files, MANIFEST_FILE)

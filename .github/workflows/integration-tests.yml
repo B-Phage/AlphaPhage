@@ -1,4 +1,4 @@
-name: 🪡 🚨 Integration Tests
+name: 🪡 🚨 Parallel Integration Tests
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - "workflows/**"
       - "packages/**"
       - "tests/integration/**"
-      - ".github/workflows/integration-tests.yml"
   pull_request:
   workflow_dispatch:
 
@@ -19,49 +18,89 @@ jobs:
         include:
           - env_name: training
             env_file: conda_envs/training.yml
-            # List of folders in ./packages/ to pip install
             install_packages: "training dataloaders models utils"
-            # Specific source folder for coverage tracking
-            cov_source: "packages/models,packages/dataloaders"
-            test_files: >-
-              tests/integration/test_run_training_integration.py
+            # We track the whole source so the final report knows what we missed
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/training"
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            install_packages: "preprocessing"
-            cov_source: "packages/preprocessing"
-            test_files: >-
-              tests/integration/test_run_prodigal_integration.py
+            install_packages: "utils orchestration hmm storage_io setup_workflows"
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/preprocessing"
 
     steps:
-      - name: ⬇️ Checkout code
+      - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Micromamba (Cached)
+      - name: 🐍 Setup Micromamba
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: ${{ matrix.env_file }}
           environment-name: ${{ matrix.env_name }}
-          cache-environment: true # Set to false to disable caching of the entire environment
-          cache-environment-key: ${{ runner.os }}-mamba-${{ matrix.env_name }}-${{ hashFiles(matrix.env_file) }}
-          cache-downloads: true # Set to false to force download of packages every time
+          cache-environment: true
 
-      - name: 🛠️ Install Package dependencies and run Integration tests
+      - name: 🛠️ Install Packages
         shell: bash -l {0}
         run: |
-          # 1. Install listed packages in editable mode
           for pkg in ${{ matrix.install_packages }}; do
-            echo "--- Installing Package: $pkg ---"
             pip install -e ./packages/$pkg
           done
 
-          # 2. Run Integration Tests with Coverage
-          # We use the specific list of files provided in the matrix
-          echo "--- Running Tests for ${{ matrix.env_name }} ---"
+      - name: 🧪 Run Tests
+        shell: bash -l {0}
+        run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
-          coverage run --source=${{ matrix.cov_source }} -m unittest ${{ matrix.test_files }}
+          export KMP_DUPLICATE_LIB_OK=TRUE
 
-          # # 3. Generate Reports
-          # coverage report -m
-          # coverage html -d htmlcov-${{ matrix.env_name }}
-          # coverage json -o coverage-${{ matrix.env_name }}.json
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
+
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
+
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
+          coverage combine
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
+
+      - name: 📤 Upload Coverage Piece
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-data-${{ matrix.env_name }}
+          path: coverage_data_${{ matrix.env_name }}
+          retention-days: 1
+
+  coverage-report:
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📥 Download All Coverage Data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: 📊 Combine & Report
+        run: |
+          # The [toml] extra is required to read pyproject.toml
+          pip install "coverage[toml]"
+
+          # Merges .coverage.training and .coverage.preprocessing
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            echo "--- FINAL COMBINED INTEGRATION COVERAGE ---"
+            coverage report -m
+          else
+            echo "⚠️ No coverage fragments found."
+          fi

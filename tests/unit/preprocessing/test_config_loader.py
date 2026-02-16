@@ -134,16 +134,22 @@ class TestVocabLoader(unittest.TestCase):
         )
 
     def test_prodigal_config_loading(self):
-        conf = self.loader.get_prodigal_config("ml_assets/config/prodigal_ecoli_v0.0.1.yaml")
-
-        self.assertEqual(conf.lst_genomes, [])
-        self.assertEqual(conf.n_jobs, 4)
+        conf = self.loader.get_config(
+            override_path="ml_assets/config/prodigal_ecoli_v0.0.1.yaml",
+            params_set="hmm_config",
+        )
+        gen_conf = self.loader.get_config(
+            override_path="ml_assets/config/prodigal_ecoli_v0.0.1.yaml",
+            params_set="general",
+        )
+        self.assertEqual(gen_conf.name, "ecoli")
+        self.assertEqual(conf.hmm_scan_method, "pfam")
 
         with self.assertRaises(FileNotFoundError):
-            conf = self.loader.get_prodigal_config("missing.yaml")
+            conf = self.loader.get_config("missing.yaml")
 
         with self.assertRaises(KeyError):
-            conf = self.loader.get_prodigal_config("params.yaml")
+            conf = self.loader.get_config("params.yaml")
 
 
 if __name__ == "__main__":

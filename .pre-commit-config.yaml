@@ -32,6 +32,7 @@ repos:
     rev: v1.18.2 # Use the latest stable release
     hooks:
       - id: mypy                # Checks for errors related to Python type hints
+        additional_dependencies: [types-PyYAML]
 
   # 4. Security Check
   - repo: https://github.com/Yelp/detect-secrets
@@ -39,4 +40,18 @@ repos:
     hooks:
       - id: detect-secrets      # Scans for hardcoded passwords, keys, and tokens
         args: ['--baseline', '.secrets.baseline'] # Create this file to ignore false positives
-        exclude: ^ml_assets/data/workflow/hashes/prodigal_default.json|\.dvc$|^dvc\.lock$
+        exclude: ^ml_assets/data/workflow/hashes/.*\.json|\.dvc$|^dvc\.lock$
+
+  - repo: local
+    hooks:
+      - id: check-dvc-ignore-leak
+        name: Check for invalid DVC directory ignores
+        entry: bash -c '
+          if grep -qE "^ml_assets/(data|models)/?$" .gitignore; then
+          echo "❌ ERROR Do not add ml_assets/data or ml_assets/models to .gitignore."
+          echo "DVC manages these ignores internally. Adding them here breaks .dvc pointer tracking.";
+          exit 1;
+          fi'
+        language: system
+        files: ^\.gitignore$
+        pass_filenames: false

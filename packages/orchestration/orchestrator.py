@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import utils.consol_log as log
 from tqdm import tqdm
+from utils.hash import hash_file, hash_string
 
 
 class Orchestrator:
@@ -22,7 +23,7 @@ class Orchestrator:
     def __init__(
         self,
         workflow_name: str,
-        hash_store_dir: str = "ml_assets/data/workflow/hashes",
+        hash_store_dir: Path = Path("ml_assets/data/workflow/hashes"),
         logger_name: Optional[str] = None,
         log_level=log.INFO,
     ):
@@ -54,18 +55,14 @@ class Orchestrator:
 
     def _hash_file(self, file: Path) -> str:
         """Return SHA256 hash of a file."""
-        h = hashlib.sha256()
-        with open(file, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                h.update(chunk)
-        return h.hexdigest()
+        return hash_file(file)
 
     def _hash_code_reference(self, code_id: str) -> str:
         """
         Allows tying input results to a code version.
         Code version may be a git SHA, a module checksum, or a string you supply.
         """
-        return hashlib.sha256(code_id.encode()).hexdigest()
+        return hash_string(code_id)
 
     # -------------------------------------------------------------
 

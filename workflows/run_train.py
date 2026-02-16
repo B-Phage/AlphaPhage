@@ -7,7 +7,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch.cuda")
 # This targets the specific deprecation message about treespec/LeafSpec
-warnings.filterwarnings("ignore", message=".*isinstance\(treespec, LeafSpec\).*")
+warnings.filterwarnings("ignore", message=r".*isinstance\(treespec, LeafSpec\).*")
 # If you want to be extra sure to catch all library-level deprecation warnings:
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
