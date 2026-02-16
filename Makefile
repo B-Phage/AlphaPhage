@@ -16,13 +16,12 @@ ENV_HMM = hmmr_env
 ENV_FE = feature_engineering
 ENV_TRAINING = training
 ENV_INFERENCE = inference
-ENV_DEV = root_dev
 
 # Define the config file path
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
+ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
 
 # HMM Data
 HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
@@ -71,15 +70,15 @@ setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pu
 # =====================
 .PHONY: setup-utils
 setup-utils:
-	$(call ensure_env,$(ENV_DEV))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing utils package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/utils
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/utils
 
 .PHONY: setup-orchestration
 setup-orchestration:
-	$(call ensure_env,$(ENV_DEV))
+	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing orchestration package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/orchestration
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/orchestration
 
 .PHONY: setup-preprocessing
 setup-preprocessing:
@@ -156,13 +155,13 @@ hooks-update:
 # =====================
 .PHONY: secrets-cli
 install-secrets-cli:
-	@echo "Installing detect-secrets CLI in $(ENV_DEV)..."
-	conda run -n $(ENV_DEV) pip install detect-secrets
+	@echo "Installing detect-secrets CLI in $(ENV_PREPROCESSING)..."
+	conda run -n $(ENV_PREPROCESSING) pip install detect-secrets
 
 .PHONY: secrets-baseline
 init-secrets-baseline: install-secrets-cli
 	@echo "Generating .secrets.baseline..."
-	conda run -n $(ENV_DEV) detect-secrets scan > .secrets.baseline
+	conda run -n $(ENV_PREPROCESSING) detect-secrets scan > .secrets.baseline
 	@echo "Baseline created. Add and commit .secrets.baseline"
 
 # =====================
@@ -201,27 +200,27 @@ check-dvc-config:
 .PHONY: dvc-pull
 dvc-pull:
 	@echo "=== Pulling all DVC-tracked data and models ==="
-	conda run -n $(ENV_DEV) dvc pull
+	conda run -n $(ENV_PREPROCESSING) dvc pull
 
 .PHONY: dvc-repro
 dvc-repro:
 	@echo "=== Reproducing DVC pipeline ==="
-	conda run -n $(ENV_DEV) dvc repro
+	conda run -n $(ENV_PREPROCESSING) dvc repro
 
 .PHONY: dvc-graph
 dvc-graph:
 	@echo "=== Showing DVC pipeline graph ==="
-	conda run -n $(ENV_DEV) dvc dag
+	conda run -n $(ENV_PREPROCESSING) dvc dag
 
 .PHONY: dvc-push
 dvc-push:
 	@echo "=== Pushing outputs to remote ==="
-	conda run -n $(ENV_DEV) dvc push
+	conda run -n $(ENV_PREPROCESSING) dvc push
 
 .PHONY: dvc-clean
 dvc-clean:
 	@echo "=== Cleaning untracked outputs ==="
-	conda run -n $(ENV_DEV) dvc gc -w
+	conda run -n $(ENV_PREPROCESSING) dvc gc -w
 
 # =====================
 # Tests

@@ -5,7 +5,7 @@ on:
   push:
     # Use branches-ignore to exclude specific branches
     branches-ignore:
-      - 'archive'          # Example: Ignore a specific archive branch
+      - 'archive'           # Example: Ignore a specific archive branch
       - 'badges2'           # Tests should never be merged into badges anyway
   # Run when a Pull Request is opened or updated
   pull_request:
@@ -58,18 +58,14 @@ jobs:
             cov_source: "packages"
             # List of folders in ./packages/ to pip install
             install_packages: "training dataloaders models utils"
-            test_files: >-
-              tests/unit/test_transformer_archspecs.py
-              tests/unit/test_transformer_classifier.py
-              tests/unit/test_transformer_module.py
-              tests/unit/test_dataloaders.py
+            test_files: "tests/unit/training"
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
 
             cov_source: "packages"
             install_packages: "utils orchestration hmm storage_io setup_workflows"
-            test_files: "all_remaining"
+            test_files: "tests/unit/preprocessing"
 
     steps:
       - name: ⬇️ Checkout Repository
@@ -92,15 +88,9 @@ jobs:
           # 2. We still set the base COVERAGE_FILE name
           export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
 
-          if [ "${{ matrix.test_files }}" = "all_remaining" ]; then
-            TARGETS=$(find tests/unit -name "test_*.py" ! -name "test_transformer_*.py" ! -name "test_dataloaders.py" | tr '\n' ' ')
-          else
-            TARGETS="${{ matrix.test_files }}"
-          fi
-
           # Use --parallel-mode to capture all those PID-suffixed files
           coverage run --parallel-mode --source=${{ matrix.cov_source }} \
-            -m pytest -v -p no:cov -o "addopts=" $TARGETS
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
 
           # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
           coverage combine

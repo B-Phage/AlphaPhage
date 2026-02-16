@@ -30,24 +30,22 @@ run_tests() {
     # -v: Detailed list of test names and results
     # -p no:cov: Disables the internal pytest-cov plugin to stop those "No data" warnings
     # --tb=short: Keeps the error logs concise if something fails
-    conda run -n "$env_name" bash -c "export PYTHONPATH=$LOCAL_PYTHONPATH; \
+    conda run -n "$env_name" bash -c "
+        export PYTHONPATH=$LOCAL_PYTHONPATH; \
         export KMP_DUPLICATE_LIB_OK=TRUE; \
-        COVERAGE_FILE=.coverage.$env_name coverage run -m pytest -v -p no:cov -o 'addopts=' $test_targets"
+        COVERAGE_FILE=.coverage.$env_name \
+        coverage run -m pytest -v -p no:cov -o 'addopts=' $test_targets"
 }
 
 # --- PART 1: TRAINING ---
 echo "🏋️ Running Training Tests (Pytest)..."
-TRAIN_FILES="tests/unit/test_transformer_archspecs.py tests/unit/test_transformer_classifier.py tests/unit/test_transformer_module.py tests/unit/test_dataloaders.py"
-run_tests "$ENV_TRAINING" "$TRAIN_FILES"
+run_tests "$ENV_TRAINING" "tests/unit/training"
 
-# --- PART 2: CATCH-ALL ---
-echo "🧹 Running Remaining Unit Tests (Pytest)..."
-EXCLUDE=(tests/unit/test_transformer_archspecs.py tests/unit/test_transformer_classifier.py tests/unit/test_transformer_module.py tests/unit/test_dataloaders.py)
-REMAINING_TESTS=$(find tests/unit -name 'test_*.py' $(for f in "${EXCLUDE[@]}"; do echo "! -path $f"; done) | tr '\n' ' ')
+# --- PART 2: PREPROCESSING ---
+echo "🧹 Running Preprocessing Unit Tests (Pytest)..."
 
-if [ -n "$REMAINING_TESTS" ]; then
-    run_tests "$ENV_PREPROC" "$REMAINING_TESTS"
-fi
+run_tests "$ENV_PREPROC" "tests/unit/preprocessing"
+
 
 # --- PART 3: COMBINE & REPORT ---
 echo -e "\n📊 --- FINAL COMBINED UNIT TEST COVERAGE ---"

@@ -26,11 +26,11 @@ jobs:
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
             install_packages: "utils orchestration hmm storage_io setup_workflows"
-            cov_source: "packages,workflows"
+            cov_source: "packages, workflows"
             test_files: "all_remaining"
 
     steps:
-      - name: ⬇️ Checkout code
+      - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
 
       - name: 🐍 Setup Micromamba
@@ -51,7 +51,7 @@ jobs:
         shell: bash -l {0}
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
-          # Standardize behavior with local script to avoid OpenMP crashes
+          # Standardise behaviour with local script to avoid OpenMP crashes
           export KMP_DUPLICATE_LIB_OK=TRUE
 
           if [ "${{ matrix.test_files }}" = "all_remaining" ]; then

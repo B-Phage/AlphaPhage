@@ -33,10 +33,12 @@ ensure_newline_before_comments = true
 testpaths = ["tests"]
 # Add the packages directory to sys.path so 'import setup_workflows' works
 pythonpath = ["packages", "workflows"]
-# Default CLI flags:
-# --cov points to the code you want to track
-# --cov-report ensures you see the results in the terminal
-addopts = "--cov=packages --cov-report=term-missing --cov-report=xml"
+
+# List markers that split our tests based on incompatible conda environments
+markers = [
+    "training: training-related tests",
+    "preprocessing: preprocessing-related tests",
+]
 
 [tool.coverage.run]
 # This is the "magic" for your subprocess issue
