@@ -34,6 +34,7 @@ def write_test_config(
     config_content = f"""
 general:
   lst_genomes: {lst_genomes}
+  name: "test"
   code_version: "test-code-v1"
 
 prodigal_config:
@@ -62,7 +63,7 @@ def run_pipeline(config_path):
             "--config",
             str(config_path),
             "--code_hash",
-            str(config_path),
+            "tests/data/phrog_annot_test.tsv",  # any static file not changed by the process
         ],
         capture_output=True,
         text=True,

@@ -6,7 +6,7 @@ import io
 import os
 import sys
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import utils.consol_log as log
 
@@ -224,6 +224,46 @@ class TestConsolLog(unittest.TestCase):
         self.TestLogObj.raw_print(test_message, level=log.CRITICAL)
         raw_log = self._captured_output.getvalue()
         self.assertEqual(raw_log.strip(), test_message)
+
+    @patch("utils.config_loader.get_config")
+    def test_logger_uses_explicit_argument(self, mock_get_config):
+        """Should prioritize the 'level' argument over the YAML config."""
+        # Setup: YAML says INFO, but we pass DEBUG
+        mock_get_config.return_value = {"logging": {"level": "INFO"}}
+
+        logger = log.get_logger(level=log.DEBUG, name="test_explicit")
+
+        self.assertEqual(logger.level, log.DEBUG)
+
+    @patch("utils.config_loader.get_config")
+    def test_logger_falls_back_to_yaml(self, mock_get_config):
+        """Should pull from YAML if no level is passed to log.get_logger."""
+        # Setup: YAML says ERROR, we pass None
+        mock_get_config.return_value = {"logging": {"level": "ERROR"}}
+
+        # Ensure level=None triggers the lookup logic
+        logger = log.get_logger(level=None, name="test_yaml_fallback")
+
+        self.assertEqual(logger.level, log.ERROR)
+
+    @patch("utils.config_loader.get_config")
+    def test_logger_defaults_on_missing_config(self, mock_get_config):
+        """Should default to INFO if YAML is empty or missing the key."""
+        # Setup: YAML is empty dictionary
+        mock_get_config.return_value = {}
+
+        logger = log.get_logger(level=None, name="test_default")
+
+        self.assertEqual(logger.level, log.INFO)
+
+    @patch("utils.config_loader.get_config")
+    def test_logger_handles_lowercase_yaml(self, mock_get_config):
+        """Should handle 'debug' (lowercase) from YAML correctly."""
+        mock_get_config.return_value = {"logging": {"level": "debug"}}
+
+        logger = log.get_logger(level=None, name="test_lowercase")
+
+        self.assertEqual(logger.level, log.DEBUG)
 
 
 if __name__ == "__main__":

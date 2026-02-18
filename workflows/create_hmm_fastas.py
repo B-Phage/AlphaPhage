@@ -19,13 +19,6 @@ parser = argparse.ArgumentParser(
     description="Export per-HMM FASTA files from DuckDB summary table."
 )
 parser.add_argument("--config", required=True, help="Path to YAML config")
-# parser.add_argument(
-#     "--hash-file",
-#     action="append",
-#     type=Path,
-#     required=True,
-#     help="Path to a hash file (repeatable)"
-# )
 parser.add_argument("--force", action="store_true")
 args = parser.parse_args()
 

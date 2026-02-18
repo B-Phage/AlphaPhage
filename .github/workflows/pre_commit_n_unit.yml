@@ -84,8 +84,6 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
           export KMP_DUPLICATE_LIB_OK=TRUE
 
-          # 1. Ensure coverage tracks sub-processes by using the --parallel flag
-          # 2. We still set the base COVERAGE_FILE name
           export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
 
           # Use --parallel-mode to capture all those PID-suffixed files

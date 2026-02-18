@@ -28,13 +28,6 @@ def main_cli():
         help="Path to YAML config file containing hmm_config section",
     )
     parser.add_argument(
-        "--code_hash",
-        action="append",
-        type=Path,
-        required=True,
-        help="Path to a hash file (repeatable)",
-    )
-    parser.add_argument(
         "--fingerprint",
         type=str,
         default="artifacts/hmm_summary.fingerprint",

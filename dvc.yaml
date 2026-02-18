@@ -41,7 +41,7 @@ stages:
   prodigal_phage:
     # required:
     #   dvc add ../databases/production/sequence_data/phage --out ml_assets/data/sequence_data
-    #   git add ml_assets/data/sequence_data/phage/.gitignore ml_assets/data/sequence_data/bacteria/phage.dvc
+    #   git add ml_assets/data/sequence_data/phage/.gitignore ml_assets/data/sequence_data/phage.dvc
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
@@ -139,11 +139,13 @@ stages:
       --config "${self_path}"
       --code_hash ml_assets/data/artifacts/code_hashes/msa.hash
       --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash
+      --code_hash ${hmm_config.db_fingerprint}
       '
     deps:
       - ml_assets/data/artifacts/code_hashes/create_msas.hash
       - ml_assets/data/artifacts/code_hashes/msa.hash
       - ${hmm_config.hmm_fasta_dir}_manifest.json
+      - ${hmm_config.db_fingerprint}
     outs:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
@@ -250,11 +252,13 @@ stages:
       --config "${self_path}"
       --code_hash ml_assets/data/artifacts/code_hashes/msa.hash
       --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash
+      --code_hash ${hmm_config.db_fingerprint}
       '
     deps:
       - ml_assets/data/artifacts/code_hashes/create_msas.hash
       - ml_assets/data/artifacts/code_hashes/msa.hash
       - ${hmm_config.hmm_fasta_dir}_manifest.json
+      - ${hmm_config.db_fingerprint}
     outs:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:

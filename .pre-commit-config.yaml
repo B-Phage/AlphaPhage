@@ -55,3 +55,16 @@ repos:
         language: system
         files: ^\.gitignore$
         pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: block-protected-branches
+        name: Prevent direct push to protected branches
+        entry: bash -c '
+          branch=$(git rev-parse --abbrev-ref HEAD);
+          if [[ "$branch" == "dev" || "$branch" == "main" ]]; then
+            echo "❌ Direct commits to $branch are not allowed. Create a branch and PR instead.";
+            exit 1;
+          fi'
+        language: system
+        stages: [pre-push]
