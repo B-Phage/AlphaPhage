@@ -119,6 +119,7 @@ if __name__ == "__main__":
         parallelism=N_JOBS,
         force=args.force,
         tqdm_desc=f"Prodigal processing ({gen_cfg.get('name', 'test')})",
+        wipe_dirs=[OUTPUT_DIR],
     )
 
     protein_files = list(OUTPUT_DIR.glob("*.fa"))

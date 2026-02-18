@@ -37,7 +37,7 @@ from hmm.types import Protein
 from storage_io.duckdb_client import DuckDBClient
 from storage_io.parquet_lake import enforce_schema, write_parquet_partition
 
-logger = log.get_logger(level=log.DEBUG)
+logger = log.get_logger()
 
 
 def write_hmm_results_with_sequences(
@@ -139,23 +139,25 @@ def build_hmm_summary_table(
     min_score: float,
 ) -> None:
     """
-    Create or refresh a DuckDB summary table from the parquet HMM lake.
+    Fully regenerate a DuckDB summary table from the parquet HMM lake.
 
     The table contains only proteins that:
         - are the top protein match for an HMM
         - and either the top domain hit on the protein OR score > min_score
 
-    The table is safe to rebuild as the lake grows.
+    Old rows from previous runs are removed.
     """
 
     con = duckdb.connect(str(db_path))
-
     parquet_glob = str(lake_root / "organism=*" / "proteins.parquet")
 
-    # Create table if not exists
+    # Drop the table if it exists (fully regenerative)
+    con.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+    # Create the fresh table
     con.execute(
         f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
+        CREATE TABLE {table_name} (
             protein_name VARCHAR,
             organism_name VARCHAR,
             hmm_domain_name VARCHAR,
@@ -163,13 +165,13 @@ def build_hmm_summary_table(
             sequence VARCHAR,
             PRIMARY KEY (protein_name, organism_name, hmm_domain_name)
         );
-    """
+        """
     )
 
-    # Insert new rows from the lake, respecting the PK
+    # Populate the table from the current Parquet lake
     con.execute(
         f"""
-        INSERT OR REPLACE INTO {table_name}
+        INSERT INTO {table_name}
         SELECT
             protein_name,
             organism_name,
@@ -183,7 +185,7 @@ def build_hmm_summary_table(
                 top_hmm_domain_hit_on_prot = 1
                 OR score > {min_score}
             );
-    """
+        """
     )
 
     con.close()

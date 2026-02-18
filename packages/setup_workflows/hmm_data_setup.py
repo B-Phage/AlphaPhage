@@ -30,7 +30,7 @@ import yaml  # type: ignore[import-untyped]
 from hmm.io import split_hmms
 from utils.hash import verify_checksum
 
-logger = log.get_logger(level=log.INFO)
+logger = log.get_logger()
 
 
 # -----------------------------

@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> None:
     CODE_VERSION = compute_combined_code_version(
         base_version=CONF_CODE_VERSION,
         hash_files=args.code_hash,
-        config_items=[gen_cfg, protein_dir, data_lake],
+        config_items=[gen_cfg.name, hmm_cfg, protein_dir, data_lake],
     )
 
     # -----------------------------
@@ -146,6 +146,7 @@ def main(argv: list[str] | None = None) -> None:
         code_id=CODE_VERSION,
         parallelism=run_cfg.n_jobs,
         force=args.force,
+        wipe_dirs=[result_dir, data_lake],
         tqdm_desc=f"HMM scanning ({gen_cfg.get('name', 'test')})",
     )
 

@@ -98,6 +98,7 @@ def run_msa_workflow(config_path: str, code_hash, force: bool = False):
         parallelism=run_cfg.n_jobs,
         force=force,
         tqdm_desc=f"MSA processing ({gen_cfg.get('name', 'test')})",
+        wipe_dirs=[OUTPUT_DIR],
     )
 
     msa_files = list(OUTPUT_DIR.glob("*.fa"))

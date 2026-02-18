@@ -19,7 +19,7 @@ import pyhmmer
 import pyhmmer.plan7
 import utils.consol_log as log
 
-logger = log.get_logger(level=log.INFO)
+logger = log.get_logger()
 
 
 def load_single_hmm_per_file(hmm_dir, patt):

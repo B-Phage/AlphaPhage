@@ -8,8 +8,8 @@ stages:
     deps:
     - path: ml_assets/config/prodigal_ecoli_v0.0.1.yaml
       hash: md5
-      md5: 57f9297dd752b61429001ba9b02b2085
-      size: 1126
+      md5: 8739e158c3f6acf5ba7c5d7ecfa446df
+      size: 1125
     - path: ml_assets/data/artifacts/code_hashes/run_prodigal.hash
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
@@ -22,13 +22,13 @@ stages:
     outs:
     - path: ml_assets/data/processed/bacteria/proteins
       hash: md5
-      md5: c92b6c3fddca95c4419ae046dc4b4e06.dir
-      size: 936098836
-      nfiles: 413
+      md5: f7d7413fdee7511d2269ad215fadc8f3.dir
+      size: 2479828
+      nfiles: 1
     - path: ml_assets/data/processed/bacteria/proteins_manifest.json
       hash: md5
-      md5: 1267aa3479c2261ae2623bc2c4bfedec
-      size: 52325
+      md5: b628049e9ce94d4e6b9f93ce5c26d4c0
+      size: 127
   test_output:
     cmd: "/bin/bash -c \"for i in {1..10}; do echo 'Line $i'; sleep 0.5; done\"\n"
   prodigal_phage:
@@ -39,8 +39,8 @@ stages:
     deps:
     - path: ml_assets/config/prodigal_phage_v0.0.1.yaml
       hash: md5
-      md5: 3e84985e818cc4858d6fd990ca92e691
-      size: 1235
+      md5: d5bcde666ddef31a8e871e3de3b594f5
+      size: 1224
     - path: ml_assets/data/artifacts/code_hashes/run_prodigal.hash
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
@@ -53,13 +53,13 @@ stages:
     outs:
     - path: ml_assets/data/processed/phage/proteins
       hash: md5
-      md5: ce750d1a08f1d51fc671f3615250da9f.dir
-      size: 5439150
-      nfiles: 132
+      md5: 46cd6c2571beb106553cb657b9a4e116.dir
+      size: 18590
+      nfiles: 1
     - path: ml_assets/data/processed/phage/proteins_manifest.json
       hash: md5
-      md5: 254b010376f383e2c191e329b370f545
-      size: 16328
+      md5: 4eb33bb3bff31aeb9dc7b8836928de6a
+      size: 125
   hmm_scan_all_phage:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_hmm_scan_pipeline.py
@@ -73,7 +73,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/hmm.hash
       hash: md5
-      md5: 87c3045a8f968283988f0882b12036ed
+      md5: ef535a3d7e01613f53e99c82a4edf22a
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/run_hmm_scan_pipeline.hash
       hash: md5
@@ -81,18 +81,18 @@ stages:
       size: 64
     - path: ml_assets/data/processed/phage/proteins_manifest.json
       hash: md5
-      md5: 254b010376f383e2c191e329b370f545
-      size: 16328
+      md5: 4eb33bb3bff31aeb9dc7b8836928de6a
+      size: 125
     outs:
     - path: ml_assets/data/processed/phage/hmm_scan_lake
       hash: md5
-      md5: 335035f8048dd1821ddeee7b8234fa09.dir
-      size: 6942887
-      nfiles: 133
+      md5: 32a3e360af3312108720d9d03d808229.dir
+      size: 33892
+      nfiles: 1
     - path: ml_assets/data/processed/phage/hmm_scan_lake_manifest.json
       hash: md5
-      md5: 3d161fa71ac498c8b1b6bb2b2c5e39ce
-      size: 20024
+      md5: b51318a3b301a6bb9a244188524ff311
+      size: 153
   build_phage_hmm_summary:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hmm_parquet_to_summary_tbl.py
@@ -109,12 +109,12 @@ stages:
       size: 64
     - path: ml_assets/data/processed/phage/hmm_scan_lake_manifest.json
       hash: md5
-      md5: 3d161fa71ac498c8b1b6bb2b2c5e39ce
-      size: 20024
+      md5: b51318a3b301a6bb9a244188524ff311
+      size: 153
     outs:
     - path: ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
       hash: md5
-      md5: 9874a9ca9a8bc51c28e901b24e2cee7a
+      md5: 76b10d9c953fe5d8f2a54bf493a40f6d
       size: 188
   extract_phage_hmm_fastas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
@@ -123,16 +123,16 @@ stages:
     deps:
     - path: ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
       hash: md5
-      md5: 9874a9ca9a8bc51c28e901b24e2cee7a
+      md5: 76b10d9c953fe5d8f2a54bf493a40f6d
       size: 188
     - path: packages/hmm/duckdb_io.py
       hash: md5
-      md5: 2cc52d62786a9c2f000c0dc3469849de
-      size: 8708
+      md5: 7a07adc6acab9e8eb0284f4a654d5365
+      size: 8774
     - path: workflows/create_hmm_fastas.py
       hash: md5
-      md5: f1d6706dcb23d6a13f7d2c0bd5d45fb6
-      size: 3542
+      md5: f541dcf5daf5e5e7154f70e986457456
+      size: 3387
     outs:
     - path: ml_assets/data/processed/phage/hmm_fasta
       hash: md5
@@ -153,51 +153,52 @@ stages:
     deps:
     - path: packages/data_contracts
       hash: md5
-      md5: 6037e35080a02439784535364d27c4bb.dir
+      md5: 26d0db4723231ea5040a68f4c0a5d27a.dir
       size: 2440
       nfiles: 5
     - path: packages/hmm
       hash: md5
-      md5: e3f99877da066a99aaa4b9f2abb6a134.dir
-      size: 210977
+      md5: 9a0c49b7c3f8b00d0f7ef84e4d0ffb1a.dir
+      size: 211022
       nfiles: 30
     - path: packages/storage_io
       hash: md5
-      md5: 8d0aad49bbe5a100b75a4b3eb67b22db.dir
+      md5: 85e78bba9ea949ac3dd7fc47726cda99.dir
       size: 34109
       nfiles: 13
     - path: packages/utils
       hash: md5
-      md5: c8ed0a284c70cddd2e6d7f734592648f.dir
-      size: 217313
+      md5: dcaa52e1ff3b64f88b333d230a0dedd6.dir
+      size: 218545
       nfiles: 34
     - path: workflows/create_msas.py
       hash: md5
-      md5: 903843bb5ded68ce51b221439c968c40
-      size: 4597
+      md5: 57f3e2460d6f46ccaa03440013299a6f
+      size: 4628
     - path: workflows/hmm_parquet_to_summary_tbl.py
       hash: md5
-      md5: 9102cf34170ea6a9db4fdf5298b54653
-      size: 2242
+      md5: 52c76781dc96f88157111ae497cb5dd8
+      size: 2072
     - path: workflows/run_hmm_scan_pipeline.py
       hash: md5
-      md5: 6b80b1cccc65fe779ca6a53bbd5f7c75
-      size: 4891
+      md5: 066a551cae156c128d1a7cce538c7c4a
+      size: 4948
     - path: workflows/run_prodigal.py
       hash: md5
-      md5: 5aae9f2b3ba5903a430957ab8d8a3102
-      size: 3367
+      md5: c0e74a89a06dc306b64087e3c3105b28
+      size: 3398
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: febe8a8740a39cd7f17b76830b478981.dir
+      md5: c7e2ef826df39441a373e71aff6f85cd.dir
       size: 640
       nfiles: 10
   create_phage_msas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_msas.py
       --config \"ml_assets/config/prodigal_phage_v0.0.1.yaml\" --code_hash ml_assets/data/artifacts/code_hashes/msa.hash
-      --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash '\n"
+      --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash --code_hash
+      ml_assets/data/artifacts/hmm_phrog_summary.fingerprint '\n"
     deps:
     - path: ml_assets/data/artifacts/code_hashes/create_msas.hash
       hash: md5
@@ -207,6 +208,10 @@ stages:
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
       size: 64
+    - path: ml_assets/data/artifacts/hmm_phrog_summary.fingerprint
+      hash: md5
+      md5: 76b10d9c953fe5d8f2a54bf493a40f6d
+      size: 188
     - path: ml_assets/data/processed/phage/hmm_fasta_manifest.json
       hash: md5
       md5: 43058497598ebb3780f0c9875bc1ba5f
@@ -234,7 +239,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/hmm.hash
       hash: md5
-      md5: 87c3045a8f968283988f0882b12036ed
+      md5: ef535a3d7e01613f53e99c82a4edf22a
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/run_hmm_scan_pipeline.hash
       hash: md5
@@ -242,18 +247,18 @@ stages:
       size: 64
     - path: ml_assets/data/processed/bacteria/proteins_manifest.json
       hash: md5
-      md5: 1267aa3479c2261ae2623bc2c4bfedec
-      size: 52325
+      md5: b628049e9ce94d4e6b9f93ce5c26d4c0
+      size: 127
     outs:
     - path: ml_assets/data/processed/bacteria/hmm_scan_lake
       hash: md5
-      md5: fa77f3bc4bab3bffe42fb35aa14ac76d.dir
-      size: 854694214
-      nfiles: 413
+      md5: c2daf7f6a0d0ff473b5a3d36414af30a.dir
+      size: 2184128
+      nfiles: 1
     - path: ml_assets/data/processed/bacteria/hmm_scan_lake_manifest.json
       hash: md5
-      md5: b7f5e1df69ccac0c49a2312b801d411c
-      size: 63889
+      md5: 378a67fbaa04573bc5a3e4a797e6be5b
+      size: 155
   build_ecoli_hmm_summary:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hmm_parquet_to_summary_tbl.py
@@ -270,12 +275,12 @@ stages:
       size: 64
     - path: ml_assets/data/processed/bacteria/hmm_scan_lake_manifest.json
       hash: md5
-      md5: b7f5e1df69ccac0c49a2312b801d411c
-      size: 63889
+      md5: 378a67fbaa04573bc5a3e4a797e6be5b
+      size: 155
     outs:
     - path: ml_assets/data/artifacts/hmm_pfam_summary.fingerprint
       hash: md5
-      md5: 05167b25559bbbd637b18ef664c3ba19
+      md5: 76ebb969135837ecdfc864cd8b03279b
       size: 188
   extract_ecoli_hmm_fastas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
@@ -284,31 +289,32 @@ stages:
     deps:
     - path: ml_assets/data/artifacts/hmm_pfam_summary.fingerprint
       hash: md5
-      md5: 05167b25559bbbd637b18ef664c3ba19
+      md5: 76ebb969135837ecdfc864cd8b03279b
       size: 188
     - path: packages/hmm/duckdb_io.py
       hash: md5
-      md5: 2cc52d62786a9c2f000c0dc3469849de
-      size: 8708
+      md5: 7a07adc6acab9e8eb0284f4a654d5365
+      size: 8774
     - path: workflows/create_hmm_fastas.py
       hash: md5
-      md5: f1d6706dcb23d6a13f7d2c0bd5d45fb6
-      size: 3542
+      md5: f541dcf5daf5e5e7154f70e986457456
+      size: 3387
     outs:
     - path: ml_assets/data/processed/bacteria/hmm_fasta
       hash: md5
-      md5: f73c7a53f12791bfbacf0a208af1fada.dir
-      size: 634795969
-      nfiles: 4639
+      md5: 55b748593db5ca301c1f40d1fb450c88.dir
+      size: 1631800
+      nfiles: 2391
     - path: ml_assets/data/processed/bacteria/hmm_fasta_manifest.json
       hash: md5
-      md5: 9978a0899956db2c579b291534d6c697
-      size: 614334
+      md5: ce098dc80beb9434a17d639979dd36de
+      size: 316213
   create_ecoli_msas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_msas.py
       --config \"ml_assets/config/prodigal_ecoli_v0.0.1.yaml\" --code_hash ml_assets/data/artifacts/code_hashes/msa.hash
-      --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash '\n"
+      --code_hash ml_assets/data/artifacts/code_hashes/create_msas.hash --code_hash
+      ml_assets/data/artifacts/hmm_pfam_summary.fingerprint '\n"
     deps:
     - path: ml_assets/data/artifacts/code_hashes/create_msas.hash
       hash: md5
@@ -318,16 +324,20 @@ stages:
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
       size: 64
+    - path: ml_assets/data/artifacts/hmm_pfam_summary.fingerprint
+      hash: md5
+      md5: 76ebb969135837ecdfc864cd8b03279b
+      size: 188
     - path: ml_assets/data/processed/bacteria/hmm_fasta_manifest.json
       hash: md5
-      md5: 9978a0899956db2c579b291534d6c697
-      size: 614334
+      md5: ce098dc80beb9434a17d639979dd36de
+      size: 316213
     outs:
     - path: ml_assets/data/processed/bacteria/msa_csa
       hash: md5
-      md5: afa01f9b49cd716a11cbff4cf8f46a97.dir
-      size: 1034886001
-      nfiles: 4639
+      md5: 5df0003f3c2898f80354d95eec01e474.dir
+      size: 2127738
+      nfiles: 2391
     - path: ml_assets/data/processed/bacteria/msa_csa_manifest.json
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
