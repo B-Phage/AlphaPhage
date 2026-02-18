@@ -55,6 +55,7 @@ models/*
 
 # Large workflow hashes
 ml_assets/data/workflow/hashes/*
+ml_assets/data/training/*
 
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS
