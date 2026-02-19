@@ -44,7 +44,7 @@ def get_output_dir(cfg):
     return os.path.join(EXP_TRACK_DIR, RUN_NAME)
 
 
-def run_trainer(input_path: str, outputs: list):
+def run_trainer(input_path: Path, outputs: list):
     # ----------------------------------------------------
     # A. Setup Logging and Reproducibility
     # ----------------------------------------------------

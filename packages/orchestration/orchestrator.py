@@ -136,7 +136,8 @@ class Orchestrator:
     def _workflow_code_file(self) -> Path:
         return self.hash_store.parent / f"{self.workflow_name}_code.json"
 
-    def _load_workflow_code_hash(self) -> str | None:
+    # def _load_workflow_code_hash(self) -> str | None: #py3.10+ only
+    def _load_workflow_code_hash(self) -> Optional[str]:
         file = self._workflow_code_file()
         if file.exists():
             try:
@@ -152,6 +153,7 @@ class Orchestrator:
 
     # -------------------------------------------------------------
 
+    # wipe_dirs: list[Path] | None = None,
     def run(
         self,
         inputs: list[Path],
@@ -161,7 +163,7 @@ class Orchestrator:
         parallelism: int = 4,
         force: bool = False,
         tqdm_desc: str = "Processing",
-        wipe_dirs: list[Path] | None = None,
+        wipe_dirs: Optional[list[Path]] = None,
     ):
         """
         Execute the workflow on a set of inputs with optional per-file skipping

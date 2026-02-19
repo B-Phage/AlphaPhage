@@ -7,11 +7,11 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
-
+PACKAGES = utils orchestration preprocessing kaptive3api hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
+ENV_KAPTIVE3API = kaptive3api
 ENV_HMM = hmmr_env
 ENV_FE = feature_engineering
 ENV_TRAINING = training
@@ -58,11 +58,22 @@ define ensure_env
 	fi
 endef
 
+# e.g. conda env create  --subdir osx-64 --file kaptive3api_hist.yml
+define ensure_env_mac_emul
+	@if conda env list | grep -q "^$1"; then \
+		echo "=== Conda env '$1' exists, updating ==="; \
+		conda env update -f conda_envs/$1.yml -n $1; \
+	else \
+		echo "=== Creating conda env '$1' ==="; \
+		conda env create --subdir osx-64 -f conda_envs/$1.yml -n $1; \
+	fi
+endef
+
 # =====================
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull setup-hmm-data
+setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config setup-hmm-data dvc-pull
 	@echo "All environments, packages, hooks, and DVC data are ready."
 
 # =====================
@@ -85,6 +96,13 @@ setup-preprocessing:
 	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing preprocessing package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
+
+.PHONY: setup-kaptive3api
+setup-kaptive3api:
+# 	$(call ensure_env,$(ENV_KAPTIVE3API))
+	$(call ensure_env_mac_emul,$(ENV_KAPTIVE3API))
+	@echo "=== Installing kaptive3api package ==="
+	conda run -n $(ENV_KAPTIVE3API) pip install -e packages/kaptive3api
 
 .PHONY: setup-hmm
 setup-hmm:

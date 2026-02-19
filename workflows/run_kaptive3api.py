@@ -8,7 +8,9 @@ import json
 import logging
 import os
 import sys
+from functools import partial
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import utils.consol_log as log
@@ -16,125 +18,147 @@ from kaptive.assembly import typing_pipeline
 from kaptive.database import load_database
 from omegaconf import DictConfig, OmegaConf
 from orchestration.orchestrator import Orchestrator
-from utils.config_loader import get_kapsid_config
+from utils.config_loader import get_config
+from utils.hash import compute_combined_code_version, create_manifest
 
 logger = log.get_logger(level=log.ERROR)
 
 
 def get_output_dir(cfg):
-    EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
-    RUN_NAME = cfg.trainer.get("run_name", "default_run")
-    return os.path.join(EXP_TRACK_DIR, RUN_NAME)
-
-
-def run_kapsid(input_path: str, outputs: list):
-
-    cfg = OmegaConf.load(input_path)
-    output_dir = get_output_dir(cfg)
-
-    logger = log.get_logger(level=cfg.verboselevel)
-
-    experiment_tracker_dir = os.path.join(output_dir, "tracker")
-
-    logger.warning(f"\nStarting kapsid...")
-
-    outputs = typing_pipeline(input_path, db)  # NILS37 NILS37
-
-    logger.warning(f"\Kapsid finished.")
-
-    return outputs
+    return cfg.kaptive_dir
 
 
 # -----------------------------
 # Output function
 # -----------------------------
 def kapsid_output_func(input_path: Path):
-    cfg = OmegaConf.load(input_path)
+    """Provides the expected output file path(s) for a given input file. The
+    Orchestrator uses this to determine where to look for outputs and whether
+    they already exist.
+    """
     output_dir = get_output_dir(cfg)
     genome_name = Path(input_path).stem
-    genome_name_file = os.path.join(output_dir, f"{genome_name}.csv")
-    return [Path(genome_name_file)]
+    kaptive_file = os.path.join(output_dir, f"{genome_name}.json")
+
+    return [Path(kaptive_file)]
+
+
+def run_kapsid(input_path: Path, outputs: list, db_obj: Any):
+    """Implements the kapsid.typing_pipeline. The Orchestrator expects a function
+    that takes an input path and a list of output paths, and returns the list of
+    output paths after processing. The db_obj is passed in via
+    Note: The Orchestrator worker requires two arguments - input_path and
+    outputs. The db_obj is passed in via functools.partial in main to create a
+    bound version of this function that only requires input_path and outputs.
+    """
+    kaptive_file = outputs[0]
+    result = typing_pipeline(input_path, db_obj)
+    d = {}
+    if result:
+        dresult = json.loads(result.format("json"))
+        for key in [
+            "sample_name",
+            "best_match",
+            "confidence",
+            "phenotype",
+            "problems",
+            "percent_identity",
+            "percent_coverage",
+        ]:
+            d.update({key: dresult[key]})
+
+    with open(kaptive_file, "w") as h:
+        json.dump(d, h)
+
+    return result
 
 
 if __name__ == "__main__":
 
     logger.info("Doing arg parsing for msa.py")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-dd", "--data_dir", nargs=1, type=str)
-    parser.add_argument("-fd", "--fastadir", nargs=1, type=str)
-    parser.add_argument("-od", "--outdir", nargs=1, type=str)
-    parser.add_argument("-on", "--orgdb_name", nargs=1, type=str)
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=False,
+        help="Path to the YAML config file for this run",
+    )
+    parser.add_argument(
+        "--code_hash",
+        action="append",
+        type=Path,
+        required=True,
+        help="Path to a hash file (repeatable)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force rerun all genomes regardless of hash",
+    )
     args = parser.parse_args()
+    if args.config:
+        config = args.config
+    if args.force and args.force == True:
+        force = True
 
-    if args.data_dir == None or args.data_dir[0] == "None":
-        logger.error(f"No data_dir. Exiting.")
-        sys.exit()
-    else:
-        data_dir = args.data_dir[0]
+    # -----------------------------
+    # Load configuration
+    # -----------------------------
+    run_cfg = get_config(
+        "ml_assets/config/runtime.yaml", params_set="meta"
+    )  # config that does not affect outputs
+    gen_cfg = get_config(override_path=args.config, params_set="general")
 
-    if args.fastadir == None or args.fastadir[0] == "None":
-        logger.error(f"No fastadir. Exiting.")
-        sys.exit()
-    else:
-        fastadir = args.fastadir[0]
+    cfg = get_config(override_path=args.config, params_set="kaptive_config")
 
-    if args.outdir == None or args.outdir[0] == "None":
-        logger.error(f"No outdir. Exiting.")
-        sys.exit()
-    else:
-        outdir = args.outdir[0]
+    LST_GENOMES = gen_cfg.lst_genomes
+    N_JOBS = run_cfg.n_jobs
+    CONF_CODE_VERSION = gen_cfg.code_version
 
-    if args.orgdb_name == None or args.orgdb_name[0] == "None":
-        logger.error(f"No orgdb_name. Exiting.")
-        sys.exit()
-    else:
-        orgdb_name = args.orgdb_name[0]
+    CODE_VERSION = compute_combined_code_version(
+        base_version=CONF_CODE_VERSION,
+        hash_files=args.code_hash,
+        config_items=[cfg],
+    )
 
-    # max_rows = None  # for testing
-    # refers to the db name e.g. 'ecoli_k' in _DB_KEYWORDS = {..'EC-K-typing_group2and3_v1.3': ['ecoli_k']} in database.py
-    # at /Users/<username>/miniforge3/envs/<conda env>/lib/python<ver>/site-packages/kaptive/database.py
-
-    # data_dir = os.path.abspath('../databases')
-    # fastadir = os.path.join(data_dir, 'Gaborieau_Picard/Picard_Ecoli_25941691')
-    # outdir = os.path.abspath('proc/ann_host/out/kaptive')
-    # orgdb_name = 'ecoli_k'
-    db = load_database(
-        orgdb_name
-    )  # Load the Ecoli K locus database once and pass it to the typing pipeline
-
-    # if not os.path.exists(outdir):
-    #     os.mkdir(outdir)
-
-    cfg_path, cfg = get_kapsid_config(override_path=args.config)
+    GENOME_DIR = Path(cfg.genome_dir)
+    KAPTIVE_DIR = Path(cfg.kaptive_dir)
+    HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 
     # -----------------------------
     # Prepare inputs
     # -----------------------------
-    lst_kapsid_inputs = [cfg_path]
+    if LST_GENOMES:
+        genome_files = [GENOME_DIR / f"{g}.fasta" for g in LST_GENOMES]
+    else:
+        genome_files = sorted(GENOME_DIR.glob("*.fasta"))
 
-    EXP_TRACK_DIR = cfg.output_dir
-    RUN_NAME = cfg.get("run_name", "default_run")
+    orgdb_full_path = cfg.orgdb_full_path
+    db = load_database(orgdb_full_path)
 
-    # output_dir = os.path.join(EXP_TRACK_DIR, RUN_NAME)
+    # 3. Create the "Orchestrator-compatible" version
+    # This creates a 'callable' that only asks for input_path and outputs
+    # because db_obj is already satisfied.
+    bound_worker = partial(run_kapsid, db_obj=db)
+
     output_dir = get_output_dir(cfg)
-
-    # Note: output_dir->os.path.join(OUTPUT_DIR, RUN_NAME, "checkpoints")
-    N_JOBS = cfg.num_workers
-    CODE_VERSION = cfg.code_version
-    HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
-
     os.makedirs(output_dir, exist_ok=True)
+
     orch = Orchestrator(
         workflow_name=f"kapsid_{cfg.get('name', 'default')}",
         hash_store_dir=HASH_STORE_DIR,
-        logger_name="kapsid",
+        logger_name="kaptive",
     )
     orch.run(
-        inputs=lst_kapsid_inputs,
+        inputs=genome_files,
         output_func=kapsid_output_func,
-        worker=run_kapsid,
+        worker=bound_worker,
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
         force=args.force,
-        tqdm_desc=f"Kapsid processing ({cfg.get('name', 'default')})",
+        tqdm_desc=f"kaptive processing ({cfg.get('name', 'default')})",
     )
+
+    kaptive_files = list(Path(output_dir).glob("*.json"))
+    MANIFEST_FILE = Path(cfg.kaptive_dir + "_manifest.json")
+    create_manifest(kaptive_files, MANIFEST_FILE)

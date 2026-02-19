@@ -10,7 +10,7 @@ vocab1 = vocab.vocab1
 """
 
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
 from omegaconf import OmegaConf
 
@@ -29,7 +29,8 @@ def _load_vocab_file(str_path: str):
     return OmegaConf.load(path)
 
 
-def get_vocab(test_mode: bool = False, override_path: str | None = None):
+# def get_vocab(test_mode: bool = False, override_path: str | None = None):  #py3.10+ only
+def get_vocab(test_mode: bool = False, override_path: Optional[str] = None):
     """
     Loads the vocabulary file referenced in params.yaml
     and returns all vocabularies defined inside that file.
@@ -53,7 +54,8 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
 # Other configs
 
 
-def get_config(override_path: str | None = None, params_set: str = "prodigal_config"):
+# def get_config(override_path: str | None = None, params_set: str = "prodigal_config"): #py3.10+ only
+def get_config(override_path: Optional[str] = None, params_set: str = "prodigal_config"):
     """
     Loads prodigal config from params.yaml or override file
     """
@@ -68,7 +70,8 @@ def get_config(override_path: str | None = None, params_set: str = "prodigal_con
     return params[params_set]  # type: ignore[reportArgumentType]
 
 
-def get_train_config(override_path: str | None = None):
+# def get_train_config(override_path: str | None = None): #py3.10+ only
+def get_train_config(override_path: Optional[str] = None):
     """
     Loads train config from params.yaml or override file
     """
