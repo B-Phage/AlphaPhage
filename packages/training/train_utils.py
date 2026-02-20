@@ -26,6 +26,9 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         Xh5_host = f_x[dataset_name_host]
         Xh5_phage = f_x[dataset_name_phage]
 
+        assert isinstance(Xh5_host, h5py.Dataset)
+        assert isinstance(Xh5_phage, h5py.Dataset)
+
         # Just getting length_padded as length of first pair joined
         length_padded = len(Xh5_host[0]) + len(Xh5_phage[0])
         logger.info(f"length_padded  : {length_padded}")
@@ -42,8 +45,8 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
     return length_padded, num_tokens, tokens_in_data
 
 
-def get_experiment_tracker_method(cfg: DictConfig, experiment_tracker_dir=str):
-    if cfg.trainer.experiment_tracker_method == "DVCLiveLogger":
+def get_experiment_tracker_method(cfg: DictConfig, experiment_tracker_dir: str):
+    if cfg.experiment_tracker_method == "DVCLiveLogger":
         from pathlib import Path
 
         from dvclive.lightning import DVCLiveLogger
@@ -56,10 +59,10 @@ def get_experiment_tracker_method(cfg: DictConfig, experiment_tracker_dir=str):
         )
         return experiment_tracker
     else:
-        raise ValueError(f"Unknown logger method: {cfg.trainer.experiment_tracker_method}")
+        raise ValueError(f"Unknown logger method: {cfg.experiment_tracker_method}")
 
 
-def get_datamodule(cfg: DictConfig) -> IterableDataset:
+def get_datamodule(cfg: DictConfig):
     # Only BinaryPairkeyDataModule is implemented.
     if cfg.reader_mode == "binary_pairkey":
         from dataloaders.dataloaders import BinaryPairkeyDataModule

@@ -353,20 +353,24 @@ stages:
       size: 2
   train_model:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate training
-      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows
-      && export CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config
-      params.yaml '\n"
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows && export
+      CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config ml_assets/config/train_v0.0.1.yaml
+      --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash '\n"
     deps:
     - path: ml_assets/config/train_v0.0.1.yaml
       hash: md5
-      md5: 9b9d3549c41fcd389a7ae38b77edde2e
-      size: 985
+      md5: 35a9229788314f3b0c54b87fdbede2f4
+      size: 942
     outs:
-    - path: ml_assets/data/training/default_run/checkpoints
+    - path: ml_assets/data/training
       hash: md5
-      md5: 507109ed5ae6dd50d15681ca5528ace1.dir
-      size: 3583615
-      nfiles: 3
+      md5: 16c84158e93628908678141dd180b628.dir
+      size: 20349517
+      nfiles: 30
+    - path: ml_assets/data/training_manifest.json
+      hash: md5
+      md5: 99914b932bd37a50b983c5e7c90ae93b
+      size: 2
   kaptive_ecoli:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate kaptive3api
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_kaptive3api.py

@@ -12,7 +12,6 @@ prep:
 feature_engineering:
   method: "default"
 
-
 kapsid:
   kapsid_config: "ml_assets/config/kapsid3_config.yaml"
 
@@ -23,3 +22,6 @@ inference:
   batch_size: 64
 
 phage_config:  ml_assets/config/prodigal_phage_v0.0.1.yaml
+
+train:
+  train_config: "ml_assets/config/train_v0.0.1.yaml"

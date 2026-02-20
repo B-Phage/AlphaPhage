@@ -12,6 +12,7 @@ stages:
   # Hash up front to help stitch DVC and underlying orchestration
   # A package hash is also more convenient to use as a dep than
   # listing multiple interconnected code files
+
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
@@ -27,9 +28,9 @@ stages:
       workflows/run_hmm_scan_pipeline.py
       workflows/hmm_parquet_to_summary_tbl.py
       workflows/create_msas.py
-      workflows/run_train.py
       packages/hmm/msa.py
       packages/hmm/duckdb_io.py
+      workflows/run_train.py
       --output-dir ml_assets/data/artifacts/code_hashes '
     deps:
       - packages/hmm
@@ -44,6 +45,7 @@ stages:
       - workflows/run_train.py
     outs:
       - ml_assets/data/artifacts/code_hashes # whole directory
+
 
 # -----------------------------------------------------------------------------
 # Phage Preprocessing
@@ -188,10 +190,10 @@ stages:
       - ${kaptive_config.genome_dir}
       - ml_assets/config/kaptive3api_v0.0.1.yaml
     outs:
-      - ml_assets/data/processed/bacteria/kaptive_manifest.json
+      # - ml_assets/data/processed/bacteria/kaptive_manifest.json
+      - ${kaptive_config.kaptive_dir}_manifest.json
       - ${kaptive_config.kaptive_dir}:
           persist: true
-      # - ${kaptive_config.kaptive_dir}_manifest.json
 
   prodigal_ecoli:
     # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
@@ -335,8 +337,8 @@ stages:
     deps:
       - ml_assets/config/train_v0.0.1.yaml
     outs:
-      - ml_assets/data/training_artefacts/train_manifest.json
-      - ${trainer.experiment_tracker_dir}:
+      - ${experiment_tracker_dir}_manifest.json
+      - ${experiment_tracker_dir}:
           persist: true
 
   # evaluate:

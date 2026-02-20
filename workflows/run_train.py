@@ -15,6 +15,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytorch_lightning as pl
@@ -30,17 +31,18 @@ from training.train_utils import (
     get_model,
     get_token_basics,
 )
+from utils.config_loader import get_config_generic
+from utils.hash import compute_combined_code_version, create_manifest
 
 logger = log.get_logger(level=log.ERROR)
+
 
 # -----------------------------
 # Load configuration
 # -----------------------------
-
-
 def get_output_dir(cfg):
-    EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
-    RUN_NAME = cfg.trainer.get("run_name", "default_run")
+    EXP_TRACK_DIR = cfg.experiment_tracker_dir
+    RUN_NAME = cfg.get("run_name", "default_run")
     return os.path.join(EXP_TRACK_DIR, RUN_NAME)
 
 
@@ -48,7 +50,8 @@ def run_trainer(input_path: Path, outputs: list):
     # ----------------------------------------------------
     # A. Setup Logging and Reproducibility
     # ----------------------------------------------------
-    cfg = OmegaConf.load(input_path)
+    cfg = cast(DictConfig, OmegaConf.load(input_path))
+
     output_dir = get_output_dir(cfg)
 
     logger = log.get_logger(level=cfg.verboselevel)
@@ -69,13 +72,13 @@ def run_trainer(input_path: Path, outputs: list):
         filename="best-model-{epoch:02d}-{val_loss:.4f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=cfg.trainer.save_top_k,
+        save_top_k=cfg.save_top_k,
         verbose=True,
     )
 
     # 2. EarlyStopping: Stops training if val_loss doesn't improve
     early_stop_callback = EarlyStopping(
-        monitor="val_loss", patience=cfg.trainer.patience, mode="min", verbose=True
+        monitor="val_loss", patience=cfg.patience, mode="min", verbose=True
     )
 
     # ----------------------------------------------------
@@ -84,10 +87,9 @@ def run_trainer(input_path: Path, outputs: list):
     length_padded, num_tokens, tokens_in_data = get_token_basics(
         cfg.train_features_path, cfg.dataset_name_host, cfg.dataset_name_phage
     )
-
     datamodule = get_datamodule(cfg)
 
-    model = get_model(cfg, num_tokens, cfg.hyp.vocab_size_out, length_padded)
+    model = get_model(cfg, num_tokens, cfg.vocab_size_out, length_padded)
 
     experiment_tracker_dir = os.path.join(output_dir, "tracker")
     experiment_tracker = get_experiment_tracker_method(cfg, experiment_tracker_dir)
@@ -96,12 +98,12 @@ def run_trainer(input_path: Path, outputs: list):
     # D. Initialize Trainer (The Engineering Code)
     # ----------------------------------------------------
     trainer = pl.Trainer(
-        max_epochs=cfg.trainer.epochs,
-        accelerator=cfg.trainer.accelerator,  # e.g., 'gpu', 'cpu'
-        devices=cfg.trainer.devices,  # e.g., 1 or [0, 1]
+        max_epochs=cfg.epochs,
+        accelerator=cfg.accelerator,  # e.g., 'gpu', 'cpu'
+        devices=cfg.devices,  # e.g., 1 or [0, 1]
         logger=experiment_tracker,
         callbacks=[checkpoint_callback, early_stop_callback],
-        precision=cfg.trainer.precision,
+        precision=cfg.precision,
         enable_progress_bar=True,
         profiler="advanced",
     )
@@ -135,7 +137,7 @@ def trainer_output_func(input_path: Path):
 # -----------------------------
 if __name__ == "__main__":
 
-    from utils.config_loader import get_train_config
+    # from utils.config_loader import get_train_config
 
     config = "params.yaml"
     force = False
@@ -152,6 +154,13 @@ if __name__ == "__main__":
         help="Path to the YAML config file for this run",
     )
     parser.add_argument(
+        "--code_hash",
+        action="append",
+        type=Path,
+        required=True,
+        help="Path to a hash file (repeatable)",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         # type=bool,
@@ -163,27 +172,68 @@ if __name__ == "__main__":
     if args.force and args.force == True:
         force = True
 
-    cfg_path, cfg = get_train_config(override_path=args.config)
+    # cfg_path, cfg = get_train_config(override_path=args.config)
+    # OR just cfg = OmegaConf.load(cfg_path)
+
+    # # Get whole config straigth from train_v0.0.1.yaml
+    # cfg = get_config_generic(path=args.config)
+    # print("\ncfg (path=args.config, params_set=None)\n", cfg)
+
+    # # Get trainer sub-config straigth from train_v0.0.1.yaml
+    # cfg = get_config_generic(path=args.config, params_set="trainer")
+    # print('\ncfg (path=args.config, params_set="trainer")\n',cfg)
+
+    # # Get trainer sub-config straigth from train_v0.0.1.yaml
+    # cfg = get_config_generic(path=args.config, params_set=["trainer"])
+    # print('\ncfg (path=args.config, params_set=["trainer"])\n',cfg)
+
+    # # get path from params.yaml
+    # cfg = get_config_generic(path='params.yaml', params_set=["train","train_config"])
+    # print('\ncfg (path=None, params_set=["train","train_config"])\n',cfg)
+
+    # # get path from params.yaml and then load config from that path and the "trainer" sub-config
+    # cfg = get_config_generic(path='params.yaml',
+    #                          params_set=["train","train_config"],
+    #                          params_set_2=["trainer"])
+    # print('\ncfg (path=None, params_set=["train","train_config"],params_set_2=["trainer"])\n',cfg)
+
+    # # get path from params.yaml and then load config from that path and the "trainer" sub-config and withing it, the batch_size
+    # cfg = get_config_generic(path='params.yaml',
+    #                          params_set=["train","train_config"],
+    #                          params_set_2=["trainer","batch_size"])
+    # print('\ncfg (path=None, params_set=["train","train_config"],params_set_2=["trainer","batch_size"])\n',cfg)
 
     # -----------------------------
     # Prepare inputs
     # -----------------------------
-    lst_training_inputs = [cfg_path]
+    cfg = cast(DictConfig, get_config_generic(path=args.config))
 
-    EXP_TRACK_DIR = cfg.trainer.experiment_tracker_dir
-    RUN_NAME = cfg.trainer.get("run_name", "default_run")
+    run_cfg = cast(
+        DictConfig, get_config_generic(path="ml_assets/config/runtime.yaml", params_set="meta")
+    )
+
+    EXP_TRACK_DIR = cfg.experiment_tracker_dir
+    RUN_NAME = cfg.get("run_name", "default_run")
+    N_JOBS = run_cfg.n_jobs
+    CONF_CODE_VERSION = cfg.code_version
+    HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
+
+    lst_training_inputs = [Path(args.config)]
 
     # output_dir = os.path.join(EXP_TRACK_DIR, RUN_NAME)
     output_dir = get_output_dir(cfg)
 
     # Note: output_dir->os.path.join(OUTPUT_DIR, RUN_NAME, "checkpoints")
-    N_JOBS = cfg.num_workers
-    CODE_VERSION = cfg.code_version
-    HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
+
+    CODE_VERSION = compute_combined_code_version(
+        base_version=CONF_CODE_VERSION,
+        hash_files=args.code_hash,
+        config_items=[cfg],
+    )
 
     os.makedirs(output_dir, exist_ok=True)
     orch = Orchestrator(
-        workflow_name=f"train_{cfg.get('name', 'default')}",
+        workflow_name=f"train_{cfg.get('run_name', 'default')}",
         hash_store_dir=HASH_STORE_DIR,
         logger_name="train",
     )
@@ -194,5 +244,9 @@ if __name__ == "__main__":
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
         force=args.force,
-        tqdm_desc=f"Prodigal processing ({cfg.get('name', 'default')})",
+        tqdm_desc=f"Prodigal processing ({cfg.get('run_name', 'default')})",
     )
+
+    trainer_files = list(Path(output_dir).glob("*.json"))
+    MANIFEST_FILE = Path(cfg.experiment_tracker_dir + "_manifest.json")
+    create_manifest(trainer_files, MANIFEST_FILE)
