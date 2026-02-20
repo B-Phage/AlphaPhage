@@ -146,10 +146,10 @@ stages:
   code_hashes:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hash_pipeline_packages.py
-      --packages  packages/hmm  packages/data_contracts  packages/utils  packages/storage_io
+      --packages packages/hmm packages/data_contracts packages/utils packages/storage_io
       workflows/run_prodigal.py workflows/run_kaptive3api.py workflows/run_hmm_scan_pipeline.py
-      workflows/hmm_parquet_to_summary_tbl.py workflows/create_msas.py workflows/run_train.py
-      packages/hmm/msa.py packages/hmm/duckdb_io.py --output-dir ml_assets/data/artifacts/code_hashes
+      workflows/hmm_parquet_to_summary_tbl.py workflows/create_msas.py packages/hmm/msa.py
+      packages/hmm/duckdb_io.py workflows/run_train.py --output-dir ml_assets/data/artifacts/code_hashes
       '\n"
     deps:
     - path: packages/data_contracts
@@ -169,8 +169,8 @@ stages:
       nfiles: 14
     - path: packages/utils
       hash: md5
-      md5: 9e80aa89c26bb430cdcc4802360530e8.dir
-      size: 99831
+      md5: bf26e07b8aa7cbe98e8a244671b42bde.dir
+      size: 104193
       nfiles: 34
     - path: workflows/create_msas.py
       hash: md5
@@ -186,20 +186,20 @@ stages:
       size: 4948
     - path: workflows/run_kaptive3api.py
       hash: md5
-      md5: 76dce83095f5b012d06c6ffe7bfd3f80
-      size: 4804
+      md5: a971cf3c1919d85aa920eeba8b1905ad
+      size: 4929
     - path: workflows/run_prodigal.py
       hash: md5
       md5: 392e69f3a330fb0395e3944f08b4ff71
       size: 3399
     - path: workflows/run_train.py
       hash: md5
-      md5: ae66e0cbd200e42ab6fbe863028f041f
-      size: 6401
+      md5: dcece2e0aebe1ee1c06a8888d3d9e389
+      size: 8742
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: f88ea5e14ae2825492d13fd887f7241a.dir
+      md5: 09e35d5a3508bf6b2c0493e41a9c2de1.dir
       size: 768
       nfiles: 12
   create_phage_msas:
