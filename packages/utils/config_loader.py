@@ -12,7 +12,7 @@ vocab1 = vocab.vocab1
 from pathlib import Path
 from typing import Final
 
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 PARAMS_PATH: Final[Path] = Path("params.yaml")
 
@@ -29,7 +29,7 @@ def _load_vocab_file(str_path: str):
     return OmegaConf.load(path)
 
 
-def get_vocab(test_mode: bool = False, override_path: str | None = None):
+def get_vocab(test_mode: bool = False, override_path: str | None = None) -> DictConfig:
     """
     Loads the vocabulary file referenced in params.yaml
     and returns all vocabularies defined inside that file.
@@ -48,6 +48,11 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None):
         return _load_vocab_file(vocab_cfg.test_file)
 
     return _load_vocab_file(vocab_cfg.file)
+
+
+def get_filler_char() -> str:
+    vocab = get_vocab()
+    return vocab.filler_char
 
 
 # Other configs

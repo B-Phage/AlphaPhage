@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "features"
+version = "0.0.1"
+description = "Features module for the ML pipeline"
+license = "LicenseRef-Proprietary"
+requires-python = ">=3.10,<3.15"
+
+dependencies = []
+# TODO: Add any new dependencies to the relevant conda yml file
+# For now that is conda_envs/root_dev.yml
+
+[tool.setuptools]
+# Add your new filename (without the .py extension) to this list
+py-modules = ["align_table"]
+
+# we use the root level pyproject.toml black and isort
