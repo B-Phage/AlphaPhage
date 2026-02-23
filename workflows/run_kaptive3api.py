@@ -55,7 +55,14 @@ def run_kapsid(input_path: Path, outputs: list, db_obj: Any):
     result = typing_pipeline(input_path, db_obj)
     d = {}
     if result:
-        dresult = json.loads(result.format("json"))
+        # Request the JSON string
+        json_output = result.format("json")
+        if isinstance(json_output, str):
+            dresult = json.loads(json_output)
+        else:
+            # Handle cases where format() didn't return a string as expected
+            raise TypeError(f"Expected JSON string from format('json'), got {type(json_output)}")
+
         for key in [
             "sample_name",
             "best_match",
