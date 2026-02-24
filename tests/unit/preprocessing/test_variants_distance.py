@@ -97,6 +97,40 @@ def test_blosum62_with_gaps():
     assert np.isclose(mat[0, 1], expected_distance)
 
 
+def test_blosum62_reverse_lookup_branch(monkeypatch):
+    """
+    Ensure branch is covered where (c1, c2) is missing
+    but (c2, c1) exists in the substitution matrix.
+    """
+
+    # Fake asymmetric BLOSUM matrix
+    fake_blosum = {
+        ("A", "R"): 5  # Only forward direction exists
+        # ('R','A') intentionally missing
+    }
+
+    # Monkeypatch substitution_matrices.load to return fake matrix
+    from Bio.Align import substitution_matrices
+
+    monkeypatch.setattr(substitution_matrices, "load", lambda _: fake_blosum)
+
+    # Sequences arranged so first lookup fails:
+    # ('R','A') not in dict
+    # fallback to ('A','R') works
+    alignment = ["RA", "AA"]
+
+    mat = _distance_matrix_blosum62(alignment)
+
+    # Score calculation:
+    # Position 1: R vs A → fallback → 5
+    # Position 2: A vs A → not in dict → fallback 0
+    score = 5
+    MAX_SCORE = max(fake_blosum.values())  # = 5
+    expected_distance = 1 - score / (2 * MAX_SCORE)
+
+    assert np.isclose(mat[0, 1], expected_distance)
+
+
 # -------------------------
 # Test main function
 # -------------------------

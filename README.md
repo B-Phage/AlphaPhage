@@ -1,5 +1,5 @@
 🥇![Coverage main](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-main.svg) | 🥇![Coverage dev](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-dev.svg) |
-🥈![Coverage feature_hmm_annot](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_hmm_annot.svg) | 🥈![Coverage mlops-dtdev](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-mlops-dtdev.svg) 🥈![Coverage feature_K-types](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_K-types.svg)
+🥈![Coverage feature_msa_variant_clustering](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_msa_variant_clustering.svg) 🥈![Coverage feature_ktypes](https://github.com/B-Phage/AlphaPhage/raw/badges2/coverage-feature_ktypes.svg)
 
 # AlphaPhage: Production Machine Learning Model 🧪
 
