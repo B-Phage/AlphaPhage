@@ -6,6 +6,7 @@ PYTHONPATH=./packages pytest tests/
 """
 
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -92,7 +93,6 @@ class TestVocabLoader(unittest.TestCase):
 
     def test_multiple_vocab_sections(self):
         vocab = self.loader.get_vocab()
-        print(type(vocab.token_vocab))
         self.assertIsInstance(vocab.token_vocab, DictConfig)
         self.assertIsInstance(vocab.label_vocab, DictConfig)
         self.assertEqual(len(vocab.token_vocab), 2)
@@ -160,6 +160,13 @@ class TestConfigLoaderGeneric(unittest.TestCase):
         # Sample data structures for mocking
         self.basic_config = {"level1": {"level2": "value_final"}, "simple": "direct"}
         self.secondary_config = {"nested": "found_it"}
+        # Create a temporary directory for YAML files
+        self.test_dir_path = tempfile.mkdtemp()
+        self.test_dir = Path(self.test_dir_path)
+
+    def tearDown(self):
+        # Remove the directory after the test
+        shutil.rmtree(self.test_dir_path)
 
     @patch("utils.config_loader.OmegaConf.load")
     @patch("utils.config_loader.Path.exists")
@@ -205,14 +212,88 @@ class TestConfigLoaderGeneric(unittest.TestCase):
         with self.assertRaises(KeyError):
             get_config_generic("dummy.yaml", params_set="non_existent")
 
-    @patch("packages.utils.config_loader.OmegaConf.load")
-    def test_get_config_generic_type_error_params2(self, mock_load):
-        """Should raise TypeError if params_set_2 is provided but params1 isn't a string."""
-        mock_load.return_value = OmegaConf.create(self.basic_config)
+    def test_get_config_generic_errors_and_lists(self):
+        # Setup temporary files
+        list_yaml = self.test_dir / "list.yaml"
+        OmegaConf.save([1, 2, 3], list_yaml)
 
-        # level1 is a dict, not a string path, so params_set_2 cannot be used to 'load' it
+        nested_yaml = self.test_dir / "nested.yaml"
+        OmegaConf.save({"a": {"b": "target"}}, nested_yaml)
+
+        # 1. Trigger Line 92: First file is a list
         with self.assertRaises(TypeError):
-            get_config_generic("dummy.yaml", params_set="level1", params_set_2="something")
+            get_config_generic(str(list_yaml))
+
+        # 2. Trigger Line 101: Key missing in a list traversal (params_set)
+        with self.assertRaises(KeyError):
+            get_config_generic(str(nested_yaml), params_set=["a", "nonexistent"])
+
+        # 3. Trigger Line 125: Second file is a list
+        # Create a file that points to the list file
+        pointer_yaml = self.test_dir / "pointer.yaml"
+        OmegaConf.save({"next_file": str(list_yaml)}, pointer_yaml)
+
+        with self.assertRaises(TypeError):
+            get_config_generic(str(pointer_yaml), params_set="next_file", params_set_2="item")
+
+    def test_get_config_generic_params_set_2_list_and_errors(self):
+        # Create a chain of configs
+        final_yaml = self.test_dir / "final.yaml"
+        OmegaConf.save({"level1": {"level2": "found_me"}}, final_yaml)
+
+        start_yaml = self.test_dir / "start.yaml"
+        OmegaConf.save({"path_to_final": str(final_yaml)}, start_yaml)
+
+        # 4. Trigger Lines 130-135: params_set_2 is a LIST
+        # Navigates start.yaml -> path_to_final -> level1 -> level2
+        result = get_config_generic(
+            str(start_yaml), params_set="path_to_final", params_set_2=["level1", "level2"]
+        )
+        self.assertEqual(result, "found_me")
+
+        # 5. Trigger Line 139: params_set_2 (string) key missing in second file
+        with self.assertRaises(KeyError):
+            get_config_generic(
+                str(start_yaml), params_set="path_to_final", params_set_2="wrong_key"
+            )
+
+    def test_get_config_generic_type_error_params2(self):
+        """Trigger the final else
+        # params_set_2 is provided, but params1 is NOT a string (path)
+        """
+        bad_chain = self.test_dir / "bad_chain.yaml"
+        OmegaConf.save({"not_a_path": 123}, bad_chain)
+
+        with self.assertRaises(TypeError):
+            get_config_generic(str(bad_chain), params_set="not_a_path", params_set_2="anything")
+
+    def test_get_config_generic_key_error_in_params_set_2_list(self):
+        """
+        Triggers KeyError when traversing params_set_2 as a list
+        in the second config file.
+        """
+        # 1. Create the second config file with partial data
+        second_yaml = self.test_dir / "second_config.yaml"
+        OmegaConf.save({"level_one": {"something_else": "data"}}, second_yaml)
+
+        # 2. Create the primary config file pointing to the second one
+        first_yaml = self.test_dir / "first_config.yaml"
+        OmegaConf.save({"external_link": str(second_yaml)}, first_yaml)
+
+        # 3. Attempt to traverse second_config.yaml using a list that contains a missing key
+        # 'level_one' exists, but 'missing_key' does not.
+        invalid_list_traversal = ["level_one", "missing_key"]
+
+        with self.assertRaises(KeyError) as cm:
+            get_config_generic(
+                path=str(first_yaml),
+                params_set="external_link",
+                params_set_2=invalid_list_traversal,
+            )
+
+        # Verify the error message contains the missing key and the correct file path
+        self.assertIn("missing_key section missing in config file", str(cm.exception))
+        self.assertIn("second_config.yaml", str(cm.exception))
 
 
 if __name__ == "__main__":
