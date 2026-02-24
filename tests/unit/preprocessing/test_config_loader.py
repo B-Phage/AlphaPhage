@@ -13,6 +13,8 @@ from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
 
+from packages.utils.config_loader import get_config_generic
+
 
 class TestVocabLoader(unittest.TestCase):
 
@@ -150,6 +152,67 @@ class TestVocabLoader(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             conf = self.loader.get_config("params.yaml")
+
+
+class TestConfigLoaderGeneric(unittest.TestCase):
+
+    def setUp(self):
+        # Sample data structures for mocking
+        self.basic_config = {"level1": {"level2": "value_final"}, "simple": "direct"}
+        self.secondary_config = {"nested": "found_it"}
+
+    @patch("utils.config_loader.OmegaConf.load")
+    @patch("utils.config_loader.Path.exists")
+    def test_get_config_generic_no_params_set(self, mock_exists, mock_load):
+        """Should return the entire config when params_set is None."""
+        mock_exists.return_value = True
+        mock_load.return_value = OmegaConf.create(self.basic_config)
+
+        result = get_config_generic("dummy.yaml")
+        self.assertEqual(result.simple, "direct")
+        self.assertIsInstance(result, DictConfig)
+
+    @patch("packages.utils.config_loader.OmegaConf.load")
+    def test_get_config_generic_list_traversal(self, mock_load):
+        """Should traverse a list of keys correctly."""
+        mock_load.return_value = OmegaConf.create(self.basic_config)
+
+        # Testing list traversal: ["level1", "level2"]
+        result = get_config_generic("dummy.yaml", params_set=["level1", "level2"])
+        self.assertEqual(result, "value_final")
+
+    @patch("packages.utils.config_loader.OmegaConf.load")
+    def test_get_config_generic_two_step_traversal(self, mock_load):
+        """Should load a second config file if params1 is a string path."""
+        # Setup: First call returns a string path, Second call returns a dict
+        mock_load.side_effect = [
+            OmegaConf.create({"config_path": "second.yaml"}),  # First file
+            OmegaConf.create(self.secondary_config),  # Second file
+        ]
+
+        result = get_config_generic(
+            path="first.yaml", params_set="config_path", params_set_2="nested"
+        )
+
+        self.assertEqual(result, "found_it")
+        self.assertEqual(mock_load.call_count, 2)
+
+    @patch("packages.utils.config_loader.OmegaConf.load")
+    def test_get_config_generic_key_error(self, mock_load):
+        """Should raise KeyError if a section is missing."""
+        mock_load.return_value = OmegaConf.create(self.basic_config)
+
+        with self.assertRaises(KeyError):
+            get_config_generic("dummy.yaml", params_set="non_existent")
+
+    @patch("packages.utils.config_loader.OmegaConf.load")
+    def test_get_config_generic_type_error_params2(self, mock_load):
+        """Should raise TypeError if params_set_2 is provided but params1 isn't a string."""
+        mock_load.return_value = OmegaConf.create(self.basic_config)
+
+        # level1 is a dict, not a string path, so params_set_2 cannot be used to 'load' it
+        with self.assertRaises(TypeError):
+            get_config_generic("dummy.yaml", params_set="level1", params_set_2="something")
 
 
 if __name__ == "__main__":
