@@ -172,37 +172,6 @@ if __name__ == "__main__":
     if args.force and args.force == True:
         force = True
 
-    # cfg_path, cfg = get_train_config(override_path=args.config)
-    # OR just cfg = OmegaConf.load(cfg_path)
-
-    # # Get whole config straigth from train_v0.0.1.yaml
-    # cfg = get_config_generic(path=args.config)
-    # print("\ncfg (path=args.config, params_set=None)\n", cfg)
-
-    # # Get trainer sub-config straigth from train_v0.0.1.yaml
-    # cfg = get_config_generic(path=args.config, params_set="trainer")
-    # print('\ncfg (path=args.config, params_set="trainer")\n',cfg)
-
-    # # Get trainer sub-config straigth from train_v0.0.1.yaml
-    # cfg = get_config_generic(path=args.config, params_set=["trainer"])
-    # print('\ncfg (path=args.config, params_set=["trainer"])\n',cfg)
-
-    # # get path from params.yaml
-    # cfg = get_config_generic(path='params.yaml', params_set=["train","train_config"])
-    # print('\ncfg (path=None, params_set=["train","train_config"])\n',cfg)
-
-    # # get path from params.yaml and then load config from that path and the "trainer" sub-config
-    # cfg = get_config_generic(path='params.yaml',
-    #                          params_set=["train","train_config"],
-    #                          params_set_2=["trainer"])
-    # print('\ncfg (path=None, params_set=["train","train_config"],params_set_2=["trainer"])\n',cfg)
-
-    # # get path from params.yaml and then load config from that path and the "trainer" sub-config and withing it, the batch_size
-    # cfg = get_config_generic(path='params.yaml',
-    #                          params_set=["train","train_config"],
-    #                          params_set_2=["trainer","batch_size"])
-    # print('\ncfg (path=None, params_set=["train","train_config"],params_set_2=["trainer","batch_size"])\n',cfg)
-
     # -----------------------------
     # Prepare inputs
     # -----------------------------

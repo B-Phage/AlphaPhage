@@ -24,19 +24,19 @@ from utils.hash import compute_combined_code_version, create_manifest
 logger = log.get_logger(level=log.ERROR)
 
 
-def get_output_dir(cfg):
-    return cfg.kaptive_dir
+# def get_output_dir(cfg):
+#     return cfg.kaptive_dir
 
 
 # -----------------------------
 # Output function
 # -----------------------------
-def kapsid_output_func(input_path: Path):
+def kapsid_output_func(input_path: Path, output_dir: Path):
     """Provides the expected output file path(s) for a given input file. The
     Orchestrator uses this to determine where to look for outputs and whether
     they already exist.
     """
-    output_dir = get_output_dir(cfg)
+    # output_dir = get_output_dir(cfg)
     genome_name = Path(input_path).stem
     kaptive_file = os.path.join(output_dir, f"{genome_name}.json")
 
@@ -146,9 +146,11 @@ if __name__ == "__main__":
     # 3. Create the "Orchestrator-compatible" version
     # This creates a 'callable' that only asks for input_path and outputs
     # because db_obj is already satisfied.
+    output_dir = Path(cfg.kaptive_dir)
     bound_worker = partial(run_kapsid, db_obj=db)
+    bound_output = partial(kapsid_output_func, output_dir=output_dir)
 
-    output_dir = get_output_dir(cfg)
+    # output_dir = get_output_dir(cfg)
     os.makedirs(output_dir, exist_ok=True)
 
     orch = Orchestrator(
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     )
     orch.run(
         inputs=genome_files,
-        output_func=kapsid_output_func,
+        output_func=bound_output,
         worker=bound_worker,
         code_id=CODE_VERSION,
         parallelism=N_JOBS,
