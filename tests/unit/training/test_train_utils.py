@@ -6,7 +6,12 @@ from unittest.mock import MagicMock, patch
 import h5py
 import numpy as np
 from omegaconf import OmegaConf
-from training.train_utils import get_experiment_tracker_method, get_model, get_token_basics
+from training.train_utils import (
+    get_datamodule,
+    get_experiment_tracker_method,
+    get_model,
+    get_token_basics,
+)
 
 
 class TestTrainUtils(unittest.TestCase):
@@ -103,6 +108,56 @@ class TestTrainUtils(unittest.TestCase):
             bad_cfg.experiment_tracker_method = "Tensorboard"
             with self.assertRaises(ValueError):
                 get_experiment_tracker_method(bad_cfg, "logs")
+
+
+class TestGetDatamodule(unittest.TestCase):
+    """Note that there is a dedicated dataloaders module. This test is just to
+    verify the factory function in train_utils.py."""
+
+    def setUp(self):
+        """Set up standard mock config."""
+        self.cfg = OmegaConf.create(
+            {
+                "reader_mode": "binary_pairkey",
+                "batch_size": 32,
+                # Add any other minimal keys BinaryPairkeyDataModule might expect
+            }
+        )
+
+    @patch("dataloaders.dataloaders.BinaryPairkeyDataModule")
+    def test_get_datamodule_success(self, mock_dm_class):
+        """MLOps: Verify the factory returns the correct DataModule instance."""
+        # 1. Setup the mock instance
+        mock_instance = MagicMock()
+        mock_dm_class.return_value = mock_instance
+
+        # 2. Call the factory
+        result = get_datamodule(self.cfg)
+
+        # 3. Assertions
+        # Ensure the class was instantiated with the config
+        mock_dm_class.assert_called_once_with(self.cfg)
+        # Ensure the returned object is what we expected
+        self.assertEqual(result, mock_instance)
+
+    def test_get_datamodule_invalid_mode(self):
+        """Guardrail: Ensure an unsupported reader_mode raises a ValueError."""
+        # Change mode to something not implemented
+        self.cfg.reader_mode = "unsupported_csv_mode"
+
+        with self.assertRaises(ValueError) as cm:
+            get_datamodule(self.cfg)
+
+        self.assertIn("Unknown reader_mode: unsupported_csv_mode", str(cm.exception))
+
+    def test_get_datamodule_missing_key(self):
+        """Robustness: Ensure the function handles a missing reader_mode key."""
+        empty_cfg = OmegaConf.create({})
+
+        # Depending on how OmegaConf is configured, this might raise MissingMandatoryValue
+        # or AttributeError. Standard dict-like access on DictConfig raises AttributeError if missing.
+        with self.assertRaises(Exception):
+            get_datamodule(empty_cfg)
 
 
 if __name__ == "__main__":

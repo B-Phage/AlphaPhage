@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
+from kaptive3api.kaptive3api_functions import kapsid_output_func, run_kapsid
 from omegaconf import OmegaConf
-from run_kaptive3api import kapsid_output_func, run_kapsid
 
 
 class TestKaptiveRunner(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestKaptiveRunner(unittest.TestCase):
 
     # --- 1. Data Schema & Transformation Tests ---
 
-    @patch("run_kaptive3api.typing_pipeline")
+    @patch("kaptive3api.kaptive3api_functions.typing_pipeline")
     def test_run_kapsid_data_extraction(self, mock_pipeline):
         """MLOps: Verify the worker extracts only the 7 required features."""
         # 1. Setup Mock Result Object
@@ -41,7 +41,7 @@ class TestKaptiveRunner(unittest.TestCase):
         # 2. Mock File I/O
         m = mock_open()
         with patch("builtins.open", m):
-            run_kapsid(self.input_path, self.output_paths, self.mock_db)
+            run_kapsid(input_path=self.input_path, outputs=self.output_paths, db_obj=self.mock_db)
 
         # 3. Capture and Verify Written Data
         handle = m()
@@ -70,7 +70,7 @@ class TestKaptiveRunner(unittest.TestCase):
 
     # --- 2. Type Safety & Guardrail Tests ---
 
-    @patch("run_kaptive3api.typing_pipeline")
+    @patch("kaptive3api.kaptive3api_functions.typing_pipeline")
     def test_run_kapsid_invalid_return_type(self, mock_pipeline):
         """MLOps: Ensure the pipeline fails if the library returns a non-string."""
         mock_result = MagicMock()
@@ -84,7 +84,7 @@ class TestKaptiveRunner(unittest.TestCase):
         self.assertIn("Expected JSON string", str(cm.exception))
 
     # --- 4. Success Branch (Full Flow Mock) ---
-    @patch("run_kaptive3api.typing_pipeline")
+    @patch("kaptive3api.kaptive3api_functions.typing_pipeline")
     def test_run_kapsid_handles_none_result(self, mock_pipeline):
         """Ensure the script handles 'None' alignment results gracefully."""
         mock_pipeline.return_value = None
