@@ -59,6 +59,8 @@ define ensure_env
 endef
 
 # e.g. conda env create  --subdir osx-64 --file kaptive3api_hist.yml
+# Also lock into osx-64:
+# conda config --env --set subdir osx-64
 define ensure_env_mac_emul
 	@if conda env list | grep -q "^$1"; then \
 		echo "=== Conda env '$1' exists, updating ==="; \
@@ -66,6 +68,7 @@ define ensure_env_mac_emul
 	else \
 		echo "=== Creating conda env '$1' ==="; \
 		conda env create --subdir osx-64 -f conda_envs/$1.yml -n $1; \
+		conda config --env --set subdir osx-64 \
 	fi
 endef
 
@@ -102,7 +105,7 @@ setup-kaptive3api:
 # 	$(call ensure_env,$(ENV_KAPTIVE3API))
 	$(call ensure_env_mac_emul,$(ENV_KAPTIVE3API))
 	@echo "=== Installing kaptive3api package ==="
-	conda run -n $(ENV_KAPTIVE3API) pip install -e packages/kaptive3api
+	CONDA_SUBDIR=osx-64 conda run -n $(ENV_KAPTIVE3API) pip install -e packages/kaptive3api
 
 .PHONY: setup-hmm
 setup-hmm:

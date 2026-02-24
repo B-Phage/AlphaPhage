@@ -4,6 +4,8 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - coverage
+  - pytest-cov
   - python=3.9
   - biopython
   - blast
