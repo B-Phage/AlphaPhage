@@ -24,10 +24,6 @@ from utils.hash import compute_combined_code_version, create_manifest
 logger = log.get_logger(level=log.ERROR)
 
 
-# def get_output_dir(cfg):
-#     return cfg.kaptive_dir
-
-
 # -----------------------------
 # Output function
 # -----------------------------
@@ -36,7 +32,6 @@ def kapsid_output_func(input_path: Path, output_dir: Path):
     Orchestrator uses this to determine where to look for outputs and whether
     they already exist.
     """
-    # output_dir = get_output_dir(cfg)
     genome_name = Path(input_path).stem
     kaptive_file = os.path.join(output_dir, f"{genome_name}.json")
 
