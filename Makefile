@@ -102,7 +102,6 @@ setup-preprocessing:
 
 .PHONY: setup-kaptive3api
 setup-kaptive3api:
-# 	$(call ensure_env,$(ENV_KAPTIVE3API))
 	$(call ensure_env_mac_emul,$(ENV_KAPTIVE3API))
 	@echo "=== Installing kaptive3api package ==="
 	CONDA_SUBDIR=osx-64 conda run -n $(ENV_KAPTIVE3API) pip install -e packages/kaptive3api
