@@ -29,3 +29,17 @@ conda config --env --set subdir osx-64.
 ```
 The latter step is required to ensure that any future ```conda install``` commands
 recognises the Intel environment.
+
+## Config
+Location: ml_assets/config/kaptive3api_vx.x.x.yaml
+```
+general:
+  lst_genomes: []        # Optional whitelist of genomes e.g. ['370D', 'AL505', 'ECOR-09']
+  code_version: "v0.0.1" # Code version.
+  name: "kaptive3api"    # Name.
+kaptive_config:
+  genome_dir: "ml_assets/data/sequence_data/bacteria"       # Soure of inputs.
+  kaptive_dir: "ml_assets/data/processed/bacteria/kaptive"  # Write outputs here.
+  orgdb_full_path: "../databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk"
+    # Location of database (in genbank *.gbk format).
+```
