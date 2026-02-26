@@ -6,3 +6,7 @@ kaptive_config:
   genome_dir: "ml_assets/data/sequence_data/bacteria"
   kaptive_dir: "ml_assets/data/processed/bacteria/kaptive"
   orgdb_full_path: "../databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk"
+  source_url: https://github.com/rgladstone/EC-K-typing/tree/main/DB/EC-K-typing_group2and3_v3.0.0.gbk
+  final_sha256: null
+  source_sha256: null
+  source_format: gz

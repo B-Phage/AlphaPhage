@@ -10,6 +10,35 @@ https://github.com/rgladstone/EC-K-typing/tree/main/DB
 We have found that the kaptive outputs are an important part of the feature set
 of the host for host-phage match prediction on E.coli and its phages.
 
+The current database versions used by our pipelines are explicitly defined by the config here:
+[ml_assets/config/kaptive3api_v0.0.1.yaml]
+If for some reason the source database for E.coli is corrupted or no longer
+available, the HMMs are also stored in our (Google Drive Folder)
+[https://drive.google.com/drive/folders/1LL0nKxyBUrwVcstdQ4GWzwNXO2WEpYRV]
+
+If we updated the versions of the kaptive database, the whole training and inference pipeline
+outputs would change. Therefore the following is required:
+    1. Full end to end testing of
+       a. Regression tests
+       b. Integration tests
+    2. Complete retrain of the model
+       1. Including any DVC input updates
+       2. A change in important feature names/set for the training and evaluation data
+    3. Inference evaluation of critical test sets
+       1. The new versions need to improve our models' performance
+    4. Update the new kaptive database version/s to the config file
+       a. Bump the major version of the file name (E.g. v1.0.0 -> v2.0.0)
+       b. Update the file urls
+       c. Update the file out path versioning
+       d. Update the checksums to ensure correct downloads
+           * At the terminal run `sha256sum ../databases/EC-K-typing/*.gbk`
+           (the format is irrelevant for the checksum). Then store this in the
+           *"source_sha256"* config item.
+           * And again run `ha256sum ../databases/EC-K-typing/*.gbk`. Then store
+           this in the *"final_sha256"* config item.
+    5. Test that the Makefile setup-hmm-data option still functions
+    6. The tag version of the main branch will also need to be bumped
+
 ## Features
 The kaptive tool uses Blast and currently requiring the python 2.9 and run in the
 Intel emulation environment.
