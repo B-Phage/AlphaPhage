@@ -32,10 +32,10 @@ outputs would change. Therefore the following is required:
        c. Update the file out path versioning
        d. Update the checksums to ensure correct downloads
            * At the terminal run `sha256sum ../databases/EC-K-typing/*.gbk`
-           (the format is irrelevant for the checksum). Then store this in the
-           *"source_sha256"* config item.
-           * And again run `ha256sum ../databases/EC-K-typing/*.gbk`. Then store
-           this in the *"final_sha256"* config item.
+           (the format is irrelevant for the checksum) (shasum on mac). Then store
+           this in the *"source_sha256"* config item.
+           * Then store this also in the *"final_sha256"* config item - they are
+           the same because the downloaded file may not be zipped or saved as *.tar.
     5. Test that the Makefile setup-hmm-data option still functions
     6. The tag version of the main branch will also need to be bumped
 

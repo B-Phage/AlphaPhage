@@ -7,6 +7,6 @@ kaptive_config:
   kaptive_dir: "ml_assets/data/processed/bacteria/kaptive"
   orgdb_full_path: "../databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk"
   source_url: https://github.com/rgladstone/EC-K-typing/tree/main/DB/EC-K-typing_group2and3_v3.0.0.gbk
-  final_sha256: null
-  source_sha256: null
-  source_format: gz
+  final_sha256: 6ac7e8beef376dd9c7bc0ca9161491b89ea97455 # pragma: allowlist secret
+  source_sha256: 6ac7e8beef376dd9c7bc0ca9161491b89ea97455 # pragma: allowlist secret
+  source_format: gbk
