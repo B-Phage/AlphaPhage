@@ -7,7 +7,6 @@ VALID_AA_CHARS = set("ACDEFGHIKLMNPQRSTVWY")  # standard amino acids
 VALID_AMBIGUOUS_AA = set("X")  # ambiguous residues
 VALID_GAPS = set("-")  # MSA gaps
 VALID_STOPS = set("*")  # stop codons (optional)
-VALID_FILLERS = set("OX")  # safe fillers, not real amino acids
 
 
 def standardize_frame_chars(

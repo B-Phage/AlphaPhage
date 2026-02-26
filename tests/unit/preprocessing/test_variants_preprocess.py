@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from features.preprocessing_methods import (
+from variants.preprocessing_methods import (
     VALID_AA_CHARS,
     VALID_AMBIGUOUS_AA,
     _get_informative_columns,

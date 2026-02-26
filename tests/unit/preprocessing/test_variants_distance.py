@@ -4,7 +4,7 @@ from Bio.Align import substitution_matrices
 from variants.distance import (
     _distance_matrix_blosum62,
     _distance_matrix_dict,
-    _distance_matrix_identity,
+    _distance_matrix_identity_vectorized,
     calculate_distance_matrix,
 )
 
@@ -24,7 +24,7 @@ CUSTOM_DICT = {"A": {"A": 1, "T": 0}, "T": {"A": 0, "T": 1}, "-": {"A": 0, "T": 
 
 
 def test_identity_distance_matrix_symmetry():
-    mat = _distance_matrix_identity(ALIGNMENT_SIMPLE)
+    mat = _distance_matrix_identity_vectorized(ALIGNMENT_SIMPLE)
     assert mat.shape == (3, 3)
     # Diagonal should be zero
     np.testing.assert_array_equal(np.diag(mat), np.zeros(3))
@@ -33,7 +33,7 @@ def test_identity_distance_matrix_symmetry():
 
 
 def test_identity_distance_values():
-    mat = _distance_matrix_identity(["AAA", "AAT"])
+    mat = _distance_matrix_identity_vectorized(["AAA", "AAT"])
     expected = np.array([[0.0, 1 - 2 / 3], [1 - 2 / 3, 0.0]])
     np.testing.assert_allclose(mat, expected)
 
@@ -138,7 +138,7 @@ def test_blosum62_reverse_lookup_branch(monkeypatch):
 
 def test_calculate_distance_matrix_identity():
     mat1 = calculate_distance_matrix(ALIGNMENT_SIMPLE, "identity")
-    mat2 = _distance_matrix_identity(ALIGNMENT_SIMPLE)
+    mat2 = _distance_matrix_identity_vectorized(ALIGNMENT_SIMPLE)
     np.testing.assert_allclose(mat1, mat2)
 
 

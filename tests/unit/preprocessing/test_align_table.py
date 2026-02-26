@@ -174,6 +174,108 @@ def test_process_table_csv(sample_csv, vocab_config, row_names_list, col_names_l
     assert list(df.columns) == col_names_list
 
 
+def test_process_table_splits_index(tmp_path):
+    """
+    Ensure that index splitting occurs when index_element is not None.
+    """
+    # Create mock CSV file
+    data = pd.DataFrame(
+        {"col1": [1, 2], "col2": [3, 4]},
+        index=["genomeA;protein1", "genomeB;protein2"],
+    )
+    file_path = tmp_path / "test.csv"
+    data.to_csv(file_path)
+
+    vocab = OmegaConf.create({"filler_char": "-"})
+
+    df = process_table(
+        in_file=str(file_path),
+        file_format="csv",
+        vocab=vocab,
+        index_element=0,  # <-- branch under test
+        sep_index_split=";",
+    )
+
+    assert list(df.index) == ["genomeA", "genomeB"]
+
+
+def test_process_table_splits_index_second_element(tmp_path):
+    """
+    Ensure correct element of split index is retained.
+    """
+    data = pd.DataFrame(
+        {"col1": [10, 20]},
+        index=["genomeA;protein1", "genomeB;protein2"],
+    )
+    file_path = tmp_path / "test2.csv"
+    data.to_csv(file_path)
+
+    vocab = OmegaConf.create({"filler_char": "-"})
+
+    df = process_table(
+        in_file=str(file_path),
+        file_format="csv",
+        vocab=vocab,
+        index_element=1,
+        sep_index_split=";",
+    )
+
+    assert list(df.index) == ["protein1", "protein2"]
+
+
+def test_process_table_split_then_align(tmp_path):
+    """
+    Ensure index is split before row alignment.
+    Missing rows should be filled using filler_char.
+    """
+    data = pd.DataFrame(
+        {"col1": [1]},
+        index=["genomeA;protein1"],
+    )
+    file_path = tmp_path / "test3.csv"
+    data.to_csv(file_path)
+
+    vocab = OmegaConf.create({"filler_char": "X"})
+
+    df = process_table(
+        in_file=str(file_path),
+        file_format="csv",
+        vocab=vocab,
+        index_element=0,
+        sep_index_split=";",
+        row_names=["genomeA", "genomeB"],  # genomeB missing
+    )
+
+    # Row order must match row_names
+    assert list(df.index) == ["genomeA", "genomeB"]
+
+    # genomeB should be filler
+    assert (df.loc["genomeB"] == "X").all()
+
+
+def test_process_table_split_index_out_of_range(tmp_path):
+    """
+    Ensure IndexError is raised if index_element is invalid.
+    """
+    data = pd.DataFrame(
+        {"col1": [1]},
+        index=["genomeA;protein1"],
+    )
+    file_path = tmp_path / "test4.csv"
+    data.to_csv(file_path)
+
+    vocab = OmegaConf.create({"filler_char": "-"})
+
+    with pytest.raises(IndexError):
+        process_table(
+            in_file=str(file_path),
+            file_format="csv",
+            vocab=vocab,
+            index_element=2,  # invalid
+            sep_index_split=";",
+        )
+
+
 # -----------------------------
 # Tests for process_msa_table
 # -----------------------------
@@ -185,3 +287,19 @@ def test_process_msa_table(sample_csa, vocab_config, row_names_list):
     assert "row3" in df.index
     # All characters are str
     assert df.apply(lambda col: col.map(lambda x: isinstance(x, str))).all().all()
+
+
+def test_process_msa_table_raises_for_wrong_extension(tmp_path):
+    """
+    Ensure ValueError is raised when file extension is not .csa.
+    """
+    file_path = tmp_path / "test.csv"
+    file_path.write_text("dummy,data\n")
+
+    vocab = OmegaConf.create({"filler_char": "-"})
+
+    with pytest.raises(ValueError, match="Expected a .csa MSA file"):
+        process_msa_table(
+            msa_file=file_path,
+            vocab=vocab,
+        )

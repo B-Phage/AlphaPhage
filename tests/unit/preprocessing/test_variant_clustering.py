@@ -38,7 +38,7 @@ def simple_alignment_df():
 
 @pytest.fixture
 def vocab_dict():
-    return {"0": 0, "1": 1}
+    return {"1": 1, "2": 2}
 
 
 @pytest.fixture
@@ -189,10 +189,15 @@ def test_cluster_aggregate_list_input_triggers_ndarray(mock_calc):
 def test_build_cluster_feature_table_basic(
     mock_calc,
     simple_alignment_df,
-    vocab_dict,
+    vocab_dict,  # If this is a fixture, you might need to override it locally
     mock_distance_matrix,
 ):
     mock_calc.return_value = mock_distance_matrix
+
+    # OVERRIDE/ENSURE vocab_dict has 1-based string keys
+    # Your current error shows vocab_dict = {'0': 0, '1': 1}
+    # Change it to support '1' and '2'
+    test_vocab = {"1": 1, "2": 2}
 
     df_clusters, df_info = build_cluster_feature_table(
         df=simple_alignment_df,
@@ -200,7 +205,7 @@ def test_build_cluster_feature_table_basic(
         columns_subset=["pos1", "pos2", "pos3"],
         num_clusters=2,
         matrix="identity",
-        vocab_dict=vocab_dict,
+        vocab_dict=test_vocab,  # Use the updated vocab here
     )
 
     # --- Check clusters dataframe ---
@@ -223,10 +228,13 @@ def test_build_cluster_feature_table_basic(
 def test_build_cluster_feature_table_reduces_clusters(
     mock_calc,
     simple_alignment_df,
-    vocab_dict,
+    vocab_dict,  # This fixture is likely providing {'0': 0, '1': 1}
     mock_distance_matrix,
 ):
     mock_calc.return_value = mock_distance_matrix
+
+    # Fix the vocab to include '2'
+    local_vocab = {"1": 1, "2": 2}
 
     df_clusters, df_info = build_cluster_feature_table(
         df=simple_alignment_df,
@@ -234,11 +242,15 @@ def test_build_cluster_feature_table_reduces_clusters(
         columns_subset=["pos1", "pos2", "pos3"],
         num_clusters=10,  # too many
         matrix="identity",
-        vocab_dict=vocab_dict,
+        vocab_dict=local_vocab,  # Use the fixed vocab
     )
 
-    # Should reduce to number of unique samples (2 in this dataset)
-    assert df_info.iloc[0]["num_clusters"] <= 3
+    # --- Assertions ---
+    # The dataset has exactly 2 unique sequences, so it must be exactly 2
+    assert df_info.iloc[0]["num_clusters"] == 2
+
+    # Verify the index contains our encoded tokens (1 or 2)
+    assert set(df_clusters.index).issubset({"1", "2"})
 
 
 def test_build_cluster_feature_table_invalid_matrix(simple_alignment_df, vocab_dict):
@@ -275,3 +287,77 @@ def test_build_cluster_feature_table_cluster_too_small(simple_alignment_df, voca
             matrix="identity",
             vocab_dict=vocab_dict,
         )
+
+
+@pytest.fixture
+def mock_vocab():
+    """Provides a minimal vocab dictionary for token encoding."""
+    # This simulates the vocab_clusters_single structure
+    return {"1": 101, "2": 102, "gap": 0, "filler": 99}
+
+
+def test_build_cluster_feature_table_single_row(mock_vocab):
+    """
+    Ensures that an MSA with only one sequence skips clustering
+    and returns a default variant index.
+    """
+    # 1. Arrange: Create a single-row DataFrame
+    df = pd.DataFrame([["M", "A", "Y"]], index=["genome_alpha"], columns=["pos1", "pos2", "pos3"])
+    genomes = ["genome_alpha"]
+    cols = ["pos1", "pos2", "pos3"]
+
+    # 2. Act: Call the function with a high cluster request (e.g., 16)
+    df_clusters, df_cluster_info = build_cluster_feature_table(
+        df=df,
+        genomes=genomes,
+        columns_subset=cols,
+        num_clusters=16,
+        matrix="identity",
+        vocab_dict=mock_vocab,
+    )
+
+    # 3. Assert: Verify the short-circuit behavior
+
+    # Check that the index matches the encoded token of "1"
+    # Based on mock_vocab, "1" maps to 101
+    expected_index = "101"
+    assert df_clusters.index[0] == expected_index
+
+    # Check that data integrity is maintained
+    assert df_clusters.iloc[0].tolist() == ["M", "A", "Y"]
+
+    # Check metadata reflects the single row status
+    assert df_cluster_info["num_clusters"].iloc[0] == 1
+    assert df_cluster_info["clustering_algorithm"].iloc[0] == "single_row_default"
+
+    # Verify we still have the original row count
+    assert len(df_clusters) == 1
+
+
+def test_build_cluster_feature_table_identical_sequences(mock_vocab):
+    data = [["A", "C", "T"], ["A", "C", "T"], ["A", "C", "T"]]
+    df = pd.DataFrame(data, index=["G1", "G2", "G3"], columns=["p1", "p2", "p3"])
+
+    df_clusters, _ = build_cluster_feature_table(
+        df, ["G1", "G2", "G3"], ["p1", "p2", "p3"], 16, "identity", mock_vocab
+    )
+
+    # SUCCESS 1: Ensure we didn't lose rows
+    assert len(df_clusters) == 3
+    # SUCCESS 2: All identical rows get the same variant label
+    assert all(idx == "101" for idx in df_clusters.index)
+
+
+def test_build_cluster_feature_table_insufficient_diversity(mock_vocab):
+    # Two unique patterns: [A, C, T] and [G, G, G]
+    data = [["A", "C", "T"], ["A", "C", "T"], ["G", "G", "G"]]
+    df = pd.DataFrame(data, index=["G1", "G2", "G3"], columns=["p1", "p2", "p3"])
+
+    df_clusters, df_info = build_cluster_feature_table(
+        df, ["G1", "G2", "G3"], ["p1", "p2", "p3"], 16, "identity", mock_vocab
+    )
+
+    # SUCCESS 3: num_clusters is capped at 2
+    assert df_info["num_clusters"].iloc[0] == 2
+    # SUCCESS 4: Index contains encoded tokens for '1' or '2' (101 or 102)
+    assert set(df_clusters.index).issubset({"101", "102"})

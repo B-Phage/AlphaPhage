@@ -3,7 +3,7 @@
 # These vocab settings are the single source of truth for the rest of the code base.
 vocab:
   version: "v0.0.1"
-  file: "ml_assets/vocab/vocab_phage_tokens_v0.0.1.yaml"
+  file: "ml_assets/vocab/vocab_v0.0.1.yaml"
 
 prep:
   prodigal_file: "ml_assets/config/prodigal_v0.0.1.yaml"

@@ -21,12 +21,17 @@ def _load_params():
     return OmegaConf.load(PARAMS_PATH)
 
 
-def _load_vocab_file(str_path: str):
+def _load_vocab_file(str_path: str) -> DictConfig:
     path = Path(str_path)
     if not path.exists():
         raise FileNotFoundError(path)
 
-    return OmegaConf.load(path)
+    cfg = OmegaConf.load(path)
+
+    if not isinstance(cfg, DictConfig):
+        raise TypeError(f"Expected DictConfig, got {type(cfg).__name__}")
+
+    return cfg
 
 
 def get_vocab(test_mode: bool = False, override_path: str | None = None) -> DictConfig:
@@ -48,11 +53,6 @@ def get_vocab(test_mode: bool = False, override_path: str | None = None) -> Dict
         return _load_vocab_file(vocab_cfg.test_file)
 
     return _load_vocab_file(vocab_cfg.file)
-
-
-def get_filler_char() -> str:
-    vocab = get_vocab()
-    return vocab.filler_char
 
 
 # Other configs

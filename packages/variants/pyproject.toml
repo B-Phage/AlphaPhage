@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "variants"
 version = "0.0.1"
 description = "Variants module for the ML pipeline"
+readme = "README_variants.md"
 license = "LicenseRef-Proprietary"
 requires-python = ">=3.10,<3.15"
 

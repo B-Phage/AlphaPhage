@@ -17,19 +17,22 @@ stages:
       conda activate preprocessing &&
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/hash_pipeline_packages.py
-      --packages packages/hmm packages/data_contracts packages/utils packages/storage_io
+      --packages packages/hmm packages/data_contracts packages/utils packages/storage_io packages/features packages/variants
       "workflows/run_prodigal.py" "workflows/run_hmm_scan_pipeline.py" "workflows/hmm_parquet_to_summary_tbl.py" "workflows/create_msas.py"
-      "packages/hmm/msa.py" "packages/hmm/duckdb_io.py"
+      "packages/hmm/msa.py" "packages/hmm/duckdb_io.py" "workflows/create_msa_variants.py"
       --output-dir ml_assets/data/artifacts/code_hashes '
     deps:
       - packages/hmm
       - packages/data_contracts
       - packages/utils
       - packages/storage_io
+      - packages/features
+      - packages/variants
       - workflows/run_prodigal.py
       - workflows/run_hmm_scan_pipeline.py
       - workflows/hmm_parquet_to_summary_tbl.py
       - workflows/create_msas.py
+      - workflows/create_msa_variants.py
     outs:
       - ml_assets/data/artifacts/code_hashes # whole directory
 
@@ -153,7 +156,30 @@ stages:
     vars:
       - ml_assets/config/prodigal_phage_v0.0.1.yaml
 
-
+  create_phage_msa_vars:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/create_msa_variants.py
+      --config "${self_path}"
+      --code_hash ml_assets/data/artifacts/code_hashes/features.hash
+      --code_hash ml_assets/data/artifacts/code_hashes/variants.hash
+      --code_hash ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      --code_hash ${hmm_config.db_fingerprint}
+      '
+    deps:
+      - ml_assets/data/artifacts/code_hashes/features.hash
+      - ml_assets/data/artifacts/code_hashes/variants.hash
+      - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      - ${msa_config.msa_csa_dir}_manifest.json
+      - ${hmm_config.db_fingerprint}
+    outs:
+      # - ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}_manifest.json
+      - ${msa_var.msa_variant_dir}:
+          persist: true
+    vars:
+      - ml_assets/config/prodigal_phage_v0.0.1.yaml
 # -----------------------------------------------------------------------------
 # Host Preprocessing
 # -----------------------------------------------------------------------------
@@ -262,6 +288,31 @@ stages:
     outs:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
+          persist: true
+    vars:
+      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+
+  create_ecoli_msa_vars:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/create_msa_variants.py
+      --config "${self_path}"
+      --code_hash ml_assets/data/artifacts/code_hashes/features.hash
+      --code_hash ml_assets/data/artifacts/code_hashes/variants.hash
+      --code_hash ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      --code_hash ${hmm_config.db_fingerprint}
+      '
+    deps:
+      - ml_assets/data/artifacts/code_hashes/features.hash
+      - ml_assets/data/artifacts/code_hashes/variants.hash
+      - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      - ${msa_config.msa_csa_dir}_manifest.json
+      - ${hmm_config.db_fingerprint}
+    outs:
+      # - ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}_manifest.json
+      - ${msa_var.msa_variant_dir}:
           persist: true
     vars:
       - ml_assets/config/prodigal_ecoli_v0.0.1.yaml

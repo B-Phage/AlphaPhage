@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ from utils.consol_log import get_logger
 from variants.distance import calculate_distance_matrix
 
 logger = get_logger()
+LinkageType = Literal["ward", "complete", "average", "single"]
 
 
 def build_cluster_feature_table(
@@ -54,9 +55,48 @@ def build_cluster_feature_table(
     if not isinstance(num_clusters, int):
         raise TypeError("num_clusters must be an integer")
 
+    # Short circuit
+    df_subset = df[columns_subset]
+    num_unique_samples = len(df_subset.drop_duplicates())
+    if num_unique_samples <= 1:
+        logger.info(f"Only {num_unique_samples} unique alignment(s) found. Skipping clustering.")
+
+        # Manually create the cluster label "1"
+        # We encode it using the vocab_dict to match your expected token format
+        # If '1' isn't a string key in your vocab, adjust to match your logic
+        cluster_label = encode_onecol_vocab_vec(vec=["1"], vocab_dict=vocab_dict)
+
+        # Build the outputs manually to mirror the clustering logic
+        if isinstance(cluster_label[0], list):
+            cluster_label = cluster_label[0]
+
+        index_val = ";".join(str(e) for e in cluster_label)
+
+        df_clusters = pd.DataFrame(df.values, index=[index_val] * len(df), columns=list(df.columns))
+
+        df_cluster_info = pd.DataFrame(
+            [["cluster", "single_row_default", "none", matrix, 1, len(columns_subset)]],
+            columns=[
+                "feature_type",
+                "clustering_algorithm",
+                "linkage",
+                "distance_metric",
+                "num_clusters",
+                "msa_width",
+            ],
+        )
+        return df_clusters, df_cluster_info
+
     if num_clusters < 2:
         raise ValueError(
             "num_clusters must be >= 2. " "Presence/absence encoding should use a separate method."
+        )
+
+    if not df.index.is_unique:
+        duplicates = df.index[df.index.duplicated()].unique().tolist()
+        raise ValueError(
+            f"Input MSA contains duplicate genome identifiers: {duplicates}. "
+            f"Cluster generation requires unique sequence IDs."
         )
 
     linkage = "average"
@@ -71,7 +111,7 @@ def build_cluster_feature_table(
 
     # Prevent requesting more clusters than unique samples
     if num_clusters > num_unique_samples:
-        logger.warning(
+        logger.info(
             f"Requested {num_clusters} clusters but only "
             f"{num_unique_samples} unique samples available. "
             f"Reducing to {num_unique_samples}."
@@ -88,7 +128,8 @@ def build_cluster_feature_table(
         num_clusters,
     )
 
-    vec_out = encode_onecol_vocab_vec(vec=clusters, vocab_dict=vocab_dict)
+    cluster_strs = [str(int(c) + 1) for c in clusters]
+    vec_out = encode_onecol_vocab_vec(vec=cluster_strs, vocab_dict=vocab_dict)
 
     # Simplified metadata
     info_out = [
@@ -218,13 +259,23 @@ def cluster_sequences_agglomerate(
         )
         n_clusters = n_samples
 
-    # Perform clustering using precomputed distance matrix
-    clustering = AgglomerativeClustering(
-        n_clusters=n_clusters,
-        linkage=linkage,  # type: ignore[arg-type]
-        metric="precomputed",  # explicitly mark distance matrix
-    )
-    clusters = clustering.fit_predict(distance_matrix)
+    # Cast the generic str to the specific Literal type sklearn expects
+    safe_linkage = cast(LinkageType, linkage)
 
-    # Convert to strings for downstream token encoding
+    # 1. Group ONLY identical (or near-identical) sequences
+    # 1e-7 absorbs float noise but respects single-AA changes.
+    model_identity = AgglomerativeClustering(
+        n_clusters=None, distance_threshold=1e-7, linkage=safe_linkage, metric="precomputed"
+    )
+    clusters = model_identity.fit_predict(distance_matrix)
+    num_unique_variants = len(np.unique(clusters))
+
+    # 2. Fit to budget
+    if num_unique_variants > n_clusters:
+        # Re-run to force the 16 best biological groupings
+        model_forced = AgglomerativeClustering(
+            n_clusters=n_clusters, linkage=safe_linkage, metric="precomputed"
+        )
+        clusters = model_forced.fit_predict(distance_matrix)
+
     return [str(int(c)) for c in clusters]
