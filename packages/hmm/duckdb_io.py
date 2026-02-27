@@ -194,10 +194,11 @@ def build_hmm_summary_table(
 def get_distinct_hmms(
     db_path: Path,
     table_name: str,
+    min_copies: int = 2,
 ) -> List[str]:
     """
-    Return a sorted list of distinct HMM domain names from a summary table.
-
+    Return a sorted list of distinct HMM domain names from a summary table
+    that appear at least `min_copies` times.
     This is intended for orchestrators to parallelise downstream work
     (e.g. exporting FASTA files per HMM).
 
@@ -207,22 +208,29 @@ def get_distinct_hmms(
         Path to the DuckDB database.
     table_name : str
         Name of the summary table.
+    min_copies : int
+        Minimum number of occurrences required to include an HMM. Defaults to 2.
 
     Returns
     -------
     List[str]
-        Sorted list of unique hmm_domain_name values.
+        Sorted list of unique hmm_domain_name values meeting the threshold.
     """
 
     con = duckdb.connect(str(db_path), read_only=True)
 
+    # Use GROUP BY and HAVING to filter by count
     query = f"""
-        SELECT DISTINCT hmm_domain_name
+        SELECT hmm_domain_name
         FROM {table_name}
+        GROUP BY hmm_domain_name
+        HAVING COUNT(*) >= ?
         ORDER BY hmm_domain_name
     """
 
-    hmms = [row[0] for row in con.execute(query).fetchall()]
+    # Using a parameterized query (?) is safer and handles the integer injection
+    results = con.execute(query, [min_copies]).fetchall()
+    hmms = [row[0] for row in results]
 
     con.close()
     return hmms
