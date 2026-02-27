@@ -361,3 +361,36 @@ def test_build_cluster_feature_table_insufficient_diversity(mock_vocab):
     assert df_info["num_clusters"].iloc[0] == 2
     # SUCCESS 4: Index contains encoded tokens for '1' or '2' (101 or 102)
     assert set(df_clusters.index).issubset({"101", "102"})
+
+
+def test_cluster_sequences_fit_to_budget():
+    """
+    Test that the function correctly forces a specific number of clusters
+    when the number of unique variants (found at 1e-7) exceeds n_clusters.
+    """
+    # 1. Create a 4x4 distance matrix representing 4 distinct sequences.
+    # Distances are all > 1e-7, so the first pass will find 4 unique variants.
+    # We'll set it up so sequences [0,1] are closer to each other than to [2,3].
+    dist_matrix = np.array(
+        [[0.0, 0.2, 0.8, 0.9], [0.2, 0.0, 0.7, 0.8], [0.8, 0.7, 0.0, 0.1], [0.9, 0.8, 0.1, 0.0]]
+    )
+
+    # 2. Set n_clusters to 2.
+    # Pass 1: Finds 4 variants (since 0.1 and 0.2 are > 1e-7).
+    # Pass 2: Should trigger because 4 > 2, forcing them into 2 clusters.
+    n_clusters = 2
+    results = cluster_sequences_agglomerate(dist_matrix, n_clusters=n_clusters)
+
+    # 3. Assertions
+    unique_clusters = set(results)
+
+    # Check that it actually reduced the count to our 'budget'
+    assert (
+        len(unique_clusters) == n_clusters
+    ), f"Expected {n_clusters} clusters, but got {len(unique_clusters)}"
+
+    # Check that the clustering makes biological/mathematical sense
+    # Sequence 0 and 1 should be in the same cluster; 2 and 3 in the other.
+    assert results[0] == results[1], "Sequence 0 and 1 should be grouped together"
+    assert results[2] == results[3], "Sequence 2 and 3 should be grouped together"
+    assert results[0] != results[2], "Sequence 0 and 2 should be in different clusters"

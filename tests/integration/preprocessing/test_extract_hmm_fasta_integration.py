@@ -24,10 +24,12 @@ def tmp_db_and_table(tmp_path):
         )
     """
     )
+    # Updated rows: hmmA has 2 copies, hmmB now has 2 copies to meet the min_copies=2 threshold.
     rows = [
         ("prot1", "org1", "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ", "hmmA"),
         ("prot2", "org2", "GAVLIPFSTWYQNKMDHEKR", "hmmA"),
         ("prot3", "org1", "MKQLLFLVLLFSSAYSRG", "hmmB"),
+        ("prot4", "org3", "MKQLLFLVLLFSSAYSRG", "hmmB"),  # Added this row
     ]
     con.executemany(f"INSERT INTO {table_name} VALUES (?, ?, ?, ?)", rows)
     con.close()
@@ -58,9 +60,8 @@ def test_create_hmm_fastas_cli(tmp_config):
     """Integration test: call workflows.create_hmm_fastas.py as a CLI."""
     cfg_path, fasta_dir = tmp_config
 
-    # Run the script via subprocess
     cmd = [
-        sys.executable,  # ensures we use the same Python env
+        sys.executable,
         "workflows/create_hmm_fastas.py",
         "--config",
         str(cfg_path),
@@ -70,24 +71,28 @@ def test_create_hmm_fastas_cli(tmp_config):
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,  # decode bytes to str
-        check=False,  # we’ll handle assertion ourselves
+        text=True,
+        check=False,
     )
 
-    print("STDOUT:\n", result.stdout)
-    print("STDERR:\n", result.stderr)
-
-    # Now assert exit code
     assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
     # Verify FASTA files are created
     fasta_files = list(fasta_dir.glob("*.fasta"))
-    assert len(fasta_files) == 2  # hmmA and hmmB
 
-    # Check content of one file
+    # Logic Check:
+    # hmmA has 2 entries -> Created
+    # hmmB has 2 entries -> Created
+    assert len(fasta_files) == 2
+
+    # Check content of hmmA
     hmmA_fasta = fasta_dir / "hmmA.fasta"
-    content = hmmA_fasta.read_text()
-    assert ">org1;prot1" in content
-    assert ">org2;prot2" in content
-    assert "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" in content
-    assert "GAVLIPFSTWYQNKMDHEKR" in content
+    content_a = hmmA_fasta.read_text()
+    assert ">org1;prot1" in content_a
+    assert ">org2;prot2" in content_a
+
+    # Check content of hmmB to ensure the new row is there
+    hmmB_fasta = fasta_dir / "hmmB.fasta"
+    content_b = hmmB_fasta.read_text()
+    assert ">org1;prot3" in content_b
+    assert ">org3;prot4" in content_b

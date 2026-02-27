@@ -60,10 +60,9 @@ def test_variant_workflow_end_to_end(setup_test_env, monkeypatch):
     """
     Tests the full pipeline from .csa inputs to .mva/.mcd outputs.
     """
-    # Update the HASH_STORE_DIR in the script to use our temp one
-    # This prevents the test from writing to your real ml_assets folder
     monkeypatch.setattr(
-        "run_variant_generation.HASH_STORE_DIR", Path(setup_test_env["config"]).parent / "hashes"
+        "workflows.create_msa_variants.HASH_STORE_DIR",
+        Path(setup_test_env["config"]).parent / "hashes",
     )
 
     # Execute workflow
