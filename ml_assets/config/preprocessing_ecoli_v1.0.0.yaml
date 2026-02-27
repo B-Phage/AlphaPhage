@@ -1,7 +1,7 @@
 self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
 
 general:
-  lst_genomes:      ['AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
+  lst_genomes:      [] #'AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
   code_version:     "v1.0.0"
   name:             "ecoli"
 

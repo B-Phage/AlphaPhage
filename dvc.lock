@@ -8,8 +8,8 @@ stages:
     deps:
     - path: ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
       hash: md5
-      md5: f1d3aeb3ec42417a862acda419dd9e75
-      size: 1353
+      md5: e9e9ff8075d68e2f9d877941d4c041b8
+      size: 1356
     - path: ml_assets/data/artifacts/code_hashes/run_prodigal.hash
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
