@@ -135,11 +135,11 @@ class TestVocabLoader(unittest.TestCase):
 
     def test_prodigal_config_loading(self):
         conf = self.loader.get_config(
-            override_path="ml_assets/config/prodigal_ecoli_v0.0.1.yaml",
+            override_path="ml_assets/config/preprocessing_ecoli_v1.0.0.yaml",
             params_set="hmm_config",
         )
         gen_conf = self.loader.get_config(
-            override_path="ml_assets/config/prodigal_ecoli_v0.0.1.yaml",
+            override_path="ml_assets/config/preprocessing_ecoli_v1.0.0.yaml",
             params_set="general",
         )
         self.assertEqual(gen_conf.name, "ecoli")
