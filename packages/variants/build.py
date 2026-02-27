@@ -2,8 +2,8 @@ import argparse
 import os
 from typing import Optional
 
-from features.align_table import process_msa_table
 from omegaconf import DictConfig
+from representation.align_table import process_msa_table
 from utils.config_loader import get_vocab
 from utils.consol_log import get_logger
 from variants.clustering import build_cluster_feature_table

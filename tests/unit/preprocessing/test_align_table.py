@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from features.align_table import (
+from omegaconf import DictConfig, OmegaConf
+from representation.align_table import (
     _align_rows,
     process_msa_table,
     process_table,
@@ -12,7 +13,6 @@ from features.align_table import (
     select_columns,
     split_index_column,
 )
-from omegaconf import DictConfig, OmegaConf
 
 # -----------------------------
 # Fixtures

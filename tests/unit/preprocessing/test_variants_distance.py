@@ -1,174 +1,156 @@
 import numpy as np
 import pytest
-from Bio.Align import substitution_matrices
-from variants.distance import (
-    _distance_matrix_blosum62,
-    _distance_matrix_dict,
-    _distance_matrix_identity_vectorized,
-    calculate_distance_matrix,
-)
+from variants.distance import calculate_distance_matrix
 
 # -------------------------
-# Sample alignments
-# -------------------------
-
-ALIGNMENT_SIMPLE = ["AAA", "AAT", "ATT"]
-ALIGNMENT_WITH_GAPS = ["A-A", "AAA", "T-A"]
-
-CUSTOM_DICT = {"A": {"A": 1, "T": 0}, "T": {"A": 0, "T": 1}, "-": {"A": 0, "T": 0, "-": 0}}
-
-
-# -------------------------
-# Test identity distance
+# Test Identity Calculation
 # -------------------------
 
 
-def test_identity_distance_matrix_symmetry():
-    mat = _distance_matrix_identity_vectorized(ALIGNMENT_SIMPLE)
-    assert mat.shape == (3, 3)
-    # Diagonal should be zero
-    np.testing.assert_array_equal(np.diag(mat), np.zeros(3))
-    # Symmetry
-    assert np.allclose(mat, mat.T)
+def test_identity_identical_sequences():
+    """Identical sequences must have 0.0 distance."""
+    alignment = ["ACGT", "ACGT"]
+    matrix = calculate_distance_matrix(alignment, "identity")
+
+    expected = np.array([[0.0, 0.0], [0.0, 0.0]])
+    np.testing.assert_allclose(matrix, expected, atol=1e-7)
 
 
-def test_identity_distance_values():
-    mat = _distance_matrix_identity_vectorized(["AAA", "AAT"])
-    expected = np.array([[0.0, 1 - 2 / 3], [1 - 2 / 3, 0.0]])
-    np.testing.assert_allclose(mat, expected)
+def test_identity_completely_different():
+    """Sequences with 0% identity should have 1.0 distance."""
+    alignment = ["AAAA", "TTTT"]
+    matrix = calculate_distance_matrix(alignment, "identity")
+
+    # Pair (0,1) should be 1.0
+    assert matrix[0, 1] == 1.0
+    assert matrix[1, 0] == 1.0
 
 
-# -------------------------
-# Test custom dictionary distance
-# -------------------------
+def test_identity_partial_match():
+    """Check math for 50% identity."""
+    alignment = ["AACC", "AAGG"]
+    matrix = calculate_distance_matrix(alignment, "identity")
 
-
-def test_dict_distance_matrix_symmetry():
-    mat = _distance_matrix_dict(ALIGNMENT_SIMPLE, CUSTOM_DICT)
-    assert mat.shape == (3, 3)
-    assert np.allclose(mat, mat.T)
-    # Diagonal should be zero
-    np.testing.assert_array_equal(np.diag(mat), np.zeros(3))
-
-
-def test_dict_distance_values():
-    mat = _distance_matrix_dict(["AA", "AT"], CUSTOM_DICT)
-    # Score = sum of pairwise scores, distance = -score / length
-    # seq1=AA, seq2=AT -> scores: 1,0 -> sum=1 -> distance=-1/2=-0.5
-    expected = np.array([[0.0, -0.5], [-0.5, 0.0]])
-    np.testing.assert_allclose(mat, expected)
+    # 2 matches out of 4 = 0.5 identity -> 0.5 distance
+    assert matrix[0, 1] == 0.5
 
 
 # -------------------------
-# Test BLOSUM62 distance
+# Test BLOSUM62 Calculation
 # -------------------------
 
 
-def test_blosum62_distance_matrix_shape_symmetry():
-    mat = _distance_matrix_blosum62(ALIGNMENT_SIMPLE)
-    assert mat.shape == (3, 3)
-    assert np.allclose(mat, mat.T)
-    np.testing.assert_array_equal(np.diag(mat), np.zeros(3))
+def test_blosum62_identical_normalization():
+    """Verify that identical sequences result in 0.0 distance regardless of complexity."""
+    # Simple AA vs Complex AA
+    alignment = ["AAAAA", "AAAAA", "WWWWW"]
+    matrix = calculate_distance_matrix(alignment, "blosum62")
+
+    # Diagonal must be 0
+    assert matrix[0, 0] == 0.0
+    assert matrix[2, 2] == 0.0
+    # Identical A's must be 0.0 even though their raw score is lower than W's
+    assert matrix[0, 1] == 0.0
 
 
-def test_blosum62_distance_known_values():
-    # Simple check: distance between identical sequences should be 1 - max_score/ (len*MAX_SCORE) = 0
-    mat = _distance_matrix_blosum62(["AAA", "AAA"])
-    score = 4 + 4 + 4  # BLOSUM62 scores for A:A pairs
-    MAX_SCORE = 11  # this matches the function
-    expected_distance = 1 - score / (3 * MAX_SCORE)
-    expected = np.array([[0.0, expected_distance], [expected_distance, 0.0]])
-    np.testing.assert_allclose(mat, expected)
+def test_blosum62_functional_sensitivity():
+    """BLOSUM should show smaller distance for conservative mutations."""
+    # L -> I is conservative (both hydrophobic)
+    # L -> P is radical (Proline breaks structure)
+    alignment = ["LLLL", "IIII", "PPPP"]
+    matrix = calculate_distance_matrix(alignment, "blosum62")
 
+    dist_conservative = matrix[0, 1]  # L vs I
+    dist_radical = matrix[0, 2]  # L vs P
 
-def test_blosum62_with_gaps():
-    mat = _distance_matrix_blosum62(ALIGNMENT_WITH_GAPS)
-    blosum62 = substitution_matrices.load("BLOSUM62")
-    MAX_SCORE = max(blosum62.values())
-    GAP_PENALTY = -4
-    seq1, seq2 = ALIGNMENT_WITH_GAPS[0], ALIGNMENT_WITH_GAPS[1]
-    score = 0
-    for c1, c2 in zip(seq1, seq2):
-        if c1 == "-" or c2 == "-":
-            score += GAP_PENALTY
-        else:
-            score += blosum62.get((c1, c2), blosum62.get((c2, c1), 0))
-    expected_distance = 1 - score / (len(seq1) * MAX_SCORE)
-    assert np.isclose(mat[0, 1], expected_distance)
-
-
-def test_blosum62_reverse_lookup_branch(monkeypatch):
-    """
-    Ensure branch is covered where (c1, c2) is missing
-    but (c2, c1) exists in the substitution matrix.
-    """
-
-    # Fake asymmetric BLOSUM matrix
-    fake_blosum = {
-        ("A", "R"): 5  # Only forward direction exists
-        # ('R','A') intentionally missing
-    }
-
-    # Monkeypatch substitution_matrices.load to return fake matrix
-    from Bio.Align import substitution_matrices
-
-    monkeypatch.setattr(substitution_matrices, "load", lambda _: fake_blosum)
-
-    # Sequences arranged so first lookup fails:
-    # ('R','A') not in dict
-    # fallback to ('A','R') works
-    alignment = ["RA", "AA"]
-
-    mat = _distance_matrix_blosum62(alignment)
-
-    # Score calculation:
-    # Position 1: R vs A → fallback → 5
-    # Position 2: A vs A → not in dict → fallback 0
-    score = 5
-    MAX_SCORE = max(fake_blosum.values())  # = 5
-    expected_distance = 1 - score / (2 * MAX_SCORE)
-
-    assert np.isclose(mat[0, 1], expected_distance)
+    assert dist_conservative < dist_radical
+    print(f"Conservative: {dist_conservative:.4f}, Radical: {dist_radical:.4f}")
 
 
 # -------------------------
-# Test main function
+# Test Custom Dict Logic
 # -------------------------
 
 
-def test_calculate_distance_matrix_identity():
-    mat1 = calculate_distance_matrix(ALIGNMENT_SIMPLE, "identity")
-    mat2 = _distance_matrix_identity_vectorized(ALIGNMENT_SIMPLE)
-    np.testing.assert_allclose(mat1, mat2)
-
-
-def test_calculate_distance_matrix_dict():
-    mat1 = calculate_distance_matrix(ALIGNMENT_SIMPLE, CUSTOM_DICT)
-    mat2 = _distance_matrix_dict(ALIGNMENT_SIMPLE, CUSTOM_DICT)
-    np.testing.assert_allclose(mat1, mat2)
-
-
-def test_calculate_distance_matrix_blosum62():
-    mat1 = calculate_distance_matrix(ALIGNMENT_SIMPLE, "blosum62")
-    mat2 = _distance_matrix_blosum62(ALIGNMENT_SIMPLE)
-    np.testing.assert_allclose(mat1, mat2)
-
-
-def test_calculate_distance_matrix_invalid_type():
-    with pytest.raises(ValueError):
-        calculate_distance_matrix(ALIGNMENT_SIMPLE, "invalid_type")
+def test_custom_dict_logic():
+    score_dict = {"A": {"A": 10, "T": 0}, "T": {"A": 0, "T": 10}}
+    alignment = ["AA", "AT"]
+    # Score for AA vs AT = 10 + 0 = 10. Length = 2.
+    # Distance = -10 / 2 = -5.0
+    matrix = calculate_distance_matrix(alignment, score_dict)
+    assert matrix[0, 1] == -5.0
 
 
 # -------------------------
-# Edge case tests
+# Test Edge Cases & Shapes
 # -------------------------
 
 
 def test_empty_alignment():
-    mat = calculate_distance_matrix([], "identity")
-    np.testing.assert_array_equal(mat, np.zeros((0, 0)))
+    """Test behavior with zero sequences."""
+    matrix = calculate_distance_matrix([], "identity")
+    assert matrix.shape == (0, 0)
 
 
 def test_single_sequence():
-    mat = calculate_distance_matrix(["AAA"], "identity")
-    np.testing.assert_array_equal(mat, np.zeros((1, 1)))
+    """A single sequence should result in a 1x1 matrix of [0.0]."""
+    matrix = calculate_distance_matrix(["ACGT"], "identity")
+    assert matrix.shape == (1, 1)
+    assert matrix[0, 0] == 0.0
+
+
+def test_numpy_input_compatibility():
+    """Ensure function accepts numpy array as well as list of strings."""
+    aln_list = ["AAA", "AAT"]
+    aln_np = np.array([list("AAA"), list("AAT")])
+
+    res_list = calculate_distance_matrix(aln_list, "identity")
+    res_np = calculate_distance_matrix(aln_np, "identity")
+
+    np.testing.assert_array_equal(res_list, res_np)
+
+
+def test_symmetry():
+    """The matrix must be perfectly symmetric."""
+    alignment = ["ACGT", "TGCA", "ACGA", "GGGG"]
+    matrix = calculate_distance_matrix(alignment, "blosum62")
+    np.testing.assert_allclose(matrix, matrix.T, atol=1e-12)
+
+
+def test_invalid_matrix_type():
+    with pytest.raises(ValueError, match="Invalid distance matrix type"):
+        calculate_distance_matrix(["AAA"], "invalid_option")
+
+
+def test_blosum62_empty_alignment():
+    """
+    Test the specific case where len(alignment) == 0.
+    Should return a 0x0 matrix rather than raising an error.
+    """
+    from variants.distance import _distance_matrix_blosum62_vectorized
+
+    # Test with empty list
+    matrix_list = _distance_matrix_blosum62_vectorized([])
+    assert isinstance(matrix_list, np.ndarray)
+    assert matrix_list.shape == (0, 0)
+    assert matrix_list.dtype == np.float64
+
+    # Test with empty numpy array
+    empty_np = np.array([]).reshape(0, 0)
+    matrix_np = _distance_matrix_blosum62_vectorized(empty_np)
+    assert matrix_np.shape == (0, 0)
+
+
+def test_blosum62_single_sequence():
+    """
+    Test the case with exactly one sequence.
+    Should return a 1x1 matrix containing [0.0].
+    """
+    from variants.distance import _distance_matrix_blosum62_vectorized
+
+    alignment = ["ACDEFGHIKLMNPQRSTVWY"]
+    matrix = _distance_matrix_blosum62_vectorized(alignment)
+
+    assert matrix.shape == (1, 1)
+    # Distance to itself must be exactly 0.0
+    assert matrix[0, 0] == 0.0

@@ -3,9 +3,10 @@ requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "features"
+name = "representation"
 version = "0.0.1"
-description = "Features module for the ML pipeline"
+description = "Representation of encoding, alignment and training data for the ML pipeline"
+readme = "README_representation.md"
 license = "LicenseRef-Proprietary"
 requires-python = ">=3.10,<3.15"
 

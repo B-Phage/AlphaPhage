@@ -38,16 +38,6 @@ def calculate_distance_matrix(alignment: list[str] | np.ndarray, matrix: str | d
 # -------------------------
 # Internal helper functions
 # -------------------------
-def _distance_matrix_identity(alignment: list[str] | np.ndarray) -> np.ndarray:
-    """Distance = 1 - fraction of identical residues"""
-    n = len(alignment)
-    mat = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            seq1, seq2 = alignment[i], alignment[j]
-            distance = 1 - sum(c1 == c2 for c1, c2 in zip(seq1, seq2)) / len(seq1)
-            mat[i, j] = mat[j, i] = distance
-    return mat
 
 
 def _distance_matrix_identity_vectorized(alignment: list[str] | np.ndarray) -> np.ndarray:
@@ -98,54 +88,6 @@ def _distance_matrix_dict(alignment: list[str] | np.ndarray, score_dict: dict) -
             score = sum(score_dict[c1][c2] for c1, c2 in zip(seq1, seq2))
             distance = -score / len(seq1)
             mat[i, j] = mat[j, i] = distance
-    return mat
-
-
-def _distance_matrix_blosum62(alignment: list[str] | np.ndarray) -> np.ndarray:
-    """Distance based on BLOSUM62, normalized to [0,1] using Self-Score logic."""
-    n = len(alignment)
-    mat = np.zeros((n, n))
-    blosum62 = cast(dict, substitution_matrices.load("BLOSUM62"))
-    GAP_PENALTY = -4
-
-    # Pre-calculate the "Self-Score" for every sequence
-    # This is the score of a sequence compared against itself
-    self_scores = []
-    for seq in alignment:
-        s_score = 0
-        for char in seq:
-            if char == "-":
-                s_score += GAP_PENALTY
-            else:
-                # Get the score of the amino acid matching itself
-                s_score += blosum62.get((char, char), blosum62.get((char, char), 0))
-        self_scores.append(s_score)
-
-    for i in range(n):
-        for j in range(i + 1, n):
-            seq1, seq2 = alignment[i], alignment[j]
-            score = 0
-            for c1, c2 in zip(seq1, seq2):
-                if c1 == "-" or c2 == "-":
-                    score += GAP_PENALTY
-                else:
-                    pair_score = blosum62.get((c1, c2))
-                    if pair_score is None:
-                        pair_score = blosum62.get((c2, c1), 0)
-                    score += int(pair_score)
-
-            # --- THE CHANGE IS HERE ---
-            # Compare the pair score to the best possible score of the two sequences
-            max_possible = max(self_scores[i], self_scores[j])
-
-            # If the max possible is 0 or less (all gaps), set distance to 1
-            if max_possible <= 0:
-                distance = 1.0
-            else:
-                distance = 1 - (score / max_possible)
-
-            mat[i, j] = mat[j, i] = max(0.0, min(1.0, distance))
-
     return mat
 
 

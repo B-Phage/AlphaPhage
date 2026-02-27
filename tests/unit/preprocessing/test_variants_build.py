@@ -29,11 +29,16 @@ def test_build_variants_basic(
     """
     Test main orchestration logic of build_variants with singular parameters.
     """
+    # instead of a MagicMock()
+    mock_clusters_df = pd.DataFrame({"col": [1]}, index=["cluster_1"])
+
     # Setup mocks
     mock_process.return_value = mock_df
     mock_standardize.return_value = (mock_df, None)
     mock_diversity.return_value = [["pos1"]]
-    mock_build_cluster.return_value = (MagicMock(), mock_df)
+
+    # Return the real DF so .to_csv() actually writes a file to tmp_path
+    mock_build_cluster.return_value = (mock_clusters_df, mock_df)
 
     out_dir = tmp_path / "clusters"
     os.makedirs(out_dir, exist_ok=True)
@@ -124,7 +129,7 @@ def test_build_variants_directory_creation(
     """
     mock_process.return_value = mock_df
     mock_standardize.return_value = (mock_df, None)
-    mock_build_cluster.return_value = (MagicMock(), mock_df)
+    mock_build_cluster.return_value = (MagicMock(), MagicMock())
 
     out_dir = tmp_path / "new_dir"
     in_file = tmp_path / "test.csa"

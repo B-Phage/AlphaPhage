@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
+PACKAGES = utils orchestration variants hmm setup_workflows storage_io training models dataloaders #feature_engineering training inference
 
 
 # Mapping environment names
@@ -80,11 +80,17 @@ setup-orchestration:
 	@echo "=== Installing orchestration package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/orchestration
 
-.PHONY: setup-preprocessing
-setup-preprocessing:
+.PHONY: setup-variants
+setup-variants:
 	$(call ensure_env,$(ENV_PREPROCESSING))
-	@echo "=== Installing preprocessing package ==="
-	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
+	@echo "=== Installing variants package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/variants
+
+.PHONY: setup-representation
+setup-representation:
+	$(call ensure_env,$(ENV_PREPROCESSING))
+	@echo "=== Installing representation package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/representation
 
 .PHONY: setup-hmm
 setup-hmm:

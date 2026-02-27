@@ -1,5 +1,5 @@
 import pytest
-from features.encoding_methods import (
+from representation.encoding_methods import (
     encode_column,
     encode_onecol_vocab_vec,
 )

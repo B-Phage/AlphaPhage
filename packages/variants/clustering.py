@@ -2,7 +2,7 @@ from typing import Dict, Literal, cast
 
 import numpy as np
 import pandas as pd
-from features.encoding_methods import encode_onecol_vocab_vec
+from representation.encoding_methods import encode_onecol_vocab_vec
 from sklearn.cluster import AgglomerativeClustering  # For hierarchical clustering
 from utils.consol_log import get_logger
 from variants.distance import calculate_distance_matrix
@@ -17,153 +17,93 @@ def build_cluster_feature_table(
     columns_subset: list[str],
     num_clusters: int,
     matrix: str,
-    vocab_dict: Dict[str, int],
+    vocab_dict: dict[str, int],
 ):
+    """Builds a tokenized dataframe representing sequence clusters.
+
+    This function performs agglomerative clustering on a subset of MSA columns.
+    It handles edge cases where the number of unique sequences is less than the
+    requested cluster count and encodes the resulting cluster assignments using
+    a provided vocabulary.
+
+    Args:
+        df: The input Multiple Sequence Alignment (MSA) dataframe where rows
+            represent genomes and columns represent alignment positions.
+        genomes: A list of unique identifiers corresponding to the rows in `df`.
+        columns_subset: The list of column names to be used as features for
+            the clustering algorithm.
+        num_clusters: The target number of clusters to generate. If this
+            exceeds the number of unique sequences, it is capped at the
+            unique sequence count.
+        matrix: The distance metric/substitution matrix to use.
+            Must be one of ['identity', 'blosum62'].
+        vocab_dict: A dictionary mapping cluster labels (as strings) to
+            integer tokens for encoding.
+
+    Returns:
+        A tuple containing:
+            - df_clusters (pd.DataFrame): A dataframe containing the original
+                sequence data, but indexed by the semicolon-delimited
+                tokenized cluster assignments.
+            - df_cluster_info (pd.DataFrame): A single-row dataframe containing
+                metadata about the clustering run (algorithm, linkage,
+                metric, etc.).
+
+    Raises:
+        ValueError: If `matrix` is invalid, `num_clusters` is < 2 (and
+            multiple unique sequences exist), or if the `df` index contains
+            duplicate genome identifiers.
+        TypeError: If `num_clusters` is not an integer.
     """
-    Build a tokenised dataframe representing sequence clusters for a single
-    clustering configuration (>= 2 clusters required).
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        MSA dataframe (rows = genomes, columns = alignment positions).
-    filename : str
-        Source filename used for metadata tracking.
-    genomes : list[str]
-        Genome identifiers corresponding to df rows.
-    columns_subset : list[str]
-        Subset of MSA columns used for clustering.
-    num_clusters : int
-        Number of clusters to generate (must be >= 2).
-    matrix : str
-        Distance matrix to use. Must be one of ['identity', 'blosum62'].
-    vocab_dict : Dict[str, int]
-        Vocabulary used for token encoding.
-
-    Returns
-    -------
-    df_clusters : pd.DataFrame
-        Dataframe indexed by cluster token combinations, containing
-        original sequence rows.
-    df_cluster_info : pd.DataFrame
-        Metadata describing the clustering configuration.
-    """
-
+    # 1. Input Validation
     if matrix not in ["identity", "blosum62"]:
         raise ValueError("matrix must be 'identity' or 'blosum62'")
-
     if not isinstance(num_clusters, int):
         raise TypeError("num_clusters must be an integer")
-
-    # Short circuit
-    df_subset = df[columns_subset]
-    num_unique_samples = len(df_subset.drop_duplicates())
-    if num_unique_samples <= 1:
-        logger.info(f"Only {num_unique_samples} unique alignment(s) found. Skipping clustering.")
-
-        # Manually create the cluster label "1"
-        # We encode it using the vocab_dict to match your expected token format
-        # If '1' isn't a string key in your vocab, adjust to match your logic
-        cluster_label = encode_onecol_vocab_vec(vec=["1"], vocab_dict=vocab_dict)
-
-        # Build the outputs manually to mirror the clustering logic
-        if isinstance(cluster_label[0], list):
-            cluster_label = cluster_label[0]
-
-        index_val = ";".join(str(e) for e in cluster_label)
-
-        df_clusters = pd.DataFrame(df.values, index=[index_val] * len(df), columns=list(df.columns))
-
-        df_cluster_info = pd.DataFrame(
-            [["cluster", "single_row_default", "none", matrix, 1, len(columns_subset)]],
-            columns=[
-                "feature_type",
-                "clustering_algorithm",
-                "linkage",
-                "distance_metric",
-                "num_clusters",
-                "msa_width",
-            ],
-        )
-        return df_clusters, df_cluster_info
-
-    if num_clusters < 2:
-        raise ValueError(
-            "num_clusters must be >= 2. " "Presence/absence encoding should use a separate method."
-        )
-
     if not df.index.is_unique:
         duplicates = df.index[df.index.duplicated()].unique().tolist()
-        raise ValueError(
-            f"Input MSA contains duplicate genome identifiers: {duplicates}. "
-            f"Cluster generation requires unique sequence IDs."
-        )
+        raise ValueError(f"Duplicate genome identifiers found: {duplicates}")
 
-    linkage = "average"
-    gen_method = "agglomerate"
-
-    columns_all = list(df.columns)
+    # 2. Data Prep & Unique Check
     df_subset = df[columns_subset]
+    unique_rows = df_subset.drop_duplicates()
+    num_unique = len(unique_rows)
+    linkage = "average"
 
-    num_unique_samples = len(df_subset.value_counts())
+    # 3. Handle Edge Cases (Short-circuit or Cluster adjustment)
+    if num_unique <= 1:
+        logger.info(f"Only {num_unique} unique alignment(s) found. Skipping.")
+        cluster_labels = ["1"] * len(df)
+        final_num_clusters = 1
+        algorithm = "single_row_default"
+    else:
+        if num_clusters < 2:
+            raise ValueError("num_clusters must be >= 2 for standard clustering.")
 
-    logger.info(f"Unique samples = {num_unique_samples}")
+        final_num_clusters = min(num_clusters, num_unique)
+        if final_num_clusters < num_clusters:
+            logger.info(f"Reducing clusters from {num_clusters} to {final_num_clusters}")
 
-    # Prevent requesting more clusters than unique samples
-    if num_clusters > num_unique_samples:
-        logger.info(
-            f"Requested {num_clusters} clusters but only "
-            f"{num_unique_samples} unique samples available. "
-            f"Reducing to {num_unique_samples}."
-        )
-        num_clusters = num_unique_samples
+        # Execute Clustering
+        clusters = cluster_aggregate(df_subset.values, genomes, matrix, linkage, final_num_clusters)
+        cluster_labels = [str(int(c) + 1) for c in clusters]
+        algorithm = "agglomerative"
 
-    logger.info(f"Number of clusters = {num_clusters}")
+    # 4. Vectorized Tokenization & Indexing
+    # This returns [[int, int, int]]
+    nested_tokens = encode_onecol_vocab_vec(vec=cluster_labels, vocab_dict=vocab_dict)
 
-    clusters = cluster_aggregate(
-        df_subset.values,
-        genomes,
-        matrix,
-        linkage,
-        num_clusters,
-    )
+    # Flatten the outer list to get [int, int, int]
+    # Each integer corresponds to a genome in the same order
+    flat_tokens = nested_tokens[0]
 
-    cluster_strs = [str(int(c) + 1) for c in clusters]
-    vec_out = encode_onecol_vocab_vec(vec=cluster_strs, vocab_dict=vocab_dict)
+    # Assign the tokens as strings to the index
+    df_clusters = df.copy()
+    df_clusters.index = [str(t) for t in flat_tokens]
 
-    # Simplified metadata
-    info_out = [
-        [
-            "cluster",  # feature_type
-            "agglomerative",  # clustering_algorithm
-            linkage,  # linkage
-            matrix,  # distance_metric
-            num_clusters,  # number of clusters
-            len(columns_subset),  # msa_width
-        ]
-    ]
-
-    # Build cluster dataframe
-    df_clusters = pd.DataFrame(np.array(vec_out).transpose())
-    df_clusters.index = genomes
-
-    lst_cluster_aggregate = []
-    lst_cluster_vals = []
-
-    for genome in genomes:
-        row = df_clusters.loc[genome]
-        cluster_vals = ";".join(str(e) for e in row)
-        lst_cluster_aggregate.append(df.loc[genome])
-        lst_cluster_vals.append(cluster_vals)
-
-    df_clusters = pd.DataFrame(
-        lst_cluster_aggregate,
-        index=lst_cluster_vals,
-        columns=columns_all,
-    )
-
+    # 5. Metadata Construction
     df_cluster_info = pd.DataFrame(
-        info_out,
+        [["cluster", algorithm, linkage, matrix, final_num_clusters, len(columns_subset)]],
         columns=[
             "feature_type",
             "clustering_algorithm",
