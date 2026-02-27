@@ -394,3 +394,36 @@ def test_cluster_sequences_fit_to_budget():
     assert results[0] == results[1], "Sequence 0 and 1 should be grouped together"
     assert results[2] == results[3], "Sequence 2 and 3 should be grouped together"
     assert results[0] != results[2], "Sequence 0 and 2 should be in different clusters"
+
+
+def test_build_cluster_feature_table_duplicate_index():
+    """
+    Tests that ValueError is raised when the input DataFrame has
+    duplicate genome identifiers in its index.
+    """
+    # 1. Setup data with duplicate indices ('G1' appears twice)
+    data = {"col1": ["A", "T", "C"], "col2": ["G", "C", "A"]}
+    # Using 'G1' twice to trigger the validation
+    df_with_dupes = pd.DataFrame(data, index=["G1", "G1", "G2"])
+
+    # 2. Setup dummy arguments for the rest of the parameters
+    genomes = ["G1", "G1", "G2"]
+    columns_subset = ["col1"]
+    num_clusters = 2
+    matrix = "identity"
+    vocab_dict = {"1": 101, "2": 102}
+
+    # 3. Assert that the specific ValueError is raised with the correct message
+    with pytest.raises(ValueError) as excinfo:
+        build_cluster_feature_table(
+            df=df_with_dupes,
+            genomes=genomes,
+            columns_subset=columns_subset,
+            num_clusters=num_clusters,
+            matrix=matrix,
+            vocab_dict=vocab_dict,
+        )
+
+    # 4. Verify the error message contains the offending duplicate identifier
+    assert "Duplicate genome identifiers found" in str(excinfo.value)
+    assert "['G1']" in str(excinfo.value)

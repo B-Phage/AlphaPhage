@@ -1,3 +1,4 @@
+import argparse
 import os
 from unittest.mock import MagicMock, patch
 
@@ -173,9 +174,6 @@ def test_cli_invokes_build_variants(tmp_path):
             num_clusters=8,
             matrix="identity",
         )
-
-
-import argparse
 
 
 def test_cli_error_on_missing_required(tmp_path):
