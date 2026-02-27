@@ -57,7 +57,7 @@ stages:
       - ${prodigal_config.genome_dir}
       - ${self_path}
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
     outs:
       - ${prodigal_config.proteins_dir}_manifest.json
       - ${prodigal_config.proteins_dir}:
@@ -87,7 +87,7 @@ stages:
       - ${hmm_config.data_lake}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
   build_phage_hmm_summary:
   # Summarise the parquet lake to optimise the next HMM extraction step
@@ -109,7 +109,7 @@ stages:
     # We are intentionally not tracking the DuckDB table itself in DVC. The parquet lake already has all the info.
       - ${hmm_config.db_fingerprint}
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
   extract_phage_hmm_fastas:
   # if anything changed with the code deps or the db_fingerprint:
@@ -131,7 +131,7 @@ stages:
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
   create_phage_msas:
     cmd: >
@@ -152,7 +152,7 @@ stages:
       - ${msa_config.msa_csa_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
   create_phage_msa_vars:
     cmd: >
@@ -175,7 +175,7 @@ stages:
       - ${msa_var.msa_variant_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_phage_v0.0.1.yaml
+      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 # -----------------------------------------------------------------------------
 # Host Preprocessing
 # -----------------------------------------------------------------------------
@@ -198,7 +198,7 @@ stages:
       - ${prodigal_config.genome_dir}
       - ${self_path}
     vars:
-      - "ml_assets/config/prodigal_ecoli_v0.0.1.yaml"
+      - "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
     outs:
       - ${prodigal_config.proteins_dir}_manifest.json
       - ${prodigal_config.proteins_dir}:
@@ -225,7 +225,7 @@ stages:
       - ${hmm_config.data_lake}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
   build_ecoli_hmm_summary:
   # Summarise the parquet lake to optimise the next HMM extraction step
@@ -245,7 +245,7 @@ stages:
     # We are intentionally not tracking the DuckDB table itself in DVC. The parquet lake already has all the info.
       - ${hmm_config.db_fingerprint}
     vars:
-      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
   extract_ecoli_hmm_fastas:
     cmd: >
@@ -263,7 +263,7 @@ stages:
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
   create_ecoli_msas:
     cmd: >
@@ -284,7 +284,7 @@ stages:
       - ${msa_config.msa_csa_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
   create_ecoli_msa_vars:
     cmd: >
@@ -307,7 +307,7 @@ stages:
       - ${msa_var.msa_variant_dir}:
           persist: true
     vars:
-      - ml_assets/config/prodigal_ecoli_v0.0.1.yaml
+      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
   # feature_engineering:
   #   cmd: python packages/feature_engineering/run_feature_engineering.py \

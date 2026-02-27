@@ -22,4 +22,4 @@ model:
 inference:
   batch_size: 64
 
-phage_config:  ml_assets/config/prodigal_phage_v0.0.1.yaml
+phage_config:  ml_assets/config/preprocessing_phage_v1.0.0.yaml
