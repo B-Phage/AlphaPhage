@@ -107,7 +107,7 @@ class BinaryPairkeyFeatureDataset(Dataset):
         self.pair_indices_name = cfg.pair_indices_name
         self.dataset_name_host = cfg.dataset_name_host
         self.dataset_name_phage = cfg.dataset_name_phage
-        self.batch_size = cfg.trainer.batch_size
+        self.batch_size = cfg.batch_size
 
         # Pre-calculate length
         with h5py.File(self.labels_path, "r") as f_y:
@@ -158,7 +158,7 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
-        self.batch_size = cfg.trainer.batch_size
+        self.batch_size = cfg.batch_size
         # self.save_hyperparameters()
 
     def setup(self, stage=None):
@@ -176,7 +176,7 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
             all_indices = list(range(len(self.full_dataset)))
             # Partition indices
             self.train_idx, self.val_idx = train_test_split(
-                all_indices, test_size=self.cfg.trainer.val_fraction, random_state=self.cfg.seed
+                all_indices, test_size=self.cfg.val_fraction, random_state=self.cfg.seed
             )
             print("Setup: Train and Val sets created.")
 

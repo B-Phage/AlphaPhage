@@ -45,10 +45,8 @@ class TestBinaryPairkeyDataModule(unittest.TestCase):
                 "dataset_name_host": "host_vec_1",
                 "dataset_name_phage": "phage_vec_1",
                 "num_workers": 0,
-                "trainer": {
-                    "batch_size": 2,
-                    "val_fraction": 0.2,
-                },
+                "batch_size": 2,
+                "val_fraction": 0.2,
             }
         )
 
