@@ -23,8 +23,9 @@ DVC_CONFIG_LOCAL = .dvc/config.local
 # TODO: update this list as the packages are implemented
 ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
 
-# HMM Data
-HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
+# External Data Provisioning
+HMM_YAML := ml_assets/config/hmm_data_v0.0.1.setup.yaml
+KAPTIVE_YAML := ml_assets/config/kaptive3api_v0.0.1.setup.yaml
 PYTHON := $(shell which python)  # uses the environment's python
 
 
@@ -187,14 +188,14 @@ init-secrets-baseline: install-secrets-cli
 	@echo "Baseline created. Add and commit .secrets.baseline"
 
 # =====================
-# Raw Google Drive Data
+# External Data Provisioning
 # =====================
 
 .PHONY: setup-hmm-data
 setup-hmm-data:
 	@echo "WARNING: This setup will only work if the dependencies: setup-utils, setup-hmm and setup-setup_workflows have already run"
 	@echo "Setting up HMM reference data YAML config: $(HMM_YAML)"
-	python -m setup_workflows.hmm_data_setup --yaml-registry $(HMM_YAML)
+	python -m external_db_provisioning.hmm_setup --config $(HMM_YAML)
 
 # =====================
 # DVC targets
