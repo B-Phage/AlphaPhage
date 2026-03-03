@@ -1,5 +1,0 @@
-outs:
-- md5: a85efdb281675deed350a72be2c4119f
-  size: 623
-  hash: md5
-  path: pyproject.toml

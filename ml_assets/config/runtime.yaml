@@ -22,8 +22,8 @@
 ###############################################################################
 
 meta:
-  n_jobs:           6
-  log_level:        'INFO'
+  n_jobs:           3
+  log_level:        'WARNING'
 
   # These could come in later:
   # device: "cuda:0" # for the model training

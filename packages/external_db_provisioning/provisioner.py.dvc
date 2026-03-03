@@ -1,5 +1,0 @@
-outs:
-- md5: ed939cf7a6aa7a27c790702980a08782
-  size: 4350
-  hash: md5
-  path: provisioner.py
