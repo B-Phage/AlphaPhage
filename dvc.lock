@@ -39,8 +39,8 @@ stages:
     deps:
     - path: ml_assets/config/preprocessing_phage_v1.0.0.yaml
       hash: md5
-      md5: 8cb8f843e5ce539027a81979b0308481
-      size: 1454
+      md5: b70c5adfd93fddf6677adffb06f9b5e7
+      size: 1451
     - path: ml_assets/data/artifacts/code_hashes/run_prodigal.hash
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
@@ -147,10 +147,11 @@ stages:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hash_pipeline_packages.py
       --packages packages/hmm packages/data_contracts packages/utils packages/storage_io
-      packages/representation packages/variants \"workflows/run_prodigal.py\" \"workflows/run_hmm_scan_pipeline.py\"\
-      \ \"workflows/hmm_parquet_to_summary_tbl.py\" \"workflows/create_msas.py\" \"\
-      packages/hmm/msa.py\" \"packages/hmm/duckdb_io.py\" \"workflows/create_msa_variants.py\"\
-      \ --output-dir ml_assets/data/artifacts/code_hashes '\n"
+      packages/representation packages/variants workflows/run_kaptive3api.py workflows/run_prodigal.py
+      workflows/run_hmm_scan_pipeline.py workflows/hmm_parquet_to_summary_tbl.py workflows/create_msas.py
+      workflows/create_msa_variants.py workflows/run_train.py packages/hmm/msa.py
+      packages/hmm/duckdb_io.py --output-dir ml_assets/data/artifacts/code_hashes
+      '\n"
     deps:
     - path: packages/data_contracts
       hash: md5
@@ -159,13 +160,13 @@ stages:
       nfiles: 5
     - path: packages/hmm
       hash: md5
-      md5: b97ceaca0a249af07623620378bd6be9.dir
-      size: 211717
+      md5: eb69d3a93e52de366d3d9c4de6c40c2d.dir
+      size: 211791
       nfiles: 30
     - path: packages/representation
       hash: md5
-      md5: 8132cdeb26d52cf8e18fa3dd624a9b5c.dir
-      size: 64237
+      md5: 5fa8a75980a247fd6dcc560b4ac6815c.dir
+      size: 64255
       nfiles: 15
     - path: packages/storage_io
       hash: md5
@@ -174,12 +175,12 @@ stages:
       nfiles: 13
     - path: packages/utils
       hash: md5
-      md5: 75227019e1d282870f7be548c935d4bf.dir
-      size: 219153
-      nfiles: 34
+      md5: 8785fbfefce7ffc7c74b7fad4b091a1a.dir
+      size: 241294
+      nfiles: 39
     - path: packages/variants
       hash: md5
-      md5: 418ee09b2cc729e9529b604abaacd09b.dir
+      md5: 9424d3a7fb1d73d59e93f5aee6190ef8.dir
       size: 113732
       nfiles: 19
     - path: workflows/create_msa_variants.py
@@ -198,16 +199,24 @@ stages:
       hash: md5
       md5: 066a551cae156c128d1a7cce538c7c4a
       size: 4948
+    - path: workflows/run_kaptive3api.py
+      hash: md5
+      md5: 6a6f9951f503c4bd1f86db40bf873855
+      size: 3532
     - path: workflows/run_prodigal.py
       hash: md5
       md5: 392e69f3a330fb0395e3944f08b4ff71
       size: 3399
+    - path: workflows/run_train.py
+      hash: md5
+      md5: 55196de17ffd697aac63e01c9bf2b6e8
+      size: 7137
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: 1dddf5196e82b590265fa06c90d207c6.dir
-      size: 832
-      nfiles: 13
+      md5: b878018552ccbbd6fce417a61a429595.dir
+      size: 960
+      nfiles: 15
   create_phage_msas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_msas.py
@@ -349,16 +358,16 @@ stages:
       size: 2
   train_model:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate training
-      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows
-      && export CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config
-      params.yaml '\n"
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows && export
+      CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config ml_assets/config/train_v0.0.1.yaml
+      --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash '\n"
     deps:
     - path: ml_assets/config/train_v0.0.1.yaml
       hash: md5
-      md5: 9b9d3549c41fcd389a7ae38b77edde2e
-      size: 985
+      md5: 35a9229788314f3b0c54b87fdbede2f4
+      size: 942
     outs:
-    - path: ml_assets/data/training/default_run/checkpoints
+    - path: ml_assets/data/training
       hash: md5
       md5: 507109ed5ae6dd50d15681ca5528ace1.dir
       size: 3583615
@@ -418,6 +427,6 @@ stages:
     outs:
     - path: ml_assets/data/processed/phage/msa_var
       hash: md5
-      md5: 133d4a56f4ac8020053690ae966159ff.dir
-      size: 36055413
-      nfiles: 4332
+      md5: 1c5670c3b99e75d20fe37a1dc7187b39.dir
+      size: 36045169
+      nfiles: 4331

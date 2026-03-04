@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration variants hmm kaptive3api setup_workflows storage_io training models dataloaders #feature_engineering training inference
+PACKAGES = utils orchestration variants hmm kaptive3api storage_io training dataloaders external_db_provisioning
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
@@ -23,8 +23,9 @@ DVC_CONFIG_LOCAL = .dvc/config.local
 # TODO: update this list as the packages are implemented
 ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
 
-# HMM Data
-HMM_YAML := ml_assets/config/hmm_data_v0.0.1.yaml
+# External Data Provisioning
+HMM_YAML := ml_assets/config/hmm_data_v0.0.1.setup.yaml
+KAPTIVE_YAML := ml_assets/config/kaptive3api_v0.0.1.setup.yaml
 PYTHON := $(shell which python)  # uses the environment's python
 
 
@@ -42,7 +43,7 @@ help:
 	@echo "  make secrets-baseline      	- Scanning repository and generating .secrets.baseline file..."
 	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
 	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
-	@echo "  make setup-hmm-data		- Pull the HMM data from Google Drive and extract"
+	@echo "  make setup-hmm-data		- Pull the HMM data from external dependencies and extract"
 	@echo "  make clean           		- Remove all conda environments"
 
 # =====================
@@ -68,7 +69,7 @@ define ensure_env_mac_emul
 	else \
 		echo "=== Creating conda env '$1' ==="; \
 		conda env create --subdir osx-64 -f conda_envs/$1.yml -n $1; \
-		conda config --env --set subdir osx-64 \
+		conda config --env --set subdir osx-64; \
 	fi
 endef
 
@@ -76,8 +77,17 @@ endef
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config setup-hmm-data dvc-pull
-	@echo "All environments, packages, hooks, and DVC data are ready."
+setup-all: \
+    $(foreach pkg,$(PACKAGES),setup-$(pkg)) \
+    hooks \
+    setup-external-data \
+    check-dvc-config \
+    dvc-pull
+	@echo "All environments, packages, hooks, and data are ready."
+
+.PHONY: setup-external-data
+setup-external-data: setup-hmm-data setup-kaptive-data
+	@echo "External database provisioning complete."
 
 # =====================
 # Package-specific setups
@@ -118,11 +128,11 @@ setup-hmm:
 	@echo "=== Installing hmm preprocessing package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/hmm
 
-.PHONY: setup-setup_workflows
-setup-setup_workflows:
+.PHONY: setup-external_db_provisioning
+setup-external_db_provisioning:
 	$(call ensure_env,$(ENV_PREPROCESSING))
-	@echo "=== Installing worflow setup package ==="
-	conda run -n $(ENV_PREPROCESSING) pip install -e packages/setup_workflows
+	@echo "=== Installing external DB provisioning package ==="
+	conda run -n $(ENV_PREPROCESSING) pip install -e packages/external_db_provisioning
 
 .PHONY: setup-storage_io
 setup-storage_io:
@@ -193,14 +203,21 @@ init-secrets-baseline: install-secrets-cli
 	@echo "Baseline created. Add and commit .secrets.baseline"
 
 # =====================
-# Raw Google Drive Data
+# External Data Provisioning
 # =====================
 
 .PHONY: setup-hmm-data
 setup-hmm-data:
-	@echo "WARNING: This setup will only work if the dependencies: setup-utils, setup-hmm and setup-setup_workflows have already run"
-	@echo "Setting up HMM reference data YAML config: $(HMM_YAML)"
-	python -m setup_workflows.hmm_data_setup --yaml-registry $(HMM_YAML)
+	@echo "DEBUG: Using config $(HMM_YAML)"
+	PYTHONPATH=$(shell pwd)/packages:$(PYTHONPATH) conda run -n $(ENV_PREPROCESSING) \
+		python -m external_db_provisioning.hmm_data_setup --config $(HMM_YAML)
+
+.PHONY: setup-kaptive-data
+setup-kaptive-data:
+	@echo "DEBUG: Using config $(KAPTIVE_YAML)"
+	PYTHONPATH=$(shell pwd)/packages:$(PYTHONPATH) conda run -n $(ENV_PREPROCESSING) \
+		python -m external_db_provisioning.kaptive_data_setup --config $(KAPTIVE_YAML)
+
 
 # =====================
 # DVC targets

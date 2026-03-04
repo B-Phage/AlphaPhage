@@ -3,6 +3,7 @@
 # 1. Configuration
 ENV_TRAINING="training"
 ENV_PREPROC="preprocessing"
+ENV_KAPTIVE="kaptive3api"
 
 # 2. Setup paths
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -43,13 +44,17 @@ run_tests "$ENV_TRAINING" "tests/unit/training"
 
 # --- PART 2: PREPROCESSING ---
 echo "🧹 Running Preprocessing Unit Tests (Pytest)..."
-
 run_tests "$ENV_PREPROC" "tests/unit/preprocessing"
 
+# --- PART 3: KAPTIVE3API ---
+echo "🧬 Running Kaptive3API Unit Tests (Pytest)..."
+# This runs in the emulated Intel environment if on Mac
+run_tests "$ENV_KAPTIVE" "tests/unit/kaptive3api"
 
-# --- PART 3: COMBINE & REPORT ---
+# --- PART 4: COMBINE & REPORT ---
 echo -e "\n📊 --- FINAL COMBINED UNIT TEST COVERAGE ---"
 # Remap paths and merge
+# We use the preprocessing env as the 'reporter' because it has the standard tools
 conda run -n "$ENV_PREPROC" coverage combine .coverage.*
 conda run -n "$ENV_PREPROC" coverage report -m
 conda run -n "$ENV_PREPROC" coverage html -d htmlcov

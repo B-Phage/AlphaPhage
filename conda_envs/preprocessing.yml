@@ -24,3 +24,5 @@ dependencies:
   - types-PyYAML # for pylance and YAML
   - scikit-learn
   - biopython
+  - responses
+  - types-requests

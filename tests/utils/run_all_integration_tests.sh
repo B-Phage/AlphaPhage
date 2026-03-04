@@ -3,6 +3,7 @@
 # 1. Configuration
 ENV_TRAINING="training"
 ENV_PREPROC="preprocessing"
+ENV_KAPTIVE="kaptive3api"
 
 # 2. Setup paths
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -46,11 +47,16 @@ run_integration_tests "$ENV_TRAINING" "tests/integration/training"
 echo "🧹 Running Preprocessing Integration Tests..."
 run_integration_tests "$ENV_PREPROC" "tests/integration/preprocessing"
 
+# --- PART 3: KAPTIVE3API INTEGRATION ---
+echo "🧬 Running Kaptive3API Integration Tests..."
+# This runs integration tests for the emulated Intel package
+run_integration_tests "$ENV_KAPTIVE" "tests/integration/kaptive3api"
 
-# --- PART 3: COMBINE & REPORT ---
+# --- PART 4: COMBINE & REPORT ---
 echo -e "\n📊 --- FINAL COMBINED INTEGRATION COVERAGE ---"
 # Combine the integration-specific coverage files
 # This will use your .coveragerc [paths] to fix any conda site-packages vs local packages mismatches
+# This uses the preprocessing env as the reporter for consistency
 conda run -n "$ENV_PREPROC" coverage combine .coverage.int.*
 conda run -n "$ENV_PREPROC" coverage report -m
 conda run -n "$ENV_PREPROC" coverage html -d htmlcov_int
