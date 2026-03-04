@@ -1,4 +1,5 @@
 import unittest
+from typing import cast
 from unittest.mock import MagicMock
 
 import torch
@@ -24,18 +25,16 @@ class TestTransformerChecks(unittest.TestCase):
         self.archspecs2 = {"L4_bn": {"call": "L4", "n": "bn"}}
         self.cfg = OmegaConf.create(
             {
-                "hyp": {
-                    "archspec": self.arch_key,
-                    "archspec2": "L4_bn",
-                    "dim": 8,
-                    "dim1": 8,
-                    "dim2": 8,
-                    "heads": 4,
-                    "mult": 4,
-                    "depth": 1,
-                    "lcom": None,
-                },
-                "optimizer": {"lr": 0.001},
+                "archspec": self.arch_key,
+                "archspec2": "L4_bn",
+                "dim": 8,
+                "dim1": 8,
+                "dim2": 8,
+                "heads": 4,
+                "mult": 4,
+                "depth": 1,
+                "lcom": None,
+                "lr": 0.001,
             }
         )
         # Standard init arguments
@@ -73,7 +72,7 @@ class TestTransformerChecks(unittest.TestCase):
 
     def test_depth_zero_conflict(self):
         """Ensures depth > 0 if a layer_method is requested."""
-        self.cfg.hyp.depth = 0
+        self.cfg.depth = 0
         self.archspecs[self.arch_key]["layer_method"] = "torch_transformer"
         with self.assertRaisesRegex(
             ValueError, "self.depth == 0 and self.layer_method is not None"
@@ -82,8 +81,8 @@ class TestTransformerChecks(unittest.TestCase):
 
     def test_dim_mismatch_check(self):
         """Ensures dim1 == dim when using the transformer encoder."""
-        self.cfg.hyp.dim = 8
-        self.cfg.hyp.dim1 = 16
+        self.cfg.dim = 8
+        self.cfg.dim1 = 16
         self.archspecs[self.arch_key]["layer_method"] = "torch_transformer"
         with self.assertRaisesRegex(
             ValueError, "self.layer_method is not None and self.dim1 != self.dim"
@@ -109,19 +108,17 @@ class TestTransformerX(unittest.TestCase):
         }
         self.cfg = OmegaConf.create(
             {
-                "hyp": {
-                    "archspec": "rope_tt_normpostl_view",
-                    "archspec2": "L4_bn",
-                    "dim": 8,
-                    "lcom": None,  # Set to None to simplify initial test
-                    "dim1": 8,
-                    "dim2": 8,
-                    "heads": 4,
-                    "mult": 4,
-                    "depth": 1,
-                    "vocab_size_out": 2,
-                },
-                "optimizer": {"lr": 0.001},  # Required for configure_optimizers if called
+                "archspec": "rope_tt_normpostl_view",
+                "archspec2": "L4_bn",
+                "dim": 8,
+                "lcom": None,  # Set to None to simplify initial test
+                "dim1": 8,
+                "dim2": 8,
+                "heads": 4,
+                "mult": 4,
+                "depth": 1,
+                "vocab_size_out": 2,
+                "lr": 0.001,  # Required for configure_optimizers if called
             }
         )
         self.num_tokens = 100
@@ -148,7 +145,7 @@ class TestTransformerX(unittest.TestCase):
     def test_layer_counts_l3(self):
         """Ensures L3 logic creates exactly 3 linear layers and 2 norms."""
         # Update config to L3
-        self.cfg.hyp.archspec2 = "L3_bn"
+        self.cfg.archspec2 = "L3_bn"
         model = TransformerX(
             self.cfg,
             self.num_tokens,
@@ -182,8 +179,15 @@ class TestTransformerX(unittest.TestCase):
         loss.backward()
 
         # Check model.model.linears
-        self.assertIsNotNone(model.model.linears[0].weight.grad)
-        self.assertGreater(model.model.linears[0].weight.grad.abs().sum().item(), 0)
+        # self.assertIsNotNone(model.model.linears[0].weight.grad)
+        # This tells Pylance exactly what 'linears' is
+        first_linear = cast(nn.Linear, model.model.linears[0])
+        grad = first_linear.weight.grad
+        # 1. Standard Python assert is a "Type Guard" that Pylance understands
+        assert grad is not None, "Gradient should not be None after backward pass"
+        # 2. Now Pylance knows for 100% certainty that 'grad' is a Tensor
+        grad_magnitude = grad.abs().sum().detach().item()
+        self.assertGreater(grad_magnitude, 0)
 
     def test_training_step_all_arcspecs(self):
         """Test if training_step computes a loss for all archspec settings."""
@@ -195,9 +199,8 @@ class TestTransformerX(unittest.TestCase):
         for archspec in archspec_list:
             for archspec2 in archspec2_list:
                 with self.subTest(archspec=archspec, archspec2=archspec2):
-                    # print(f'archspec: {archspec} archspec2: {archspec2}')
-                    self.cfg.hyp.archspec = archspec
-                    self.cfg.hyp.archspec2 = archspec2
+                    self.cfg.archspec = archspec
+                    self.cfg.archspec2 = archspec2
                     new_model = TransformerX(
                         self.cfg,
                         self.num_tokens,
@@ -224,16 +227,15 @@ class TestTransformerX(unittest.TestCase):
         for spec1 in archspecs.keys():
             for spec2 in archspecs2.keys():
                 with self.subTest(spec1=spec1, spec2=spec2):
-                    self.cfg.hyp.archspec = spec1
-                    self.cfg.hyp.archspec2 = spec2
+                    self.cfg.archspec = spec1
+                    self.cfg.archspec2 = spec2
                     # Test both Compressed and Non-Compressed modes
                     for lcom_val in [None, 30]:
-                        # print(spec1,spec2,lcom_val)
 
-                        self.cfg.hyp.lcom = lcom_val
+                        self.cfg.lcom = lcom_val
 
                         # Ensure dim1 == dim for transformer modes to avoid sys.exit
-                        self.cfg.hyp.dim1 = self.cfg.hyp.dim
+                        self.cfg.dim1 = self.cfg.dim
 
                         model = TransformerX(
                             self.cfg,

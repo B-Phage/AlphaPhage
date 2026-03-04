@@ -62,10 +62,15 @@ jobs:
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-
             cov_source: "packages"
             install_packages: "utils orchestration hmm storage_io setup_workflows"
             test_files: "tests/unit/preprocessing"
+
+          - env_name: kaptive3api
+            env_file: conda_envs/kaptive3api.yml
+            cov_source: "packages"
+            install_packages: "kaptive3api"
+            test_files: "tests/unit/kaptive3api"
 
     steps:
       - name: ⬇️ Checkout Repository

@@ -2,7 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from omegaconf import OmegaConf
 
@@ -63,8 +63,9 @@ def file_manifest(
     return manifest
 
 
+# relative_to: Path | None = None, #py3.10+ only
 def manifest_from_directory(
-    directory: Path, pattern: str = "*", relative_to: Path | None = None
+    directory: Path, pattern: str = "*", relative_to: Optional[Path] = None
 ) -> dict[str, str]:
     files = directory.rglob(pattern)
     return file_manifest(files, relative_to=relative_to or directory.parent)
@@ -117,10 +118,11 @@ def hash_package(package_dir: Path) -> str:
     return hash_directory(package_dir, "*.py")
 
 
+# config_items: Iterable[Any] | None = None, #py3.10+ only
 def compute_combined_code_version(
     base_version: str,
     hash_files: list[Path],
-    config_items: Iterable[Any] | None = None,
+    config_items: Optional[Iterable[Any]] = None,
 ) -> str:
     """
     Compute a deterministic code version identifier from code and configuration state.

@@ -12,14 +12,27 @@ stages:
   # Hash up front to help stitch DVC and underlying orchestration
   # A package hash is also more convenient to use as a dep than
   # listing multiple interconnected code files
+
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate preprocessing &&
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/hash_pipeline_packages.py
-      --packages packages/hmm packages/data_contracts packages/utils packages/storage_io packages/representation packages/variants
-      "workflows/run_prodigal.py" "workflows/run_hmm_scan_pipeline.py" "workflows/hmm_parquet_to_summary_tbl.py" "workflows/create_msas.py"
-      "packages/hmm/msa.py" "packages/hmm/duckdb_io.py" "workflows/create_msa_variants.py"
+      --packages
+      packages/hmm
+      packages/data_contracts
+      packages/utils
+      packages/storage_io
+      packages/representation
+      packages/variants
+      workflows/run_prodigal.py
+      workflows/run_kaptive3api.py
+      workflows/run_hmm_scan_pipeline.py
+      workflows/hmm_parquet_to_summary_tbl.py
+      workflows/create_msas.py
+      workflows/run_train.py
+      packages/hmm/msa.py
+      packages/hmm/duckdb_io.py
       --output-dir ml_assets/data/artifacts/code_hashes '
     deps:
       - packages/hmm
@@ -29,12 +42,15 @@ stages:
       - packages/representation
       - packages/variants
       - workflows/run_prodigal.py
+      - workflows/run_kaptive3api.py
       - workflows/run_hmm_scan_pipeline.py
       - workflows/hmm_parquet_to_summary_tbl.py
       - workflows/create_msas.py
       - workflows/create_msa_variants.py
+      - workflows/run_train.py
     outs:
       - ml_assets/data/artifacts/code_hashes # whole directory
+
 
 # -----------------------------------------------------------------------------
 # Phage Preprocessing
@@ -176,9 +192,32 @@ stages:
           persist: true
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+
+
 # -----------------------------------------------------------------------------
 # Host Preprocessing
 # -----------------------------------------------------------------------------
+
+  kaptive_ecoli:
+    vars:
+      - ml_assets/config/kaptive3api_v0.0.1.yaml
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate kaptive3api &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u workflows/run_kaptive3api.py
+      --config "ml_assets/config/kaptive3api_v0.0.1.yaml"
+      --code_hash ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
+      '
+    deps:
+      - ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
+      - ${kaptive_config.genome_dir}
+      - ml_assets/config/kaptive3api_v0.0.1.yaml
+    outs:
+      # - ml_assets/data/processed/bacteria/kaptive_manifest.json
+      - ${kaptive_config.kaptive_dir}_manifest.json
+      - ${kaptive_config.kaptive_dir}:
+          persist: true
 
   prodigal_ecoli:
     # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
@@ -192,7 +231,8 @@ stages:
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/run_prodigal.py
       --config "${self_path}"
-      --code_hash ml_assets/data/artifacts/code_hashes/run_prodigal.hash '
+      --code_hash ml_assets/data/artifacts/code_hashes/run_prodigal.hash
+      '
     deps:
       - ml_assets/data/artifacts/code_hashes/run_prodigal.hash
       - ${prodigal_config.genome_dir}
@@ -322,22 +362,30 @@ stages:
   #   outs:
   #     - ml_assets/data/features
 
-  # train_model:
-  #   cmd: >
-  #     bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
-  #     conda activate training &&
-  #     export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
-  #     export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows &&
-  #     export CUDA_VISIBLE_DEVICES="" &&
-  #     python workflows/run_train.py --config params.yaml '
-  #   deps:
-  #   - ml_assets/config/train_v0.0.1.yaml
-  #   outs:
-  #   - ml_assets/data/training/default_run/checkpoints
 
-      # - ml_assets/data/training/checkpoints #/model_v0.0.1.pkl
-      # - packages/arc/TransformerX.py
-      #- ml_assets/data/features
+# -----------------------------------------------------------------------------
+# Train Model
+# -----------------------------------------------------------------------------
+
+  train_model:
+    vars:
+      - ml_assets/config/train_v0.0.1.yaml
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate training &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
+      export CUDA_VISIBLE_DEVICES="" &&
+      python workflows/run_train.py
+      --config ml_assets/config/train_v0.0.1.yaml
+      --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
+      '
+    deps:
+      - ml_assets/config/train_v0.0.1.yaml
+    outs:
+      - ${experiment_tracker_dir}_manifest.json
+      - ${experiment_tracker_dir}:
+          persist: true
+
 
   # evaluate:
   #   cmd: python packages/inference/evaluate.py \

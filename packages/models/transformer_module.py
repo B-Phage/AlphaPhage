@@ -35,21 +35,21 @@ class TransformerX(pl.LightningModule):
         self.archspecs2 = archspecs2
 
         # Define pre-configuration based on archspecs
-        self.positional_encoding = self.archspecs[self.cfg.hyp.archspec]["positional_encoding"]
-        self.layer_method = self.archspecs[self.cfg.hyp.archspec]["layer_method"]
-        self.norm_post_layers = self.archspecs[self.cfg.hyp.archspec]["norm_post_layers"]
-        self.aggr_attention_method = self.archspecs[self.cfg.hyp.archspec]["aggr_attention_method"]
+        self.positional_encoding = self.archspecs[self.cfg.archspec]["positional_encoding"]
+        self.layer_method = self.archspecs[self.cfg.archspec]["layer_method"]
+        self.norm_post_layers = self.archspecs[self.cfg.archspec]["norm_post_layers"]
+        self.aggr_attention_method = self.archspecs[self.cfg.archspec]["aggr_attention_method"]
 
         # Define pre-configuration based on archspecs2
-        self.call = self.archspecs2[self.cfg.hyp.archspec2]["call"]
-        self.n = self.archspecs2[self.cfg.hyp.archspec2]["n"]
-        self.dim = self.cfg.hyp.dim
-        self.lcom = self.cfg.hyp.lcom
-        self.dim1 = self.cfg.hyp.dim1
-        self.dim2 = self.cfg.hyp.dim2
-        self.heads = self.cfg.hyp.heads
-        self.mult = self.cfg.hyp.mult
-        self.depth = self.cfg.hyp.depth
+        self.call = self.archspecs2[self.cfg.archspec2]["call"]
+        self.n = self.archspecs2[self.cfg.archspec2]["n"]
+        self.dim = self.cfg.dim
+        self.lcom = self.cfg.lcom
+        self.dim1 = self.cfg.dim1
+        self.dim2 = self.cfg.dim2
+        self.heads = self.cfg.heads
+        self.mult = self.cfg.mult
+        self.depth = self.cfg.depth
 
         # Perform architecture setting checks
         if self.positional_encoding not in ["rope", None]:
@@ -82,13 +82,13 @@ class TransformerX(pl.LightningModule):
             aggr_attention_method=self.aggr_attention_method,
             call=self.call,
             n=self.n,
-            dim=self.cfg.hyp.dim,
-            lcom=self.cfg.hyp.lcom,
-            dim1=self.cfg.hyp.dim1,
-            dim2=self.cfg.hyp.dim2,
-            heads=self.cfg.hyp.heads,
-            mult=self.cfg.hyp.mult,
-            depth=self.cfg.hyp.depth,
+            dim=self.cfg.dim,
+            lcom=self.cfg.lcom,
+            dim1=self.cfg.dim1,
+            dim2=self.cfg.dim2,
+            heads=self.cfg.heads,
+            mult=self.cfg.mult,
+            depth=self.cfg.depth,
             num_tokens=num_tokens,
             vocab_size_out=vocab_size_out,
             length_padded=length_padded,
@@ -131,5 +131,5 @@ class TransformerX(pl.LightningModule):
         return test_loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.optimizer.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr)
         return optimizer

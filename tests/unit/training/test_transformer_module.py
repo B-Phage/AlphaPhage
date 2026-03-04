@@ -21,18 +21,16 @@ class TestTransformerXLightning(unittest.TestCase):
 
         self.cfg = OmegaConf.create(
             {
-                "hyp": {
-                    "archspec": "rope_tt_normpostl_view",
-                    "archspec2": "L1_nn",
-                    "dim": 8,
-                    "dim1": 8,
-                    "dim2": 8,
-                    "heads": 2,
-                    "mult": 2,
-                    "depth": 1,
-                    "lcom": None,
-                },
-                "optimizer": {"lr": 0.001},
+                "archspec": "rope_tt_normpostl_view",
+                "archspec2": "L1_nn",
+                "dim": 8,
+                "dim1": 8,
+                "dim2": 8,
+                "heads": 2,
+                "mult": 2,
+                "depth": 1,
+                "lcom": None,
+                "lr": 0.001,
             }
         )
 
@@ -53,7 +51,7 @@ class TestTransformerXLightning(unittest.TestCase):
         """Verify that hyperparameters are saved for Lightning checkpointing."""
         # Lightning stores these in self.hparams
         self.assertTrue(hasattr(self.model, "hparams"))
-        self.assertEqual(self.model.hparams["hyp"]["dim"], 8)
+        self.assertEqual(self.model.hparams["dim"], 8)
 
     def test_training_step(self):
         """Test the training loop's forward pass and loss calculation."""

@@ -1,0 +1,12 @@
+general:
+  lst_genomes: [] #'370D', 'AL505', 'ECOR-09'] # optional whitelist of genomes
+  code_version: "v0.0.1"
+  name: "kaptive3api"
+kaptive_config:
+  genome_dir: "ml_assets/data/sequence_data/bacteria"
+  kaptive_dir: "ml_assets/data/processed/bacteria/kaptive"
+  orgdb_full_path: "../databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk"
+  source_url: https://github.com/rgladstone/EC-K-typing/tree/main/DB/EC-K-typing_group2and3_v3.0.0.gbk
+  final_sha256: 6ac7e8beef376dd9c7bc0ca9161491b89ea97455 # pragma: allowlist secret
+  source_sha256: 6ac7e8beef376dd9c7bc0ca9161491b89ea97455 # pragma: allowlist secret
+  source_format: gbk

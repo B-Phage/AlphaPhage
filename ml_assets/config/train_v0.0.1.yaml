@@ -1,3 +1,4 @@
+# general:
 code_version :     "TransformerX-v1.0"
 
 seed : 42
@@ -16,30 +17,28 @@ reader_mode : "binary_pairkey"
 architecture : "TransformerX"
 num_workers : 1
 
-trainer:
-  experiment_tracker_method : "DVCLiveLogger"
-  experiment_tracker_dir : "ml_assets/data/training/"
-  run_name : "default_run"
-  epochs : 100
-  accelerator : "cpu"
-  devices : 1
-  precision : 32
-  batch_size : 10
-  save_top_k : 3
-  patience : 20
-  val_fraction : 0.15
+# trainer:
+experiment_tracker_method : "DVCLiveLogger"
+experiment_tracker_dir : "ml_assets/data/training"
+run_name : "default_run"
+epochs : 5
+accelerator : "cpu"
+devices : 1
+precision : 32
+batch_size : 10
+save_top_k : 3
+patience : 20
+val_fraction : 0.15
+lr : 0.001
 
-hyp:
-  archspec : "nope_tt_nonormpostl_cls"
-  archspec2 : "L4_bn"
-  dim : 8
-  lcom : 30
-  dim1 : 8
-  dim2 : 8
-  heads : 4
-  mult : 4
-  depth : 1
-  vocab_size_out : 2
-
-optimizer:
-  lr : 0.001
+#hyp:
+archspec : "nope_tt_nonormpostl_cls"
+archspec2 : "L4_bn"
+dim : 8
+lcom : 30
+dim1 : 8
+dim2 : 8
+heads : 4
+mult : 4
+depth : 1
+vocab_size_out : 2
