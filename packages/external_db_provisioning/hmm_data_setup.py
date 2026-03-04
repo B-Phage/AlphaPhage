@@ -10,6 +10,31 @@ logger = log.get_logger()
 
 
 def setup_hmm(entry: dict):
+    """Provisions a specific HMM asset and performs optional post-processing.
+
+    This function coordinates the download and verification of an HMM file.
+    If the HMM is successfully updated (or is missing its split components),
+    it triggers a splitting process to break the multi-HMM file into
+    individual model files for downstream processing.
+
+    Args:
+        entry (dict): A configuration dictionary representing a single asset.
+            Expected keys include:
+            - name (str): The filename for the downloaded asset.
+            - dest_dir (str): Directory where the asset should be stored.
+            - source_url (str): The URL to download the asset from.
+            - final_sha256 (str): The expected SHA256 hash of the final file.
+            - can_split (bool, optional): Whether to trigger HMM splitting.
+                Defaults to False.
+            - source_format (str, optional): Archive format (e.g., 'gz').
+                Defaults to 'raw'.
+            - inner_path (str, optional): Path within an archive to extract.
+
+    Raises:
+        KeyError: If mandatory keys are missing from the entry dictionary.
+        RuntimeError: If the provisioning or splitting process fails.
+        IOError: If directory creation or file writing is obstructed.
+    """
     dest_dir = Path(entry["dest_dir"])
     dest_dir.mkdir(parents=True, exist_ok=True)
 

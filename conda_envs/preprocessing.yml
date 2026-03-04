@@ -22,3 +22,5 @@ dependencies:
   - pandas
   - pyarrow # Essential for high-performance Parquet handling (duckdb)
   - types-PyYAML # for pylance and YAML
+  - responses
+  - types-requests
