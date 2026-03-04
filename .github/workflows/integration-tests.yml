@@ -25,7 +25,7 @@ jobs:
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            install_packages: "utils orchestration hmm storage_io setup_workflows"
+            install_packages: "utils orchestration hmm storage_io external_db_provisioning"
             cov_source: "packages,workflows"
             test_files: "tests/integration/preprocessing"
 
