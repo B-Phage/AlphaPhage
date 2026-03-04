@@ -7,7 +7,7 @@ boundary between HMM analysis (e.g. pyhmmer scans) and downstream
 processing steps such as multiple sequence alignment (MSA).
 
 Responsibilities:
-- Writing HMM scan outputs parquet lake
+- Writing HMM scan outputs a parquet lake
 - Joining HMM hits with protein sequence data
 - Creating tables on demand when they do not yet exist
 
@@ -141,11 +141,26 @@ def build_hmm_summary_table(
     """
     Fully regenerate a DuckDB summary table from the parquet HMM lake.
 
-    The table contains only proteins that:
-        - are the top protein match for an HMM
-        - and either the top domain hit on the protein OR score > min_score
+    This function implements the "Single Best Representative" logic to ensure
+    each HMM is mapped to the most biologically relevant protein in an organism.
 
-    Old rows from previous runs are removed.
+    Filtering Logic:
+    ----------------
+    1. HMM-to-Protein Selection: We only keep a pair if it is the absolute best
+       match for that HMM across the entire organism
+       (top_protein_match_for_hmm = 1).
+
+    2. Domain Conflict Resolution: Once an HMM has identified its best protein,
+       we retain the record only if:
+       - It is the primary domain hit for that protein (top_hmm_domain_hit_on_prot = 1).
+       - OR it is a secondary hit that still carries significant signal
+         (score > min_score).
+
+    Example:
+        If a protein hits both 'wzy_C' and 'DUF2000', and DUF2000 has the
+        higher score, it is the 'primary' hit. We still include the 'wzy_C'
+        annotation for this protein if 'wzy_C' has no better match elsewhere
+        and its score is > min_score.
     """
 
     con = duckdb.connect(str(db_path))

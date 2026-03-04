@@ -36,7 +36,3 @@ def encode_onecol_vocab_vec(
         else:
             raise KeyError(f"Token '{e}' not found in vocab_dict and no unk_token provided.")
     return [encoded]  # wrap in a list to match [[...]] format used in cluster features
-
-
-# Optional: alias for clarity in pipelines
-encode_column = encode_onecol_vocab_vec
