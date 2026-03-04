@@ -54,7 +54,7 @@ class TestTrainIntegration(unittest.TestCase):
             "code_version": "v1.0.0-test",
             "reader_mode": "binary_pairkey",
             "architecture": "TransformerX",
-            "debug_mode": True,
+            "debug_mode": False,
             "debug_features_path": str(cls.features_path),
             "debug_labels_path": str(cls.labels_path),
             "train_features_path": str(cls.features_path),
@@ -62,32 +62,31 @@ class TestTrainIntegration(unittest.TestCase):
             "pair_indices_name": "pair_indices",
             "dataset_name_host": "host_vec_1",
             "dataset_name_phage": "phage_vec_1",
-            "hyp": {
-                "vocab_size_out": 2,
-                "archspec": "rope_tt_normpostl_view",
-                "archspec2": "L1_nn",
-                "dim": 8,
-                "dim1": 8,
-                "dim2": 8,
-                "heads": 2,
-                "mult": 2,
-                "depth": 1,
-                "lcom": None,
-            },
-            "trainer": {
-                "experiment_tracker_dir": str(cls.output_dir),
-                "experiment_tracker_method": "DVCLiveLogger",
-                "run_name": "test_run",
-                "epochs": 1,
-                "accelerator": "cpu",
-                "devices": 1,
-                "precision": "32-true",
-                "patience": 1,
-                "save_top_k": 1,
-                "val_fraction": 0.2,
-                "batch_size": 2,
-            },
-            "optimizer": {"lr": 0.001},
+            # Hyperparameters (Flattened)
+            "vocab_size_out": 2,
+            "archspec": "rope_tt_normpostl_view",
+            "archspec2": "L1_nn",
+            "dim": 8,
+            "dim1": 8,
+            "dim2": 8,
+            "heads": 2,
+            "mult": 2,
+            "depth": 1,
+            "lcom": None,
+            # Trainer Params (Flattened)
+            "experiment_tracker_dir": str(cls.output_dir),
+            "experiment_tracker_method": "DVCLiveLogger",
+            "run_name": "test_run",
+            "epochs": 1,
+            "accelerator": "cpu",
+            "devices": 1,
+            "precision": "32-true",
+            "patience": 1,
+            "save_top_k": 1,
+            "val_fraction": 0.2,
+            "batch_size": 2,
+            # Optimizer (Flattened)
+            "lr": 0.001,
         }
         OmegaConf.save(cls.config, cls.params_path)
 
@@ -118,7 +117,7 @@ class TestTrainIntegration(unittest.TestCase):
         )
 
         # 3. Verify Training Outputs
-        expected_run_dir = self.output_dir / self.config["trainer"]["run_name"]
+        expected_run_dir = self.output_dir / self.config["run_name"]
         checkpoint_dir = expected_run_dir / "checkpoints"
 
         # Ensure model checkpoints were saved

@@ -36,7 +36,8 @@ Follow the instructions in **[CONTRIBUTING.md](CONTRIBUTING.md)**, Section 2.3, 
 git clone <repo>        # checkout code
 cd <repo>
 make setup-all          # Sets up environments, packages, hooks, pulls DVC data
-make dvc-repro          # Run the pipeline
+make test               # Run the unit tests
+dvc repro               # Run the preprocessing and training pipeline
 ```
 ---
 
@@ -59,7 +60,7 @@ All production code is located within the `packages/` directory. Each package co
 
 | Package | Description | Details |
 | :--- | :--- | :--- |
-| `packages/orchestration` | **Workflow Management:** Custom mini-scheduler responsible for dynamic per-file processing, parallel execution, and state checking, called by the coarse DVC stages. | [Read Package README](packages/orchestration/README.md) |
-| `packages/utils` | **Core Utilities:** Common code for logging, file handling, and shared data structures. | [Read Package README](packages/utils/README.md) |
-| `packages/preprocessing` | Scripts for data cleaning, quality control, and initial transformation steps. | [Read Package README](packages/preprocessing/README.md) |
+| `packages/orchestration` | **Workflow Management:** Custom mini-scheduler responsible for dynamic per-file processing, parallel execution, and state checking, called by the coarse DVC stages. | [Read Package README](packages/orchestration/README_orch.md) |
+| `packages/utils` | **Core Utilities:** Common code for logging, file handling, and shared data structures. | [Read Package README](packages/utils/README_utils.md) |
+| `packages/hmm` | **Preprocessing:** Handles the annotation of protein sets using HMM matching. | [Read Package README](packages/preprocessing/README_hmm.md) |
 | *(... and so on for the rest of our packages)* | | |

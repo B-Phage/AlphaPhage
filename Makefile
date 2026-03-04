@@ -7,7 +7,7 @@ CONDA_ROOT = conda_envs
 
 # List of packages and their environments
 # TODO: add the rest of the packages here
-PACKAGES = utils orchestration variants hmm kaptive3api storage_io training dataloaders external_db_provisioning
+PACKAGES = utils orchestration variants hmm kaptive3api storage_io models training dataloaders external_db_provisioning
 
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing

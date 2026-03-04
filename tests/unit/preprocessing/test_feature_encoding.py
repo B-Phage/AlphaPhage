@@ -1,8 +1,5 @@
 import pytest
-from representation.encoding_methods import (
-    encode_column,
-    encode_onecol_vocab_vec,
-)
+from representation.encoding_methods import encode_onecol_vocab_vec
 
 # ---------------------------------------------------------
 # Basic Happy Path
@@ -89,20 +86,6 @@ def test_accepts_generator_input():
     result = encode_onecol_vocab_vec(vec, vocab)
 
     assert result == [[0, 1]]
-
-
-# ---------------------------------------------------------
-# Alias Behaviour
-# ---------------------------------------------------------
-
-
-def test_encode_column_alias():
-    vec = ["A"]
-    vocab = {"A": 42}
-
-    result = encode_column(vec, vocab)
-
-    assert result == [[42]]
 
 
 # ---------------------------------------------------------

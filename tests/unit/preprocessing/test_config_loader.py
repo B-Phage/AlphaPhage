@@ -13,8 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from omegaconf import DictConfig, OmegaConf
-
-from packages.utils.config_loader import get_config_generic
+from utils.config_loader import _load_vocab_file, get_config_generic
 
 
 class TestVocabLoader(unittest.TestCase):
@@ -298,3 +297,16 @@ class TestConfigLoaderGeneric(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(exit=False)
+
+import pytest
+
+
+def test_load_vocab_file_raises_type_error_on_list(tmp_path):
+    # 1. Setup: Create a YAML file that contains a list, not a dict
+    vocab_file = tmp_path / "vocab_list.yaml"
+    vocab_file.write_text("- item1\n- item2\n- item3")
+
+    # 2. Act & Assert: Verify that it raises a TypeError
+    # We expect the error message to mention 'ListConfig'
+    with pytest.raises(TypeError, match="Expected DictConfig, got ListConfig"):
+        _load_vocab_file(str(vocab_file))
