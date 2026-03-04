@@ -328,14 +328,21 @@ def test_provision_asset_removes_stale_source_before_download(
     mock_verify, mock_extract, mock_download, tmp_path
 ):
     """Test Path: ensures stale .tmp files are removed if they exist."""
+    # 1. Setup target file (so target.exists() is True)
     target = tmp_path / "data.txt"
+    target.write_text("corrupt content")
+
+    # 2. Setup stale temp file (the one we want to see deleted)
     stale_source = target.with_suffix(".raw.tmp")
     stale_source.write_text("stale data")
 
-    # Mock verify to fail initial check (triggering re-provision)
-    mock_verify.side_effect = ValueError("Missing")
+    # 3. Mock verify logic:
+    # Call 1 (initial check): Raises ValueError -> enters 'except' block
+    # Call 2 (final check): Returns None -> success
+    mock_verify.side_effect = [ValueError("Missing"), None]
 
+    # 4. Execute
     provision_asset(url="url", target_path=target, final_sha256="hash", source_format="raw")
 
-    # Verify the stale file was unlinked
+    # 5. Verify the stale temp file was cleaned up
     assert not stale_source.exists()
