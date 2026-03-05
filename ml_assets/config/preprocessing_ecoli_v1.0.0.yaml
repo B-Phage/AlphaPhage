@@ -1,8 +1,8 @@
-self_path: "ml_assets/config/prodigal_ecoli_v0.0.1.yaml"
+self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
 
 general:
-  lst_genomes:      [] #['370D', 'AL505', 'ECOR-09'] # optional whitelist of genomes
-  code_version:     "prodigal-gv-v1.0"
+  lst_genomes:      [] #'AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
+  code_version:     "v1.0.0"
   name:             "ecoli"
 
 prodigal_config:
@@ -28,3 +28,9 @@ hmm_config:
 msa_config:
   split_hmm_dir:    "../databases/hmm/pfam/v38.0/split"
   msa_csa_dir:      "ml_assets/data/processed/bacteria/msa_csa"
+
+msa_var:
+  msa_variant_dir:  "ml_assets/data/processed/bacteria/msa_var"
+  msa_cluster_name: "clusters_16_reduction_false_matrix_identity"
+  cluster_method:   16
+  dis_mat_method:   'identity' # either 'identity' or 'blosum62'

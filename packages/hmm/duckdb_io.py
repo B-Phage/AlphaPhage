@@ -7,7 +7,7 @@ boundary between HMM analysis (e.g. pyhmmer scans) and downstream
 processing steps such as multiple sequence alignment (MSA).
 
 Responsibilities:
-- Writing HMM scan outputs parquet lake
+- Writing HMM scan outputs a parquet lake
 - Joining HMM hits with protein sequence data
 - Creating tables on demand when they do not yet exist
 
@@ -141,11 +141,26 @@ def build_hmm_summary_table(
     """
     Fully regenerate a DuckDB summary table from the parquet HMM lake.
 
-    The table contains only proteins that:
-        - are the top protein match for an HMM
-        - and either the top domain hit on the protein OR score > min_score
+    This function implements the "Single Best Representative" logic to ensure
+    each HMM is mapped to the most biologically relevant protein in an organism.
 
-    Old rows from previous runs are removed.
+    Filtering Logic:
+    ----------------
+    1. HMM-to-Protein Selection: We only keep a pair if it is the absolute best
+       match for that HMM across the entire organism
+       (top_protein_match_for_hmm = 1).
+
+    2. Domain Conflict Resolution: Once an HMM has identified its best protein,
+       we retain the record only if:
+       - It is the primary domain hit for that protein (top_hmm_domain_hit_on_prot = 1).
+       - OR it is a secondary hit that still carries significant signal
+         (score > min_score).
+
+    Example:
+        If a protein hits both 'wzy_C' and 'DUF2000', and DUF2000 has the
+        higher score, it is the 'primary' hit. We still include the 'wzy_C'
+        annotation for this protein if 'wzy_C' has no better match elsewhere
+        and its score is > min_score.
     """
 
     con = duckdb.connect(str(db_path))
@@ -194,10 +209,11 @@ def build_hmm_summary_table(
 def get_distinct_hmms(
     db_path: Path,
     table_name: str,
+    min_copies: int = 2,
 ) -> List[str]:
     """
-    Return a sorted list of distinct HMM domain names from a summary table.
-
+    Return a sorted list of distinct HMM domain names from a summary table
+    that appear at least `min_copies` times.
     This is intended for orchestrators to parallelise downstream work
     (e.g. exporting FASTA files per HMM).
 
@@ -207,22 +223,29 @@ def get_distinct_hmms(
         Path to the DuckDB database.
     table_name : str
         Name of the summary table.
+    min_copies : int
+        Minimum number of occurrences required to include an HMM. Defaults to 2.
 
     Returns
     -------
     List[str]
-        Sorted list of unique hmm_domain_name values.
+        Sorted list of unique hmm_domain_name values meeting the threshold.
     """
 
     con = duckdb.connect(str(db_path), read_only=True)
 
+    # Use GROUP BY and HAVING to filter by count
     query = f"""
-        SELECT DISTINCT hmm_domain_name
+        SELECT hmm_domain_name
         FROM {table_name}
+        GROUP BY hmm_domain_name
+        HAVING COUNT(*) >= ?
         ORDER BY hmm_domain_name
     """
 
-    hmms = [row[0] for row in con.execute(query).fetchall()]
+    # Using a parameterized query (?) is safer and handles the integer injection
+    results = con.execute(query, [min_copies]).fetchall()
+    hmms = [row[0] for row in results]
 
     con.close()
     return hmms

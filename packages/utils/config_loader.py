@@ -21,16 +21,20 @@ def _load_params():
     return OmegaConf.load(PARAMS_PATH)
 
 
-def _load_vocab_file(str_path: str):
+def _load_vocab_file(str_path: str) -> DictConfig:
     path = Path(str_path)
     if not path.exists():
         raise FileNotFoundError(path)
 
-    return OmegaConf.load(path)
+    cfg = OmegaConf.load(path)
+
+    if not isinstance(cfg, DictConfig):
+        raise TypeError(f"Expected DictConfig, got {type(cfg).__name__}")
+
+    return cfg
 
 
-# def get_vocab(test_mode: bool = False, override_path: str | None = None):  #py3.10+ only
-def get_vocab(test_mode: bool = False, override_path: Optional[str] = None):
+def get_vocab(test_mode: bool = False, override_path: str | None = None) -> DictConfig:
     """
     Loads the vocabulary file referenced in params.yaml
     and returns all vocabularies defined inside that file.
@@ -51,7 +55,6 @@ def get_vocab(test_mode: bool = False, override_path: Optional[str] = None):
     return _load_vocab_file(vocab_cfg.file)
 
 
-# def get_config(override_path: str | None = None, params_set: str = "prodigal_config"): #py3.10+ only
 def get_config(override_path: Optional[str] = None, params_set: str = "prodigal_config"):
     """
     Loads prodigal config from params.yaml or override file

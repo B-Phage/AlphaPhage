@@ -86,6 +86,7 @@ jobs:
       - name: 🧪 Run Tests
         shell: bash -l {0}
         run: |
+          set -e  # Fail immediately if any command fails
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
           export KMP_DUPLICATE_LIB_OK=TRUE
 
@@ -129,8 +130,7 @@ jobs:
 
       - name: 📊 Combine & Enforcement
         id: final_cov
-        # We use 'continue-on-error' so a failure here doesn't skip the badge upload
-        continue-on-error: true
+        continue-on-error: true  # <- allows badge generation even if combining fails
         run: |
           pip install "coverage[toml]"
 

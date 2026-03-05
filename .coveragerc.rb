@@ -35,4 +35,6 @@ directory = htmlcov
 [paths]
 source =
     packages/
+    workflows/
+    */conda/envs/*/lib/python*/site-packages/  # Maps environment code back to local
     */site-packages/
