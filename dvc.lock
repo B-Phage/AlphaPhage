@@ -159,9 +159,9 @@ stages:
     deps:
     - path: packages/data_contracts
       hash: md5
-      md5: 26d0db4723231ea5040a68f4c0a5d27a.dir
-      size: 2440
-      nfiles: 5
+      md5: fe3594bf9a8079d39061faae75733597.dir
+      size: 8588
+      nfiles: 6
     - path: packages/hmm
       hash: md5
       md5: b909fe15b909cd8e39e701aac640d38c.dir
