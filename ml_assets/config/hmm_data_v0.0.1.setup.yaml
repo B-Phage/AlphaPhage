@@ -7,16 +7,16 @@
 - name: Pfam-A.hmm.dat # the models' annotation data
   source_url: https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam38.0/Pfam-A.hmm.dat.gz
   dest_dir: ../databases/hmm/pfam/v38.0
-  final_sha256: a2d738544f61a5ec37bcbf2012e0c9f5a168379e8ef23bc4f43d83a55fb52c0a
-  source_sha256: fc984ce44fca3d72004b1521a1e57ba650fa4202482f5969fb3c87679f42c1de
+  final_sha256: a2d738544f61a5ec37bcbf2012e0c9f5a168379e8ef23bc4f43d83a55fb52c0a # pragma: allowlist secret
+  source_sha256: fc984ce44fca3d72004b1521a1e57ba650fa4202482f5969fb3c87679f42c1de # pragma: allowlist secret
   source_format: gz
   inner_path: Pfam-A.hmm.dat
 
 - name: Pfam-A.hmm # the actual PFAM models
   source_url: https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam38.0/Pfam-A.hmm.gz
   dest_dir: ../databases/hmm/pfam/v38.0
-  final_sha256: 222b83312b2fc27b933cb4f9de4252fc4c6a98b268c95339d01ab609eb21421c
-  source_sha256: 2a974cbf81eadf4882a93c8a577aba0952e035064fc8ba2cf39706f12833e73d
+  final_sha256: 222b83312b2fc27b933cb4f9de4252fc4c6a98b268c95339d01ab609eb21421c # pragma: allowlist secret
+  source_sha256: 2a974cbf81eadf4882a93c8a577aba0952e035064fc8ba2cf39706f12833e73d # pragma: allowlist secret
   source_format: gz
   inner_path: Pfam-A.hmm
   can_split: true
@@ -25,8 +25,8 @@
 - name: all_phrogs.h3m
   source_url: https://zenodo.org/records/8267900/files/pharokka_v1.4.0_databases.tar.gz?download=1
   dest_dir: ../databases/hmm/pharokka_v1.4.0_databases
-  final_sha256: 7f63b5f7ac05c95abf74ee824647613136970f78b4df539b40e2b3accec07dcd
-  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c
+  final_sha256: 7f63b5f7ac05c95abf74ee824647613136970f78b4df539b40e2b3accec07dcd # pragma: allowlist secret
+  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c # pragma: allowlist secret
   source_format: tar
   inner_path: pharokka_v1.4.0_databases/all_phrogs.h3m
   can_split: true
@@ -34,8 +34,8 @@
 - name: phrog_annot_v4.tsv
   source_url: https://zenodo.org/records/8267900/files/pharokka_v1.4.0_databases.tar.gz?download=1
   dest_dir: ../databases/hmm/pharokka_v1.4.0_databases
-  final_sha256: 502f96101597c21133bcce5711803e0b95e0c162cd4e86425c352549bd95e8c2
-  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c
+  final_sha256: 502f96101597c21133bcce5711803e0b95e0c162cd4e86425c352549bd95e8c2 # pragma: allowlist secret
+  source_sha256: cfa627afd607d2fbeba75eee8d5ae8298930f8b5e15187d8f0ef0d403c0ebc6c # pragma: allowlist secret
   source_format: tar
   inner_path: pharokka_v1.4.0_databases/phrog_annot_v4.tsv
   can_split: false
