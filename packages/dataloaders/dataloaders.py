@@ -187,7 +187,9 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
 
         # 3. Logic for Production Prediction
         if stage == "predict":
-            self.predict_dataset = BinaryPairkeyFeatureDataset(self.cfg, features_path, labels_path)
+            self.predict_dataset = BinaryPairkeyFeatureDataset(
+                self.cfg, self.cfg.predict_features_path, self.cfg.predict_labels_path
+            )
 
     def train_dataloader(self):
         return DataLoader(
@@ -203,4 +205,12 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
             dataset=self.full_dataset,
             batch_sampler=IndexBatchSampler(self.val_idx, self.batch_size),  # Pass val indices only
             num_workers=self.cfg.num_workers,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.predict_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.cfg.num_workers,  # This should be 0 for now.
+            shuffle=False,  # Never shuffle inference
         )
