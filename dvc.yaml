@@ -79,6 +79,8 @@ stages:
       - ${prodigal_config.proteins_dir}_manifest.json
       - ${prodigal_config.proteins_dir}:
           persist: true
+      - ml_assets/data/workflow/hashes/prodigal_${general.name}.json:
+          persist: true
 
 
   hmm_scan_all_phage:
@@ -103,6 +105,8 @@ stages:
     outs:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:
+          persist: true
+      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
           persist: true
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
@@ -148,6 +152,8 @@ stages:
       - ${hmm_config.hmm_fasta_dir}_manifest.json
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
+      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
+          persist: true
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
@@ -169,6 +175,8 @@ stages:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
           persist: true
+      - ml_assets/data/workflow/hashes/msa_${general.name}.json:
+          persist: true
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
@@ -188,9 +196,11 @@ stages:
       - ml_assets/data/artifacts/code_hashes/variants.hash
       - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       - ${msa_config.msa_csa_dir}_manifest.json
+      - ${self_path}
     outs:
-      # - ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}_manifest.json
       - ${msa_var.msa_variant_dir}:
+          persist: true
+      - ml_assets/data/workflow/hashes/variants_${general.name}.json:
           persist: true
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
@@ -266,6 +276,8 @@ stages:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:
           persist: true
+      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
+          persist: true
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
@@ -304,6 +316,8 @@ stages:
       - ${hmm_config.hmm_fasta_dir}_manifest.json
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
+      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
+          persist: true
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
@@ -321,9 +335,12 @@ stages:
       - ml_assets/data/artifacts/code_hashes/create_msas.hash
       - ml_assets/data/artifacts/code_hashes/msa.hash
       - ${hmm_config.hmm_fasta_dir}_manifest.json
+      - ${self_path}
     outs:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
+          persist: true
+      - ml_assets/data/workflow/hashes/msa_${general.name}.json:
           persist: true
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
@@ -344,9 +361,12 @@ stages:
       - ml_assets/data/artifacts/code_hashes/variants.hash
       - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       - ${msa_config.msa_csa_dir}_manifest.json
+      - ${self_path}
     outs:
       # - ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}_manifest.json
       - ${msa_var.msa_variant_dir}:
+          persist: true
+      - ml_assets/data/workflow/hashes/variants_${general.name}.json:
           persist: true
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
