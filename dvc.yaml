@@ -99,6 +99,7 @@ stages:
       - ml_assets/data/artifacts/code_hashes/data_contracts.hash
       - ml_assets/data/artifacts/code_hashes/hmm.hash
       - ${prodigal_config.proteins_dir}_manifest.json
+      - ${self_path}
     outs:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:

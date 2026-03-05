@@ -2,7 +2,7 @@ self_path: "ml_assets/config/preprocessing_phage_v1.0.0.yaml"
 
 general:
   lst_genomes:      [] #"409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes, useful for testing
-  code_version:     "v1.0.0"
+  code_version:     "v1.0.1"
   name:             "phage"
 
 prodigal_config:
