@@ -64,6 +64,7 @@ def extract_interaction_matrix(
 
     with DuckDBClient(source_db_path, read_only=True) as client:
         # 1. Filter the long table for the sources you trust
+        validate_schema(client, tbl, contract)
         source_filter = "', '".join(selected_sources)
 
         # Using contract attributes for column names
@@ -100,15 +101,36 @@ def _parse_list_input(input_val):
     """Safely converts string/list inputs to a Python list."""
     if not input_val:
         return []
+
     if isinstance(input_val, list):
         return input_val
+
+    # If it's not a string, we can't parse or split it,
+    # so just wrap it in a list and return.
+    if not isinstance(input_val, str):
+        return [input_val]
+
     try:
         parsed = ast.literal_eval(input_val)
         if isinstance(parsed, list):
             return parsed
     except (ValueError, SyntaxError):
+        # Fallback for space-separated strings
         return input_val.split()
+
+    # Final catch-all for strings that parsed into non-lists (e.g., "123")
     return [input_val]
+
+
+def validate_schema(client: DuckDBClient, table_name: str, contract: InteractionTableContract):
+    """Fails fast if the database table doesn't match the contract."""
+    existing_columns = client.list_columns(table_name)
+    for col in contract.required_columns:
+        if col not in existing_columns:
+            raise KeyError(
+                f"❌ Schema Mismatch: Table '{table_name}' is missing "
+                f"required column: '{col}'. Found: {existing_columns}"
+            )
 
 
 def main():

@@ -502,25 +502,25 @@ stages:
 # Train Model
 # -----------------------------------------------------------------------------
 
-  # train_model:
-  #   vars:
-  #     - ml_assets/config/train_v0.0.1.yaml
-  #   cmd: >
-  #     bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
-  #     conda activate training &&
-  #     export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
-  #     export CUDA_VISIBLE_DEVICES="" &&
-  #     python workflows/run_train.py
-  #     --config ml_assets/config/train_v0.0.1.yaml
-  #     --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
-  #     '
-  #   deps:
-  #     - ml_assets/config/train_v0.0.1.yaml
-  #     - ${storage.training_data_dir}
-  #   outs:
-  #     - ${experiment_tracker_dir}_manifest.json
-  #     - ${experiment_tracker_dir}:
-  #         persist: true
+  train_model:
+    vars:
+      - ml_assets/config/train_v0.0.1.yaml
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate training &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
+      export CUDA_VISIBLE_DEVICES="" &&
+      python workflows/run_train.py
+      --config ml_assets/config/train_v0.0.1.yaml
+      --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
+      '
+    deps:
+      - ml_assets/config/train_v0.0.1.yaml
+      - ${storage.training_data_dir}
+    outs:
+      - ${experiment_tracker_dir}_manifest.json
+      - ${experiment_tracker_dir}:
+          persist: true
 
 
   # evaluate:
