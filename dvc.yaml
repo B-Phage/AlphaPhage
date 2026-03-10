@@ -185,8 +185,7 @@ stages:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/msa_${general.name}.json:
-          persist: true
+      - ml_assets/data/workflow/hashes/msa_${general.name}.json
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
@@ -208,8 +207,7 @@ stages:
     outs:
       - ${msa_var.msa_variant_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/variants_${general.name}.json:
-          persist: true
+      - ml_assets/data/workflow/hashes/variants_${general.name}.json
     vars:
       - ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
@@ -256,7 +254,6 @@ stages:
       - ${kaptive_config.genome_dir}
       - ml_assets/config/kaptive3api_v0.0.1.yaml
     outs:
-      # - ml_assets/data/processed/bacteria/kaptive_manifest.json
       - ${kaptive_config.kaptive_dir}_manifest.json
       - ${kaptive_config.kaptive_dir}:
           persist: true
@@ -325,8 +322,7 @@ stages:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:
           persist: true
-      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
-          persist: true
+      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
@@ -365,8 +361,7 @@ stages:
       - ${hmm_config.hmm_fasta_dir}_manifest.json
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
-          persist: true
+      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json
     vars:
       - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
 
@@ -507,25 +502,25 @@ stages:
 # Train Model
 # -----------------------------------------------------------------------------
 
-  train_model:
-    vars:
-      - ml_assets/config/train_v0.0.1.yaml
-    cmd: >
-      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
-      conda activate training &&
-      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
-      export CUDA_VISIBLE_DEVICES="" &&
-      python workflows/run_train.py
-      --config ml_assets/config/train_v0.0.1.yaml
-      --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
-      '
-    deps:
-      - ml_assets/config/train_v0.0.1.yaml
-      - ${storage.training_data_dir}
-    outs:
-      - ${experiment_tracker_dir}_manifest.json
-      - ${experiment_tracker_dir}:
-          persist: true
+  # train_model:
+  #   vars:
+  #     - ml_assets/config/train_v0.0.1.yaml
+  #   cmd: >
+  #     bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+  #     conda activate training &&
+  #     export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
+  #     export CUDA_VISIBLE_DEVICES="" &&
+  #     python workflows/run_train.py
+  #     --config ml_assets/config/train_v0.0.1.yaml
+  #     --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
+  #     '
+  #   deps:
+  #     - ml_assets/config/train_v0.0.1.yaml
+  #     - ${storage.training_data_dir}
+  #   outs:
+  #     - ${experiment_tracker_dir}_manifest.json
+  #     - ${experiment_tracker_dir}:
+  #         persist: true
 
 
   # evaluate:

@@ -73,17 +73,12 @@ repos:
         language: system
         stages: [pre-push]
 
+  # run in terminal with this `pre-commit run update-dvc-dag --all-files`
   - repo: local
     hooks:
       - id: update-dvc-dag
         name: Update DVC DAG Visualization
-        # We use a bash script to handle the DOT generation and cleanup
-        entry: bash -c '
-          mkdir -p docs/images &&
-          dvc dag --dot > docs/pipeline.dot &&
-          dot -Tpng docs/pipeline.dot -o docs/images/pipeline_dag.png &&
-          rm docs/pipeline.dot &&
-          git add docs/images/pipeline_dag.png'
-        language: system
+        entry: ./tests/utils/generate_dag.sh
+        language: script
         files: ^dvc\.yaml$
         pass_filenames: false

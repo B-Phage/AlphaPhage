@@ -72,6 +72,9 @@ ml_assets/data/training/*
 # Ignore DVCLive internal state folder (often used for plotting)
 .dvclive/
 
+# DVC DAG
+*.dot
+
 # Temporary log files, results, and profiling data
 *.log
 *.tmp
