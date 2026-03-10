@@ -18,6 +18,8 @@ class DuckDBClient:
     - light metadata helpers
     """
 
+    con: duckdb.DuckDBPyConnection
+
     def __init__(
         self,
         db_path: str = ":memory:",
