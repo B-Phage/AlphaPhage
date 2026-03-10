@@ -5,8 +5,11 @@ from typing import Optional
 
 import duckdb
 import pandas as pd
+import utils.consol_log as log
 from storage_io.duckdb_client import DuckDBClient
 from utils.config_loader import get_vocab
+
+logger = log.get_logger()
 
 
 def build_long_table(
@@ -69,7 +72,7 @@ def build_long_table(
     # Check if res exists before accessing index 0
     row_count = res[0] if res is not None else 0
 
-    print(f"Aggregated {row_count} rows into {table_name} at {db_path}")
+    logger.info(f"Aggregated {row_count} rows into {table_name} at {db_path}")
     con.close()
 
     if manifest_path:

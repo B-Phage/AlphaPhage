@@ -201,7 +201,12 @@ Integration tests should cover full pipeline stages with small test datasets.
 
 * Push outputs to remote: `make dvc-push`
 
-* View pipeline graph: `make dvc-dag`
+* View pipeline graph:
+  ```
+    dvc dag --dot > pipeline.dot
+    dot -Tpng pipeline.dot -o pipeline.png
+  ```
+  Then open `pipeline.png`
 
 * Clean untracked outputs: `make dvc-clean`
 

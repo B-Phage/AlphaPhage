@@ -34,10 +34,13 @@ import os
 from functools import partial
 from pathlib import Path
 
+import utils.consol_log as log
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config, get_vocab
 from utils.hash import compute_combined_code_version, create_manifest
 from variants.build import build_variants
+
+logger = log.get_logger()
 
 DEFAULT_RUNTIME_PATH = "ml_assets/config/runtime.yaml"
 HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
@@ -101,8 +104,8 @@ def run_variant_workflow(config_path: str, code_hash, force: bool = False):
     msa_input_dir = Path(msa_cfg.msa_csa_dir)
     output_dir = Path(var_cfg.msa_variant_dir) / var_cfg.msa_cluster_name
 
-    print(f"The msa var output dir is {output_dir}")
-    print(f"The msa input dir is {msa_input_dir}")
+    logger.info(f"The msa var output dir is {output_dir}")
+    logger.info(f"The msa input dir is {msa_input_dir}")
 
     conf_code_version = gen_cfg.code_version
     code_version = compute_combined_code_version(

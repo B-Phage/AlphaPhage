@@ -1,124 +1,122 @@
 import argparse
 from pathlib import Path
 
-import h5py
-import numpy as np
 import pandas as pd
 import utils.consol_log as log
-from data_contracts.h5_schema import H5DataKeys
+
+# Import our new components
+from representation.feature_extractor import FeatureExtractor
+from representation.h5_writer import H5TrainingWriter
+from representation.metadata_manager import MetadataManager
 from storage_io.duckdb_client import DuckDBClient
 
 logger = log.get_logger()
 
 
-def build_model_data(
-    interaction_tsv: str,
-    db_path: str,
-    output_dir: str,
-    base_filename: str,
-    phage_table: str,
-    host_table: str,
-    serotype_table: str,
-):
-    """
-    Constructs the X (features) and CL (labels) HDF5 files.
-    - x_{base_filename}.h5: Contains features and metadata info.
-    - cl_{base_filename}.h5: Contains the interaction labels.
-    """
-    keys = H5DataKeys()
+def load_interaction_pairs(path: str) -> pd.DataFrame:
+    """Helper to unpivot and filter unknown labels."""
+    df = pd.read_csv(path, sep="\t", index_col=0)
+    pairs = df.stack().reset_index()
+    pairs.columns = ["host", "phage", "label"]
+    return pairs[pairs["label"] != -1].copy()
 
-    # Construct Paths
+
+def build_model_data(
+    interaction_tsv, db_path, output_dir, base_filename, phage_table, host_table, serotype_table
+):
+    def build_model_data(
+        interaction_tsv: str,
+        db_path: str,
+        output_dir: str,
+        base_filename: str,
+        phage_table: str,
+        host_table: str,
+        serotype_table: str,
+    ) -> None:
+        """
+        Orchestrates the construction of paired HDF5 training datasets.
+
+        This function integrates host and phage genomic features from a DuckDB
+        repository with phenotypic interaction labels from a TSV matrix. It
+        pivots long-format variant data into wide-format feature vectors and
+        aligns them into two distinct HDF5 files (X for features, CL for labels)
+        compatible with the AlphaPhage Transformer dataloader.
+
+        Args:
+            interaction_tsv: Path to the tab-separated matrix containing
+                ground-truth host-phage interactions.
+            db_path: Path to the persistent DuckDB file containing feature tables.
+            output_dir: Directory where the resulting HDF5 files will be saved.
+            base_filename: The core name used for output files; will be prefixed
+                with 'x_' for features and 'cl_' for labels.
+            phage_table: Name of the DuckDB table containing phage variants.
+            host_table: Name of the DuckDB table containing host variants.
+            serotype_table: Name of the DuckDB table containing host serotypes.
+
+        Returns:
+            None
+
+        Raises:
+            FileNotFoundError: If the interaction_tsv or db_path does not exist.
+            KeyError: If the required tables or columns are missing from the
+                DuckDB database.
+            ValueError: If the join between interactions and features results
+                in an empty dataset.
+
+        Example:
+            >>> build_model_data(
+            ...     interaction_tsv="data/matrix.tsv",
+            ...     db_path="data/features.db",
+            ...     output_dir="data/processed",
+            ...     base_filename="v1_run",
+            ...     phage_table="phage_vars",
+            ...     host_table="host_vars",
+            ...     serotype_table="host_serotypes"
+            ... )
+            # Generates: x_v1_run.h5 and cl_v1_run.h5
+        """
+
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
-    x_file = out_path / f"x_{base_filename}.h5"
-    cl_file = out_path / f"cl_{base_filename}.h5"
 
-    # 1. Load interactions
-    logger.info(f"📖 Loading interactions from {interaction_tsv}...")
-    df_interact = pd.read_csv(interaction_tsv, sep="\t", index_col=0)
-    pairs = df_interact.stack().reset_index()
-    pairs.columns = ["host", "phage", "label"]
-    pairs = pairs[pairs["label"] != -1].copy()
-
-    # 2. Extract features and Metadata
-    logger.info(f"🗄️ Querying features from {db_path}...")
+    # 1. Extraction (DuckDB)
     with DuckDBClient(db_path, read_only=True) as client:
-        # Metadata for Versions
-        phage_meta = client.execute(
-            f"SELECT DISTINCT hmm_id, clustering_version FROM {phage_table}"
-        ).df()
-        host_meta = client.execute(
-            f"SELECT DISTINCT hmm_id, clustering_version FROM {host_table}"
-        ).df()
+        extractor = FeatureExtractor(client)
+        phage_df = extractor.get_wide_phage_features(phage_table)
+        host_df = extractor.get_wide_host_features(host_table, serotype_table)
+        p_meta = extractor.get_metadata(phage_table)
+        h_meta = extractor.get_metadata(host_table)
 
-        # Pivot Phage
-        phage_features = (
-            client.execute(
-                f"PIVOT {phage_table} ON hmm_id USING FIRST(token_id) GROUP BY organism_id"
-            )
-            .df()
-            .fillna(0)
-        )
+    # 2. Alignment (Pandas)
+    logger.info("🔗 Aligning features with labels...")
+    interactions = load_interaction_pairs(interaction_tsv)
+    data = interactions.merge(phage_df, left_on="phage", right_on="organism_id")
+    data = data.merge(host_df, left_on="host", right_on="organism_id", suffixes=("_p", "_h"))
 
-        # Pivot Host + Join Serotypes
-        host_query = f"""
-            WITH wide_variants AS (PIVOT {host_table} ON hmm_id USING FIRST(token_id) GROUP BY organism_id)
-            SELECT s.organism_id, s.k_type_dim1, s.k_type_dim2, v.* EXCLUDE (organism_id)
-            FROM {serotype_table} s
-            LEFT JOIN wide_variants v ON s.organism_id = v.organism_id
-        """
-        host_features = client.execute(host_query).df().fillna(0)
+    # 3. Metadata Preparation
+    phage_cols = [c for c in phage_df.columns if c != "organism_id"]
+    hmm_cols = [
+        c for c in host_df.columns if c not in ["organism_id", "k_type_dim1", "k_type_dim2"]
+    ]
 
-    # 3. Join Features to Pairs
-    logger.info("🔗 Joining wide features with interaction labels...")
-    data = pairs.merge(phage_features, left_on="phage", right_on="organism_id")
-    data = data.merge(
-        host_features, left_on="host", right_on="organism_id", suffixes=("_phage", "_host")
+    phage_info = MetadataManager.build_info_array(phage_cols, p_meta)
+    host_info = MetadataManager.build_info_array(
+        cols=["k_type_dim1", "k_type_dim2"] + hmm_cols,
+        meta_df=h_meta,
+        source_map={"k_type_dim1": "best_match", "k_type_dim2": "best_match"},
     )
 
-    # 4. Prepare Metadata Info Arrays
-    phage_feature_cols = [c for c in phage_features.columns if c != "organism_id"]
-    p_ver_map = dict(zip(phage_meta["hmm_id"], phage_meta["clustering_version"]))
-    phage_info = np.array(
-        [phage_feature_cols, [str(p_ver_map.get(c, "unknown")) for c in phage_feature_cols]]
-    ).astype("S100")
+    # 4. Final Output (HDF5)
+    writer = H5TrainingWriter(out_path, base_filename)
+    payload = {
+        "phage_vecs": data[phage_cols].values.astype("int32"),
+        "host_vecs": data[["k_type_dim1", "k_type_dim2"] + hmm_cols].values.astype("int32"),
+        "labels": data["label"].values.astype("int32"),
+        "pair_keys": data[["phage", "host"]].values.astype("S100"),
+    }
 
-    hmm_cols = [
-        c for c in host_features.columns if c not in ["organism_id", "k_type_dim1", "k_type_dim2"]
-    ]
-    h_ver_map = dict(zip(host_meta["hmm_id"], host_meta["clustering_version"]))
-    host_info_row1 = ["k_type_dim1", "k_type_dim2"] + hmm_cols
-    host_info_row2 = ["best_match", "best_match"] + [
-        str(h_ver_map.get(c, "unknown")) for c in hmm_cols
-    ]
-    host_info = np.array([host_info_row1, host_info_row2]).astype("S100")
-
-    # 5. Extract Numeric Arrays
-    phage_vecs = data[phage_feature_cols].values.astype(np.int32)
-    host_vecs = data[host_info_row1].values.astype(np.int32)
-    labels = data["label"].values.astype(np.int32)
-    pair_keys = data[["phage", "host"]].values.astype("S100")
-    num_samples = len(data)
-    indices = np.column_stack((np.arange(num_samples), np.arange(num_samples)))
-
-    # 6. Writing Output Files
-
-    # Save X (Features)
-    logger.info(f"💾 Writing Feature file (X) to {x_file}...")
-    with h5py.File(x_file, "w") as f:
-        f.create_dataset(keys.PHAGE_VEC, data=phage_vecs)
-        f.create_dataset(keys.HOST_VEC, data=host_vecs)
-        f.create_dataset(keys.PAIR_KEYS, data=pair_keys)
-        f.create_dataset(keys.PAIR_INDICES, data=indices)
-        f.create_dataset(keys.PHAGE_VEC_INFO, data=phage_info)
-        f.create_dataset(keys.HOST_VEC_INFO, data=host_info)
-
-    # Save CL (Labels)
-    logger.info(f"💾 Writing Label file (CL) to {cl_file}...")
-    with h5py.File(cl_file, "w") as f:
-        f.create_dataset(keys.PAIR_INT, data=labels)
-
-    logger.info(f"✅ Training data split complete: {num_samples} samples.")
+    x_file, cl_file = writer.write(payload, phage_info, host_info)
+    logger.info(f"✅ Created training set: {x_file.name} and {cl_file.name}")
 
 
 def main():
@@ -131,9 +129,9 @@ def main():
     parser.add_argument(
         "-f", "--filename", required=True, help="Base filename (e.g., 'train_data_v1')"
     )
-    parser.add_argument("--phage_table", default="phage_variants_v1")
-    parser.add_argument("--host_table", default="bacteria_variants_v1")
-    parser.add_argument("--serotype_table", default="bacteria_serotypes_v1")
+    parser.add_argument("--phage_table", required=True)
+    parser.add_argument("--host_table", required=True)
+    parser.add_argument("--serotype_table", required=True)
 
     args = parser.parse_args()
 

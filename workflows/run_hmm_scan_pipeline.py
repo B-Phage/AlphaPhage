@@ -9,10 +9,13 @@ import hashlib
 from functools import partial
 from pathlib import Path
 
+import utils.consol_log as log
 from hmm.api import run_hmm_scan_on_file
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config  # YAML loader
 from utils.hash import compute_combined_code_version, create_manifest
+
+logger = log.get_logger()
 
 
 # -----------------------------
@@ -109,13 +112,13 @@ def main(argv: list[str] | None = None) -> None:
     # -----------------------------
     # Resolve input proteins
     # -----------------------------
-    print(f"Protein directory: {protein_dir}")
+    logger.info(f"Protein directory: {protein_dir}")
     if gen_cfg.lst_genomes:
         protein_files = [protein_dir / f"{g}.fa" for g in gen_cfg.lst_genomes]
     else:
         protein_files = sorted(protein_dir.glob("*.fa"))
 
-    print(f"Protein files: {protein_files}")
+    logger.info(f"Protein files: {protein_files}")
 
     # -----------------------------
     # Create pickleable worker/output using functools.partial

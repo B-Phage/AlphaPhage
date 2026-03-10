@@ -26,7 +26,6 @@ class Orchestrator:
         workflow_name: str,
         hash_store_dir: Path = Path("ml_assets/data/workflow/hashes"),
         logger_name: Optional[str] = None,
-        log_level=log.INFO,
     ):
         self.workflow_name = workflow_name
         self.hash_store = Path(hash_store_dir) / f"{workflow_name}.json"
@@ -36,7 +35,6 @@ class Orchestrator:
 
         # Setup logger
         self.logger = log.get_logger(
-            level=log_level,
             name=logger_name if logger_name else f"orchestrator.{workflow_name}",
         )
 

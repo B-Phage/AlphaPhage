@@ -7,7 +7,10 @@ to separate output files for DVC.
 import argparse
 from pathlib import Path
 
+import utils.consol_log as log
 from utils.hash import hash_file, hash_package
+
+logger = log.get_logger()
 
 
 def hash_path(path: Path) -> str:
@@ -46,7 +49,7 @@ def main():
         name = path.stem if path.is_file() else path.name
         hash_file = output_dir / f"{name}.hash"
         hash_file.write_text(h)
-        print(f"Hashed {path} -> {hash_file} ({h[:8]}...)")
+        logger.info(f"Hashed {path} -> {hash_file} ({h[:8]}...)")
 
 
 if __name__ == "__main__":

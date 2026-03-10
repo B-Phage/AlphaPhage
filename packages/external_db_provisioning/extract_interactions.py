@@ -4,8 +4,11 @@ from pathlib import Path
 from typing import List
 
 import pandas as pd
+import utils.consol_log as log
 from storage_io.duckdb_client import DuckDBClient
 from utils.config_loader import get_config
+
+logger = log.get_logger()
 
 
 def extract_interaction_matrix(
@@ -35,7 +38,7 @@ def extract_interaction_matrix(
         long_df = client.execute(query).df()
 
     if long_df.empty:
-        print(f"⚠️ Warning: No data found for sources: {selected_sources}")
+        logger.info(f"⚠️ Warning: No data found for sources: {selected_sources}")
         return
 
     # 2. Pivot to Wide Format (Index = Bacteria/host, Columns = Phage)
@@ -46,8 +49,8 @@ def extract_interaction_matrix(
 
     # 4. Save to TSV
     matrix_df.to_csv(output_tsv, sep="\t")
-    print(f"✅ Interaction matrix saved to {output_tsv}")
-    print(f"📊 Dimensions: {matrix_df.shape[0]} hosts x {matrix_df.shape[1]} phages")
+    logger.info(f"✅ Interaction matrix saved to {output_tsv}")
+    logger.info(f"📊 Dimensions: {matrix_df.shape[0]} hosts x {matrix_df.shape[1]} phages")
 
 
 def _parse_list_input(input_val):

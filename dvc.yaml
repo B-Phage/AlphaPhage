@@ -474,13 +474,16 @@ stages:
       -d ${storage.feature_db}
       -o ${storage.training_data_dir}
       -f ${storage.training_data_name}
+      --phage_table ${features.phage.table_name}
+      --host_table ${features.bacteria.table_name}
+      --serotype_table ${features.serotype.table_name}
       '
     deps:
       - ${data_intake.output_matrix}
       - ${storage.feature_db}_phage_manifest.json
       - ${storage.feature_db}_bacteria_manifest.json
       - ${storage.feature_db}_serotypes.json
-      - ml_assets/data/artifacts/code_hashes/build_model_data.hash
+      - ml_assets/data/artifacts/code_hashes/representation.hash
       - ml_assets/data/artifacts/code_hashes/data_contracts.hash
     outs:
       - ${storage.training_data_dir} :
@@ -518,6 +521,7 @@ stages:
       '
     deps:
       - ml_assets/config/train_v0.0.1.yaml
+      - ${storage.training_data_dir}
     outs:
       - ${experiment_tracker_dir}_manifest.json
       - ${experiment_tracker_dir}:
