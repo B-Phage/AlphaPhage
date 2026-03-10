@@ -80,7 +80,8 @@ def get_variant_outputs(input_path: Path, output_dir: Path) -> list[Path]:
     Maps an input MSA file to its expected .mva and .mcd output paths.
     """
     hmm_name = input_path.stem
-    return [output_dir / f"{hmm_name}.mva", output_dir / f"{hmm_name}.mcd"]
+    # The Orchestrator expects a list of expected files
+    return [output_dir / f"{hmm_name}.parquet"]
 
 
 # -----------------------------------------------------------------------------
@@ -145,10 +146,11 @@ def run_variant_workflow(config_path: str, code_hash, force: bool = False):
         wipe_dirs=[output_dir],
     )
 
-    # Generate manifest of the primary variant files (.mva)
-    variant_results = list(output_dir.glob("*.mva"))
+    # Generate manifest of the parquet shards
+    variant_results = list(output_dir.glob("*.parquet"))
     MANIFEST_FILE = output_dir.parent / f"{var_cfg.msa_cluster_name}_manifest.json"
     create_manifest(variant_results, MANIFEST_FILE)
+    logger.info(f"✅ Created manifest with {len(variant_results)} shards.")
 
 
 def main(argv=None):

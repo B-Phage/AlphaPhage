@@ -1,9 +1,12 @@
-import os
 import shutil
 from pathlib import Path
 
+import pandas as pd
 import pytest
+import utils.consol_log as log
 import yaml
+
+logger = log.get_logger()
 
 from workflows.create_msa_variants import run_variant_workflow
 
@@ -58,11 +61,15 @@ def setup_test_env(tmp_path):
 
 def test_variant_workflow_end_to_end(setup_test_env, monkeypatch):
     """
-    Tests the full pipeline from .csa inputs to .mva/.mcd outputs.
+    Tests the full pipeline from .csa inputs to .parquet shard outputs.
     """
+    # Use an absolute path for the hash store to avoid permission issues in temp dirs
+    hash_path = Path(setup_test_env["config"]).parent / "hashes"
+    hash_path.mkdir(exist_ok=True)
+
     monkeypatch.setattr(
         "workflows.create_msa_variants.HASH_STORE_DIR",
-        Path(setup_test_env["config"]).parent / "hashes",
+        hash_path,
     )
 
     # Execute workflow
@@ -73,16 +80,18 @@ def test_variant_workflow_end_to_end(setup_test_env, monkeypatch):
     # --- Assertions ---
     out_dir = setup_test_env["output_dir"]
 
-    # 1. Check if files exist for both inputs
+    # 1. Check if parquet shards exist for both inputs
     for phrog in ["phrog_1", "phrog_2"]:
-        assert (out_dir / f"{phrog}.mva").exists(), f"MVA file for {phrog} missing"
-        assert (out_dir / f"{phrog}.mcd").exists(), f"MCD file for {phrog} missing"
+        shard_file = out_dir / f"{phrog}.parquet"
+        assert shard_file.exists(), f"Parquet shard for {phrog} missing in {out_dir}"
 
     # 2. Verify manifest creation
     assert setup_test_env["manifest"].exists(), "Manifest file was not created"
 
-    # 3. Check content validity (non-empty files)
-    with open(out_dir / "phrog_1.mva", "r") as f:
-        content = f.read()
-        assert len(content) > 0
-        assert "phrog_1" in content or "," in content  # Basic CSV check
+    # 3. Check content validity (Parquet files are binary, so we check if they are readable)
+    # Using pandas to read the shard back
+    df = pd.read_parquet(out_dir / "phrog_1.parquet")
+    assert not df.empty
+    assert "organism_id" in df.columns
+    assert "variant_id" in df.columns
+    assert (df["hmm_id"] == "phrog_1").all()
