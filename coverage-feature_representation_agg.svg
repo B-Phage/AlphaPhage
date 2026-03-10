@@ -8,11 +8,11 @@
     </mask>
     <g mask="url(#a)">
       <rect width="240" height="20" fill="#555"/>
-      <rect x="240" width="32" height="20" fill="yellow"/>
+      <rect x="240" width="32" height="20" fill="green"/>
       <rect width="272" height="20" fill="url(#b)"/>
     </g>
     <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
       <text x="120.0" y="14.0">coverage feature_representation_agg</text>
-      <text x="256.0" y="14.0">85%</text>
+      <text x="256.0" y="14.0">99%</text>
     </g>
 </svg>
