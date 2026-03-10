@@ -64,3 +64,7 @@ All production code is located within the `packages/` directory. Each package co
 | `packages/utils` | **Core Utilities:** Common code for logging, file handling, and shared data structures. | [Read Package README](packages/utils/README_utils.md) |
 | `packages/hmm` | **Preprocessing:** Handles the annotation of protein sets using HMM matching. | [Read Package README](packages/preprocessing/README_hmm.md) |
 | *(... and so on for the rest of our packages)* | | |
+
+## 📊 Pipeline Visualisation:
+A visual representation of our 500-line DVC DAG can be found in
+**[docs/PIPELINE.md](docs/PIPELINE.md)**
