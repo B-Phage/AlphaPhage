@@ -12,8 +12,8 @@ def write_variant_shard(df: pd.DataFrame, out_path: Path) -> None:
     Uses generic storage_io utilities to enforce the variant data contract.
     """
     # 1. Domain Logic: Ensure IDs are present
-    if "organism_id" not in df.columns or "protein_id" not in df.columns:
-        raise ValueError("Variant dataframe must contain 'organism_id' and 'protein_id'")
+    if "organism_id" not in df.columns or "hmm_id" not in df.columns:
+        raise ValueError("Variant dataframe must contain 'organism_id' and 'hmm_id'")
 
     # 2. Infrastructure: Enforce the schema defined in data_contracts
     df = enforce_schema(df, VARIANT_LAKE_SCHEMA)

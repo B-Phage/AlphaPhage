@@ -1,0 +1,5 @@
+outs:
+- md5: 10822980e918db0ba485afb62707a5eb
+  size: 10760192
+  hash: md5
+  path: interactions_v1.duckdb

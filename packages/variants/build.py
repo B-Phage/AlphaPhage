@@ -1,7 +1,9 @@
 import argparse
 import os
+import pathlib
 from typing import Optional
 
+import pandas as pd
 from omegaconf import DictConfig
 from representation.align_table import process_msa_table
 from utils.config_loader import get_vocab
@@ -12,6 +14,9 @@ from variants.preprocessing_methods import split_names_diversity, standardize_fr
 logger = get_logger()
 
 
+from variants.variant_lake_writer import write_variant_shard
+
+
 def build_variants(
     in_file: str,
     msa_cluster_dir: str,
@@ -20,62 +25,28 @@ def build_variants(
     num_clusters: int = 16,
     matrix: str = "identity",
 ):
-    """Processes a Multiple Sequence Alignment (MSA) to generate cluster features.
-
-    This function reads an MSA file, standardizes the characters based on a
-    provided vocabulary, applies an optional dimensionality reduction to the
-    alignment columns, and performs hierarchical clustering. The results are
-    saved as two CSV files: a variant table (.mva) and a metadata/info
-    table (.mcd).
-
-    Args:
-        in_file: Path to the input MSA file (e.g., .fasta or .aln).
-        msa_cluster_dir: Directory where the output .mva and .mcd files
-            will be saved.
-        vocab: A configuration object containing 'filler_char' and
-            'vocab_clusters_single' encoding maps.
-        reduction_method: The method used to subset MSA columns.
-            Supported value is currently 'diversity'. If None, all
-            columns are used.
-        num_clusters: The fixed number of clusters to generate.
-            Defaults to 16.
-        matrix: The distance metric used for clustering. Common options
-            include 'identity' or 'blosum62'. Defaults to 'identity'.
-
-    Returns:
-        None: The function writes outputs directly to disk and logs progress.
-
-    Raises:
-        OSError: If the input file cannot be read or the output directory
-            cannot be created.
-        ValueError: If the MSA contains fewer sequences than `num_clusters`.
-    """
     os.makedirs(msa_cluster_dir, exist_ok=True)
 
-    # File path logic
-    hmm_name = os.path.basename(in_file)
-    hmm, _ = os.path.splitext(hmm_name)
-    out_mva = os.path.join(msa_cluster_dir, f"{hmm}.mva")
-    out_mcd = os.path.join(msa_cluster_dir, f"{hmm}.mcd")
+    # 1. Extract Metadata from filename
+    hmm_id = pathlib.Path(in_file).stem
+    out_parquet = os.path.join(msa_cluster_dir, f"{hmm_id}.parquet")
 
-    logger.info(f"Processing {in_file} | Matrix: {matrix} | Reduction: {reduction_method}")
+    logger.info(f"Processing {hmm_id} | Matrix: {matrix}")
 
-    # Read and standardize MSA
+    # 2. Existing processing logic (unchanged)
     df = process_msa_table(in_file, vocab=vocab)
     df, _ = standardize_frame_chars(df, filler_char=vocab.filler_char)
     genomes = list(df.index)
 
-    # Column selection (formerly reduction_methods list logic)
     if reduction_method == "diversity":
-        # Assuming split_names_diversity returns a list of lists,
-        # we take the first set of columns for a single execution.
         lst_columns = split_names_diversity(df)
         columns_subset = lst_columns[0] if lst_columns else list(df.columns)
     else:
         columns_subset = list(df.columns)
 
-    # Run clustering
-    df_clusters, df_cluster_info = build_cluster_feature_table(
+    # 3. Generate Clustering
+    # df_clusters: index is organism, columns are the variant assignments
+    df_clusters, _ = build_cluster_feature_table(
         df=df,
         genomes=genomes,
         columns_subset=columns_subset,
@@ -83,11 +54,26 @@ def build_variants(
         matrix=matrix,
         vocab_dict=vocab.vocab_clusters_single,
     )
+    variant_assignments = df_clusters.index.tolist()
 
-    # Save outputs
-    df_clusters.to_csv(out_mva, sep=",", index=True, header=True)
-    df_cluster_info.to_csv(out_mcd, sep=",", index=True, header=True)
-    logger.info(f"Clustering complete. Results saved to {msa_cluster_dir}")
+    red_method = reduction_method if reduction_method else "none"
+    clustering_version = f"red-{red_method}_clusters-{num_clusters}_mat-{matrix}"
+
+    shard_df = pd.DataFrame(
+        {
+            "organism_id": genomes,
+            "variant_id": variant_assignments,
+            "hmm_id": hmm_id,
+            "clustering_version": clustering_version,
+        }
+    )
+
+    # 5. Save to Lake
+    write_variant_shard(shard_df, pathlib.Path(out_parquet))
+    # Useful for debugging here because parquets are not human readable
+    # Save to a temporary CSV in the current directory
+    # shard_df.to_csv("debug_shard.csv", index=False)
+    logger.info(f"Shard saved: {out_parquet}")
 
 
 def cli():

@@ -16,6 +16,6 @@ dependencies = []
 
 [tool.setuptools]
 # Add your new filename (without the .py extension) to this list
-py-modules = ["varaints_build", "variants"]
+py-modules = ["varaints_build", "variants", "distance", "build", "variants_lake_writer", "clustering"]
 
 # we use the root level pyproject.toml black and isort

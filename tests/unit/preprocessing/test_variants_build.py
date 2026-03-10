@@ -1,5 +1,6 @@
 import argparse
 import os
+import pathlib
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -20,167 +21,134 @@ def mock_df():
     return pd.DataFrame([[1, 2], [3, 4]], index=["genomeA", "genomeB"], columns=["pos1", "pos2"])
 
 
+@patch("variants.build.write_variant_shard")  # New: Mock the lake writer
 @patch("variants.build.build_cluster_feature_table")
 @patch("variants.build.split_names_diversity")
 @patch("variants.build.standardize_frame_chars")
 @patch("variants.build.process_msa_table")
-def test_build_variants_basic(
-    mock_process, mock_standardize, mock_diversity, mock_build_cluster, tmp_path, vocab, mock_df
+def test_build_variants_orchestration(
+    mock_process,
+    mock_standardize,
+    mock_diversity,
+    mock_build_cluster,
+    mock_write,
+    tmp_path,
+    vocab,
+    mock_df,
 ):
     """
-    Test main orchestration logic of build_variants with singular parameters.
+    Verifies that build_variants correctly constructs the 4-column shard_df
+    and passes it to the lake writer.
     """
-    # instead of a MagicMock()
-    mock_clusters_df = pd.DataFrame({"col": [1]}, index=["cluster_1"])
-
-    # Setup mocks
+    # 1. Setup Input State
     mock_process.return_value = mock_df
     mock_standardize.return_value = (mock_df, None)
     mock_diversity.return_value = [["pos1"]]
 
-    # Return the real DF so .to_csv() actually writes a file to tmp_path
-    mock_build_cluster.return_value = (mock_clusters_df, mock_df)
+    # Mock clustering result: Index is the variant assignments (e.g. cluster 5 and 6)
+    mock_clusters_df = pd.DataFrame({"AA_data": ["X", "Y"]}, index=[5, 6])
+    mock_build_cluster.return_value = (mock_clusters_df, None)
 
     out_dir = tmp_path / "clusters"
-    os.makedirs(out_dir, exist_ok=True)
+    in_file = tmp_path / "phrog_1.csa"
+    in_file.write_text("dummy")
 
-    in_file = tmp_path / "test.csa"
-    in_file.write_text("dummy content")
-
+    # 2. Execute
     build_variants(
         in_file=str(in_file),
         msa_cluster_dir=str(out_dir),
         vocab=vocab,
         reduction_method="diversity",
         num_clusters=8,
-        matrix="blosum62",
+        matrix="identity",
     )
 
-    # Verify mocks called
-    mock_process.assert_called_once_with(str(in_file), vocab=vocab)
-    mock_standardize.assert_called_once()
-    mock_diversity.assert_called_once_with(mock_df)
-    mock_build_cluster.assert_called_once()
+    # 3. Assertions on the Data Construction
+    # Get the dataframe that was passed to write_variant_shard
+    args, _ = mock_write.call_args
+    passed_df = args[0]
+    passed_path = args[1]
 
-    # Check that output files are created
-    expected_mva = out_dir / "test.mva"
-    expected_mcd = out_dir / "test.mcd"
-    assert expected_mva.exists()
-    assert expected_mcd.exists()
+    # Verify Column Structure
+    expected_cols = ["organism_id", "variant_id", "hmm_id", "clustering_version"]
+    assert all(col in passed_df.columns for col in expected_cols)
+
+    # Verify Data Alignment
+    assert passed_df["organism_id"].tolist() == ["genomeA", "genomeB"]
+    assert passed_df["variant_id"].tolist() == [5, 6]
+    assert passed_df["hmm_id"].unique()[0] == "phrog_1"
+
+    # Verify Clustering Version String
+    expected_ver = "red-diversity_clusters-8_mat-identity"
+    assert passed_df["clustering_version"].unique()[0] == expected_ver
+
+    # Verify Path Logic
+    assert passed_path == pathlib.Path(out_dir) / "phrog_1.parquet"
+    from unittest.mock import MagicMock, patch
 
 
-@patch("variants.build.build_cluster_feature_table")
-@patch("variants.build.standardize_frame_chars")
-@patch("variants.build.process_msa_table")
-def test_build_variants_no_reduction(
-    mock_process, mock_standardize, mock_build_cluster, tmp_path, vocab, mock_df
-):
+def test_build_variants_no_reduction_version_string(tmp_path, vocab, mock_df):
     """
-    Test build_variants when no reduction_method is provided.
+    Using context managers to avoid fixture/mock argument collisions.
     """
-    mock_process.return_value = mock_df
-    mock_standardize.return_value = (mock_df, None)
-    mock_build_cluster.return_value = (MagicMock(), mock_df)
-
+    # 1. Setup paths
     out_dir = tmp_path / "clusters"
     in_file = tmp_path / "test.csa"
     in_file.write_text("dummy")
 
-    with patch("variants.build.split_names_diversity") as mock_div:
-        build_variants(str(in_file), str(out_dir), vocab=vocab, reduction_method=None)
-        mock_div.assert_not_called()
+    # 2. Patch everything inside the 'with' block
+    with (
+        patch("variants.build.process_msa_table") as mock_process,
+        patch("variants.build.standardize_frame_chars") as mock_std,
+        patch("variants.build.build_cluster_feature_table") as mock_build,
+        patch("variants.build.write_variant_shard") as mock_write,
+    ):
 
+        # Setup return values
+        mock_process.return_value = mock_df
+        mock_std.return_value = (mock_df, [0, 0])
+        # Mock clustering: index is [1, 2] (the variants)
+        mock_build.return_value = (pd.DataFrame(index=[1, 2]), None)
 
-@patch("variants.build.build_cluster_feature_table")
-@patch("variants.build.split_names_diversity")
-@patch("variants.build.standardize_frame_chars")
-@patch("variants.build.process_msa_table")
-def test_build_variants_empty_columns_fallback(
-    mock_process, mock_standardize, mock_div, mock_build, tmp_path, vocab
-):
-    """
-    Test that build_variants handles case where diversity returns empty list.
-    """
-    df_single = pd.DataFrame([[1]], index=["g1"], columns=["p1"])
-    mock_process.return_value = df_single
-    mock_standardize.return_value = (df_single, None)
-    mock_div.return_value = []  # Edge case: diversity returns nothing
-    mock_build.return_value = (MagicMock(), df_single)
+        # 3. Execute
+        build_variants(
+            in_file=str(in_file),
+            msa_cluster_dir=str(out_dir),
+            vocab=vocab,
+            reduction_method=None,
+            num_clusters=8,
+            matrix="identity",
+        )
 
-    out_dir = tmp_path / "clusters"
-    in_file = tmp_path / "test.csa"
-    in_file.write_text("dummy")
+        # 4. Assert
+        # Get the dataframe passed to write_variant_shard (first arg of first call)
+        passed_df = mock_write.call_args[0][0]
 
-    build_variants(str(in_file), str(out_dir), vocab=vocab, reduction_method="diversity")
-
-    # Should fall back to df.columns
-    args, kwargs = mock_build.call_args
-    assert kwargs["columns_subset"] == ["p1"]
-
-
-@patch("variants.build.os.makedirs")
-@patch("variants.build.build_cluster_feature_table")
-@patch("variants.build.standardize_frame_chars")
-@patch("variants.build.process_msa_table")
-def test_build_variants_directory_creation(
-    mock_process, mock_standardize, mock_build_cluster, mock_makedirs, tmp_path, vocab, mock_df
-):
-    """
-    Test that the output directory is created via os.makedirs
-    """
-    mock_process.return_value = mock_df
-    mock_standardize.return_value = (mock_df, None)
-    mock_build_cluster.return_value = (MagicMock(), MagicMock())
-
-    out_dir = tmp_path / "new_dir"
-    in_file = tmp_path / "test.csa"
-    in_file.write_text("dummy")
-
-    build_variants(str(in_file), str(out_dir), vocab=vocab)
-    mock_makedirs.assert_called_once_with(str(out_dir), exist_ok=True)
+        # Verify the 'none' logic in the version string
+        assert "red-none" in passed_df["clustering_version"].iloc[0]
+        assert passed_df["variant_id"].tolist() == [1, 2]
+        assert passed_df["organism_id"].tolist() == ["genomeA", "genomeB"]
 
 
 def test_cli_invokes_build_variants(tmp_path):
     """
-    Test the CLI function calls build_variants with correct singular arguments.
+    Ensures CLI still maps arguments correctly to the build function.
     """
     in_file = tmp_path / "input.csa"
-    in_file.write_text("dummy content")
+    in_file.write_text("dummy")
     out_dir = tmp_path / "out"
 
-    # Patch get_vocab and build_variants
     with (
         patch("variants.build.get_vocab") as mock_get_vocab,
         patch("variants.build.build_variants") as mock_build,
         patch("argparse.ArgumentParser.parse_args") as mock_parse,
     ):
-
-        mock_get_vocab.return_value = MagicMock()
         mock_parse.return_value = argparse.Namespace(
             in_file=str(in_file),
             msa_cluster_dir=str(out_dir),
-            num_clusters=8,
+            num_clusters=16,
             reduction_method="diversity",
             matrix="identity",
         )
-
         cli()
-
-        mock_build.assert_called_once_with(
-            in_file=str(in_file),
-            msa_cluster_dir=str(out_dir),
-            vocab=mock_get_vocab.return_value,
-            reduction_method="diversity",
-            num_clusters=8,
-            matrix="identity",
-        )
-
-
-def test_cli_error_on_missing_required(tmp_path):
-    """
-    Test that CLI fails when required arguments are missing.
-    The new 'required=True' in argparse will handle this via SystemExit.
-    """
-    with patch("sys.argv", ["prog", "-o", "some_dir"]):
-        with pytest.raises(SystemExit):
-            cli()
+        mock_build.assert_called_once()

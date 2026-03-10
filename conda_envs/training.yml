@@ -16,6 +16,8 @@ dependencies:
   - colorlog
   - scikit-learn
   - numpy
+  - pytables
+  - duckdb
   # ML Frameworks via Pip (Better for Lightning compatibility)
   - pip:
       - torch

@@ -4,10 +4,11 @@
 vocab:
   version: "v0.0.1"
   file: "ml_assets/vocab/vocab_v0.0.1.yaml"
+  variants_encoding: "vocab_clusters_single"
+
 
 prep:
   prodigal_file: "ml_assets/config/prodigal_v0.0.1.yaml"
-
 
 feature_engineering:
   method: "default"
@@ -25,3 +26,27 @@ phage_config:  ml_assets/config/preprocessing_phage_v1.0.0.yaml
 
 train:
   train_config: "ml_assets/config/train_v0.0.1.yaml"
+
+
+#---------------------------------------------------
+# Processing aggregation
+#---------------------------------------------------
+storage:
+  feature_db: "ml_assets/data/processed/aggregated/features.db"
+  training_data_dir: "ml_assets/data/processed/model_training"
+  training_data_name: "train_data_v1"
+
+
+# Define the "Schema" of your aggregation
+features:
+  phage:
+    table_name: "phage_variants_v1"
+    vocab_key: "vocab_clusters_single"
+    input_dir: "ml_assets/data/processed/phage/msa_var"
+  bacteria:
+    table_name: "bacteria_variants_v1"
+    vocab_key: "bacteria_tokens"
+    input_dir: "ml_assets/data/processed/bacteria/msa_var"
+  serotype:
+    table_name: "bacteria_serotypes_v1"
+    input_dir: "ml_assets/data/processed/bacteria/kaptive"

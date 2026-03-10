@@ -1,8 +1,8 @@
 self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
 
 general:
-  lst_genomes:      [] #'AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
-  code_version:     "v1.0.0"
+  lst_genomes:      ["ATCC12022", "ATCC25931", "Shigella-flexneri-2457T-2a"] #['AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
+  code_version:     "v1.0.1"
   name:             "ecoli"
 
 prodigal_config:

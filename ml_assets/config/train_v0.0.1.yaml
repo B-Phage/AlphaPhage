@@ -5,8 +5,8 @@ seed : 42
 verboselevel : "ERROR"
 debug_mode : false
 
-train_features_path : "tests/data/x_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
-train_labels_path : "tests/data/cl_Test_50_50_TOK_test_AT_cond2_aligned_test_binary_pairkey.h5"
+train_features_path : "ml_assets/data/processed/model_training/x_train_data_v1.h5"
+train_labels_path : "ml_assets/data/processed/model_training/cl_train_data_v1.h5"
 debug_features_path : ""
 debug_labels_path : ""
 
