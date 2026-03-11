@@ -113,6 +113,15 @@ class BinaryPairkeyFeatureDataset(Dataset):
         with h5py.File(self.labels_path, "r") as f_y:
             self.total_size = len(f_y["data"])
 
+        ## workers must == 0
+        self.open_h5()
+
+        # Map the datasets to the persistent file handles. workers must == 0
+        self.Ynp = self.f_y["data"]
+        self.Xh5_host = self.f_x[self.dataset_name_host]
+        self.Xh5_phage = self.f_x[self.dataset_name_phage]
+        self.pair_indices = self.f_x[self.pair_indices_name]
+
     def open_h5(self):
         """Reading an h5 file"""
         if not hasattr(self, "Ynp"):  # Lazy loading avoids opening an already opened file
@@ -121,16 +130,8 @@ class BinaryPairkeyFeatureDataset(Dataset):
 
     def __getitem__(self, idx):
         """Returns a single sample consisting of concatenated host and phage
-        features, and the label."""
-
-        self.open_h5()
-
-        if not hasattr(self, "Ynp"):  # Lazy loading avoids opening an already opened file
-            # Map the datasets to the persistent file handles (not using with..:)
-            self.Ynp = self.f_y["data"]
-            self.Xh5_host = self.f_x[self.dataset_name_host]
-            self.Xh5_phage = self.f_x[self.dataset_name_phage]
-            self.pair_indices = self.f_x[self.pair_indices_name]
+        features, and the label.
+        """
 
         ii_host, ii_phage = self.pair_indices[idx]
         data_host = self.Xh5_host[ii_host]
@@ -186,7 +187,9 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
 
         # 3. Logic for Production Prediction
         if stage == "predict":
-            self.predict_dataset = BinaryPairkeyFeatureDataset(self.cfg, features_path, labels_path)
+            self.predict_dataset = BinaryPairkeyFeatureDataset(
+                self.cfg, self.cfg.predict_features_path, self.cfg.predict_labels_path
+            )
 
     def train_dataloader(self):
         return DataLoader(
@@ -202,4 +205,12 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
             dataset=self.full_dataset,
             batch_sampler=IndexBatchSampler(self.val_idx, self.batch_size),  # Pass val indices only
             num_workers=self.cfg.num_workers,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.predict_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.cfg.num_workers,  # This should be 0 for now.
+            shuffle=False,  # Never shuffle inference
         )
