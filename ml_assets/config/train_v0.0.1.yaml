@@ -15,7 +15,7 @@ dataset_name_host : "host_vec_1"
 dataset_name_phage : "phage_vec_1"
 reader_mode : "binary_pairkey"
 architecture : "TransformerX"
-num_workers : 1
+num_workers : 0
 
 # trainer:
 experiment_tracker_method : "DVCLiveLogger"

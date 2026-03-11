@@ -130,6 +130,11 @@ class TransformerX(pl.LightningModule):
         self.log("test_acc", acc, on_epoch=True, prog_bar=True)
         return test_loss
 
+    def predict_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        return torch.softmax(logits, dim=-1)
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr)
         return optimizer
