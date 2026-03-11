@@ -25,9 +25,16 @@ jobs:
 
           - env_name: preprocessing
             env_file: conda_envs/preprocessing.yml
-            install_packages: "utils orchestration hmm storage_io setup_workflows"
+            install_packages: "utils orchestration hmm storage_io external_db_provisioning"
             cov_source: "packages,workflows"
             test_files: "tests/integration/preprocessing"
+
+
+          - env_name: kaptive3api
+            env_file: conda_envs/kaptive3api.yml
+            install_packages: "kaptive3api"
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/kaptive3api"
 
     steps:
       - name: ⬇️ Checkout Code
@@ -50,6 +57,7 @@ jobs:
       - name: 🧪 Run Tests
         shell: bash -l {0}
         run: |
+          set -e  # Fail immediately if any command fails
           export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
           export KMP_DUPLICATE_LIB_OK=TRUE
 

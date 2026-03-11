@@ -2,6 +2,8 @@
 # vocab_v0.0.1.yaml
 # exported from vocabulary.py using AlphaX/investigations/vocab_coversion.py
 
+filler_char: '_'
+
 vocab1:
   '0': 0
   ;: 0

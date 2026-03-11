@@ -18,10 +18,9 @@ def hash_file(file_path: Path, chunk_size: int = DEFAULT_CHUNK_SIZE) -> str:
     return h.hexdigest()
 
 
-# relative_to: Path | None = None, #py3.10+ only
 def file_manifest(
     files: Iterable[Path],
-    relative_to: Optional[Path] = None,
+    relative_to: Path | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> dict[str, str]:
     """
@@ -97,11 +96,10 @@ def hash_lake(lake_root: Path) -> str:
     return hash_directory(lake_root, "*.parquet")
 
 
-# relative_to: Path | None = None, #py3.10+ only
 def create_manifest(
     files: Iterable[Path],
     output_path: Path,
-    relative_to: Optional[Path] = None,
+    relative_to: Path | None = None,
 ):
     """
     Create a JSON manifest of file paths to SHA256 hashes.

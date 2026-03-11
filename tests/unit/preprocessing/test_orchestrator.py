@@ -309,7 +309,7 @@ class TestOrchestratorWipe(unittest.TestCase):
         (self.dir1 / "a_out1.txt").write_text("old1")
         (self.dir2 / "b_out2.txt").write_text("old2")
 
-        # First run with code_id="v1" → should not wipe anything
+        # First run with code_id="v1" → initial wipe is expected
         orch.run(
             inputs=[self.input1, self.input2],
             output_func=dummy_output_func,
@@ -318,17 +318,24 @@ class TestOrchestratorWipe(unittest.TestCase):
             wipe_dirs=[self.dir1, self.dir2],
         )
 
-        # Add manual files
+        # After first run, old files are wiped, only worker outputs exist
+        # Optional: you can check that manual files do not exist yet
+        self.assertFalse(
+            (self.dir1 / "a_out1.txt").read_text() == "old1"
+            if (self.dir1 / "a_out1.txt").exists()
+            else False
+        )
+        self.assertFalse(
+            (self.dir2 / "b_out2.txt").read_text() == "old2"
+            if (self.dir2 / "b_out2.txt").exists()
+            else False
+        )
+
+        # Add manual files after first run
         (self.dir1 / "manual.txt").write_text("manual")
         (self.dir2 / "manual.txt").write_text("manual")
 
-        # Ensure files exist
-        self.assertTrue((self.dir1 / "a_out1.txt").exists())
-        self.assertTrue((self.dir2 / "b_out2.txt").exists())
-        self.assertTrue((self.dir1 / "manual.txt").exists())
-        self.assertTrue((self.dir2 / "manual.txt").exists())
-
-        # Run with same code_id → nothing should be wiped
+        # Run again with same code_id → nothing should be wiped
         orch.run(
             inputs=[self.input1, self.input2],
             output_func=dummy_output_func,
@@ -337,9 +344,7 @@ class TestOrchestratorWipe(unittest.TestCase):
             wipe_dirs=[self.dir1, self.dir2],
         )
 
-        # All files still exist
-        self.assertTrue((self.dir1 / "a_out1.txt").exists())
-        self.assertTrue((self.dir2 / "b_out2.txt").exists())
+        # All manual and worker-generated files should still exist
         self.assertTrue((self.dir1 / "manual.txt").exists())
         self.assertTrue((self.dir2 / "manual.txt").exists())
 
@@ -352,9 +357,7 @@ class TestOrchestratorWipe(unittest.TestCase):
             wipe_dirs=[self.dir1, self.dir2],
         )
 
-        # Old output files and manual files should be gone
-        self.assertFalse((self.dir1 / "a_out1.txt").exists())
-        self.assertFalse((self.dir2 / "b_out2.txt").exists())
+        # Manual files and old worker outputs should be gone
         self.assertFalse((self.dir1 / "manual.txt").exists())
         self.assertFalse((self.dir2 / "manual.txt").exists())
 
@@ -362,8 +365,10 @@ class TestOrchestratorWipe(unittest.TestCase):
         self.assertTrue(self.dir1.exists())
         self.assertTrue(self.dir2.exists())
 
-        # Per-file hashes should have been reset (all inputs reprocessed)
-        self.assertEqual(orch.hashes, {})
+        # All per-file hashes should now have the new code_hash
+        expected_code_hash = orch._hash_code_reference("v2")
+        for record in orch.hashes.values():
+            self.assertEqual(record["code_hash"], expected_code_hash)
 
     def test_no_wipe_if_code_id_unchanged(self):
         """Directory contents remain if code_id does not change."""

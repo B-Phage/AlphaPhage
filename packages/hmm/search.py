@@ -121,10 +121,10 @@ def run_hmm_search(
 
     # Rank by score for domains and genes
     df_results["top_hmm_domain_hit_on_prot"] = df_results.groupby(  # was 'top_domain_hit' in RnD
-        "hmm_domain_name"
+        "protein_name"
     )["score"].rank(method="first", ascending=False)
     df_results["top_protein_match_for_hmm"] = df_results.groupby(  # was 'top_gene_hit' in RnD
-        "protein_name"
+        "hmm_domain_name"
     )["score"].rank(method="first", ascending=False)
 
     return df_results

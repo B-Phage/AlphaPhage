@@ -512,7 +512,7 @@ def test_get_distinct_hmms_basic(tmp_path: Path):
 
     create_test_hmm_table(db_path, table_name, data)
 
-    hmms = get_distinct_hmms(db_path, table_name)
+    hmms = get_distinct_hmms(db_path, table_name, min_copies=1)
     assert hmms == ["hmmA", "hmmB", "hmmC"]  # should be sorted
 
 

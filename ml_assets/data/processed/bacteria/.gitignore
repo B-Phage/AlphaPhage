@@ -6,5 +6,7 @@
 /msa_csa_manifest.json
 /proteins_manifest.json
 /hmm_scan_lake_manifest.json
+/msa_var/*
+/msa_var
 /kaptive_manifest.json
 /kaptive
