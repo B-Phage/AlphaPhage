@@ -25,6 +25,7 @@ def build_variants(
     num_clusters: int = 16,
     matrix: str = "identity",
 ):
+    msa_cluster_dir = str(msa_cluster_dir)
     os.makedirs(msa_cluster_dir, exist_ok=True)
 
     # 1. Extract Metadata from filename

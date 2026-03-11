@@ -181,6 +181,33 @@ class TestBinaryPairkeyDataModule(unittest.TestCase):
         self.assertIsInstance(v_loader, torch.utils.data.DataLoader)
         self.assertEqual(len(dm.val_idx), 2)  # Based on your setup of 10 samples & 0.2 fraction
 
+    def test_predict_dataloader_execution(self):
+        """Verifies the predict_dataloader returns a valid loader and handles inference settings."""
+        # 1. We must add the predict keys to cfg because the DataModule
+        # specifically looks for them in the 'predict' stage.
+        self.cfg.predict_features_path = self.feat_path
+        self.cfg.predict_labels_path = self.lab_path
+
+        dm = BinaryPairkeyDataModule(self.cfg)
+
+        # 2. Setup the predict stage specifically
+        dm.setup(stage="predict")
+
+        # 3. Call the predict_dataloader
+        p_loader = dm.predict_dataloader()
+
+        # 4. Assertions
+        self.assertIsInstance(p_loader, torch.utils.data.DataLoader)
+        self.assertEqual(p_loader.batch_size, self.cfg.batch_size)
+
+        # Verify we can actually get data out of it
+        batch_x, batch_y = next(iter(p_loader))
+        self.assertEqual(batch_x.shape[0], self.cfg.batch_size)
+
+        # Verify shuffle is False (by checking the sampler type or property)
+        # In PyTorch, a non-shuffled DataLoader uses a SequentialSampler
+        self.assertIsInstance(p_loader.sampler, torch.utils.data.SequentialSampler)
+
 
 if __name__ == "__main__":
     unittest.main()

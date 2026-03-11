@@ -129,6 +129,69 @@ class TestTransformerXLightning(unittest.TestCase):
 
         self.assertTrue(torch.equal(out_wrapper, out_internal))
 
+    def test_predict_step(self):
+        """Verifies that predict_step returns probabilities summing to 1."""
+        batch_size = 4
+        x = torch.randint(0, self.num_tokens, (batch_size, self.length_padded))
+        # predict_step expects a (x, y) tuple based on your implementation
+        y = torch.randint(0, self.vocab_size_out, (batch_size,))
+        batch = (x, y)
+
+        # 1. Execute predict_step
+        probs = self.model.predict_step(batch, 0)
+
+        # 2. Assertions on Shape
+        # Output should be (batch_size, vocab_size_out)
+        self.assertEqual(probs.shape, (batch_size, self.vocab_size_out))
+
+        # 3. Assertions on Probability Properties
+        # Softmax ensures all values are between 0 and 1
+        self.assertTrue(torch.all(probs >= 0))
+        self.assertTrue(torch.all(probs <= 1))
+
+        # Each row should sum to approximately 1.0
+        row_sums = probs.sum(dim=-1)
+        expected_sums = torch.ones(batch_size)
+        self.assertTrue(torch.allclose(row_sums, expected_sums, atol=1e-6))
+
+    def test_predict_step_outputs_different_from_logits(self):
+        """Ensures that predict_step actually applies softmax to raw logits."""
+        batch_size = 1
+        x = torch.randint(0, self.num_tokens, (batch_size, self.length_padded))
+        y = torch.zeros(batch_size)
+        batch = (x, y)
+
+        # Get raw logits via forward
+        logits = self.model(x)
+        # Get probabilities via predict_step
+        probs = self.model.predict_step(batch, 0)
+
+        # If logits are not already normalized, they shouldn't equal the softmax output
+        # (Unless by extreme coincidence, but testing for inequality is standard here)
+        self.assertFalse(torch.equal(logits, probs))
+
+    def test_predict_step_flexible_input(self):
+        """Verifies predict_step handles both (x, y) tuples and raw x tensors."""
+        batch_size = 3
+        x_input = torch.randint(0, self.num_tokens, (batch_size, self.length_padded))
+        y_label = torch.randint(0, self.vocab_size_out, (batch_size,))
+
+        # Case 1: Batch is a tuple (x, y) - Standard during testing
+        batch_tuple = (x_input, y_label)
+        probs_from_tuple = self.model.predict_step(batch_tuple, 0)
+        self.assertEqual(probs_from_tuple.shape, (batch_size, self.vocab_size_out))
+
+        # Case 2: Batch is just a tensor x - Standard during production inference
+        probs_from_raw = self.model.predict_step(x_input, 0)
+        self.assertEqual(probs_from_raw.shape, (batch_size, self.vocab_size_out))
+
+        # Verification: Both results should be identical
+        self.assertTrue(torch.equal(probs_from_tuple, probs_from_raw))
+
+        # Final check: Probabilities should sum to 1
+        row_sums = probs_from_raw.sum(dim=-1)
+        self.assertTrue(torch.allclose(row_sums, torch.ones(batch_size)))
+
 
 if __name__ == "__main__":
     unittest.main()
