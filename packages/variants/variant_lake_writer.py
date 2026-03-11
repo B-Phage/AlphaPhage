@@ -11,6 +11,8 @@ def write_variant_shard(df: pd.DataFrame, out_path: Path) -> None:
     Domain-specific writer for variant data.
     Uses generic storage_io utilities to enforce the variant data contract.
     """
+    out_path = Path(out_path)
+
     # 1. Domain Logic: Ensure IDs are present
     if "organism_id" not in df.columns or "hmm_id" not in df.columns:
         raise ValueError("Variant dataframe must contain 'organism_id' and 'hmm_id'")

@@ -1,3 +1,5 @@
+# Config for defining which interactions are used in the model training data set
+
 self_path: "ml_assets/config/interactions_v1.0.0.yaml"
 
 data_intake:

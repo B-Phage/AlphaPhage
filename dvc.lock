@@ -60,10 +60,6 @@ stages:
       hash: md5
       md5: 2c1f99639b6e7d548353ec5177700bec
       size: 857
-    - path: ml_assets/data/workflow/hashes/prodigal_phage.json
-      hash: md5
-      md5: d9cf3eda214aed0d8c8e64638f6b4e04
-      size: 31366
   hmm_scan_all_phage:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_hmm_scan_pipeline.py
@@ -101,10 +97,6 @@ stages:
       hash: md5
       md5: 7094511088c9cd89760671f1b96a6e67
       size: 600
-    - path: ml_assets/data/workflow/hashes/hmm_scan_phage.json
-      hash: md5
-      md5: aa03bd7a0c60a0c59a97be37b6088c05
-      size: 31638
   build_phage_hmm_summary:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hmm_parquet_to_summary_tbl.py
@@ -155,10 +147,6 @@ stages:
       hash: md5
       md5: dfe3cd9df2378141f978b3a8225f196e
       size: 12961
-    - path: ml_assets/data/workflow/hashes/export_phage_hmm_fastas.json
-      hash: md5
-      md5: ecac9a705cc92b35b7a08ff3792f3a0a
-      size: 634266
   code_hashes:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hash_pipeline_packages.py
@@ -171,33 +159,33 @@ stages:
     deps:
     - path: packages/data_contracts
       hash: md5
-      md5: d05b65fef9de14a973d21d1ea86ee43a.dir
+      md5: ac6275285c7e217ef3832cf18f51c6c4.dir
       size: 15457
       nfiles: 16
     - path: packages/hmm
       hash: md5
-      md5: 0190418ecbded5ed7f3782982fc5421f.dir
-      size: 221832
+      md5: 45d4c803625797634c64078b5e14dadc.dir
+      size: 221851
       nfiles: 31
     - path: packages/representation
       hash: md5
-      md5: bef7d13782cc1986f3a4d12572f8d513.dir
-      size: 89742
+      md5: 21b32745d71ac08b7f0916f72cc4a03c.dir
+      size: 89761
       nfiles: 32
     - path: packages/storage_io
       hash: md5
-      md5: 0713352dec673232a99616e9afd7060f.dir
+      md5: 2b993a5c68b475f9b13b7728ba8e117e.dir
       size: 49553
       nfiles: 14
     - path: packages/utils
       hash: md5
-      md5: a22a1d943553e144650852887c7f5cf9.dir
-      size: 241411
-      nfiles: 39
+      md5: 869da9388a8fe9f3548fc5ff56998dcd.dir
+      size: 243586
+      nfiles: 40
     - path: packages/variants
       hash: md5
-      md5: 2f7ecaae41dd35d4bd0f6e426bd553c4.dir
-      size: 91231
+      md5: e94f9578f651787450473316661a4a7f.dir
+      size: 91414
       nfiles: 28
     - path: workflows/create_msa_variants.py
       hash: md5
@@ -230,7 +218,7 @@ stages:
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: 534a29f8dfc7e25219ed00f06097652f.dir
+      md5: f81840a8c01f5659d8511d36ef9bbc34.dir
       size: 1088
       nfiles: 17
   create_phage_msas:
@@ -261,10 +249,6 @@ stages:
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
       size: 2
-    - path: ml_assets/data/workflow/hashes/msa_phage.json
-      hash: md5
-      md5: 62ff124823cb9c18a25c8eb730543cc2
-      size: 656114
   hmm_scan_all_ecoli:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_hmm_scan_pipeline.py
@@ -298,10 +282,6 @@ stages:
       hash: md5
       md5: a0024793878f83af8a471adf3fbfdc3f
       size: 490
-    - path: ml_assets/data/workflow/hashes/hmm_scan_ecoli.json
-      hash: md5
-      md5: c60b275ddcb091a07535a141ce6b6c0e
-      size: 733
   build_ecoli_hmm_summary:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/hmm_parquet_to_summary_tbl.py
@@ -352,10 +332,6 @@ stages:
       hash: md5
       md5: 80098c577514f887325f761869566631
       size: 376314
-    - path: ml_assets/data/workflow/hashes/export_ecoli_hmm_fastas.json
-      hash: md5
-      md5: c7070bca2c71d10a416a27c92ba62327
-      size: 1165359
   create_ecoli_msas:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_msas.py
@@ -388,31 +364,27 @@ stages:
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
       size: 2
-    - path: ml_assets/data/workflow/hashes/msa_ecoli.json
-      hash: md5
-      md5: 39a9ed4ad764b941589ee4e10a1443d1
-      size: 1220975
   train_model:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate training
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows && export
-      CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config ml_assets/config/train_v0.0.1.yaml
+      CUDA_VISIBLE_DEVICES=\"\" && python workflows/run_train.py --config ml_assets/runtime_configs/train.yaml
       --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash '\n"
     deps:
-    - path: ml_assets/config/train_v0.0.1.yaml
-      hash: md5
-      md5: 262661bb186a112efdfc9ce1a320d196
-      size: 912
     - path: ml_assets/data/processed/model_training
       hash: md5
       md5: 43f0b2876a6e61c113779bdc718a3512.dir
       size: 1397755
       nfiles: 10
+    - path: ml_assets/runtime_configs/train.yaml
+      hash: md5
+      md5: d20925a3738ee8ab165e2cb6863acdd7
+      size: 912
     outs:
     - path: ml_assets/data/training
       hash: md5
-      md5: f5b744f37b5d35e8ae566bfa540a2d9f.dir
-      size: 994855820
-      nfiles: 26
+      md5: 34fa69974e796afc248449647a5daeb6.dir
+      size: 2306969480
+      nfiles: 38
     - path: ml_assets/data/training_manifest.json
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
@@ -433,7 +405,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: e21bb97f235c25a57ace9cdbe6ba3fa6
+      md5: 228510b98e60cad1b57cfad55a2e70a5
       size: 64
     - path: ml_assets/data/processed/bacteria/msa_csa_manifest.json
       hash: md5
@@ -445,10 +417,6 @@ stages:
       md5: ac27d1895441035c766e621486fde808.dir
       size: 15490585
       nfiles: 4625
-    - path: ml_assets/data/workflow/hashes/variants_ecoli.json
-      hash: md5
-      md5: 398bd01f1569202bdb4d80489c6e7b14
-      size: 1200751
   create_phage_msa_vars:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/create_msa_variants.py
@@ -465,7 +433,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: e21bb97f235c25a57ace9cdbe6ba3fa6
+      md5: 228510b98e60cad1b57cfad55a2e70a5
       size: 64
     - path: ml_assets/data/processed/phage/msa_csa_manifest.json
       hash: md5
@@ -477,20 +445,12 @@ stages:
       md5: 740d669c1fd8a3f54826e5ca1ddcf49f.dir
       size: 386748
       nfiles: 120
-    - path: ml_assets/data/workflow/hashes/variants_phage.json
-      hash: md5
-      md5: 6c3d86f04415a1fd4e62c753df5811e2
-      size: 645190
   kaptive_ecoli:
     cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate kaptive3api
       && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u workflows/run_kaptive3api.py
-      --config \"ml_assets/config/kaptive3api_v0.0.1.yaml\" --code_hash ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
+      --config \"ml_assets/runtime_configs/serotype.yaml\" --code_hash ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
       '\n"
     deps:
-    - path: ml_assets/config/kaptive3api_v0.0.1.yaml
-      hash: md5
-      md5: f26da02207446fb6efe4e37ade9d4a0b
-      size: 344
     - path: ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
       hash: md5
       md5: bf54bf5a8aed517c368d94d5f11d2f89
@@ -500,6 +460,10 @@ stages:
       md5: 60057c504ffc072678d3c0f10dda058f.dir
       size: 2122447466
       nfiles: 416
+    - path: ml_assets/runtime_configs/serotype.yaml
+      hash: md5
+      md5: f26da02207446fb6efe4e37ade9d4a0b
+      size: 344
     outs:
     - path: ml_assets/data/processed/bacteria/kaptive
       hash: md5
@@ -527,12 +491,8 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: e21bb97f235c25a57ace9cdbe6ba3fa6
+      md5: 228510b98e60cad1b57cfad55a2e70a5
       size: 64
-    - path: ml_assets/data/workflow/hashes/variants_phage.json
-      hash: md5
-      md5: 6c3d86f04415a1fd4e62c753df5811e2
-      size: 645190
     outs:
     - path: ml_assets/data/processed/aggregated/features.db_phage_manifest.json
       hash: md5
@@ -556,12 +516,8 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: e21bb97f235c25a57ace9cdbe6ba3fa6
+      md5: 228510b98e60cad1b57cfad55a2e70a5
       size: 64
-    - path: ml_assets/data/workflow/hashes/variants_ecoli.json
-      hash: md5
-      md5: 398bd01f1569202bdb4d80489c6e7b14
-      size: 1200751
     outs:
     - path:
         ml_assets/data/processed/aggregated/features.db_bacteria_manifest.json
@@ -595,8 +551,8 @@ stages:
     deps:
     - path: ml_assets/config/interactions_v1.0.0.yaml
       hash: md5
-      md5: f9002842f567cc0d0206509bbb7f96f4
-      size: 647
+      md5: d3d60cc3d6ee945c3da23e1f8e1a4d31
+      size: 729
     - path: ml_assets/data/interaction_data/interactions_v1.duckdb
       hash: md5
       md5: 10822980e918db0ba485afb62707a5eb
@@ -645,3 +601,40 @@ stages:
       md5: 43f0b2876a6e61c113779bdc718a3512.dir
       size: 1397755
       nfiles: 10
+  stage_configs:
+    cmd: "bash -c 'source ~/miniforge3/etc/profile.d/conda.sh && conda activate preprocessing
+      && export PYTHONPATH=$PYTHONPATH:$(pwd)/packages && python -u packages/utils/stage_configs.py
+      --params params.yaml '\n"
+    deps:
+    - path: ml_assets/config/
+      hash: md5
+      md5: a4011af6aaae6326f3b0e4e8e7530461.dir
+      size: 10559
+      nfiles: 10
+    - path: packages/utils/stage_configs.py
+      hash: md5
+      md5: 7f7466c69e7989b848cc6f825665a386
+      size: 2175
+    params:
+      params.yaml:
+        ecoli_preprocess_conf:
+          source: ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+          runtime: ml_assets/runtime_configs/bac_preprocessing.yaml
+        interactions_conf:
+          source: ml_assets/config/interactions_v1.0.0.yaml
+          runtime: ml_assets/runtime_configs/interactions.yaml
+        phage_preprocess_conf:
+          source: ml_assets/config/preprocessing_phage_v1.0.0.yaml
+          runtime: ml_assets/runtime_configs/phage_preprocessing.yaml
+        serotype_conf:
+          source: ml_assets/config/kaptive3api_v0.0.1.yaml
+          runtime: ml_assets/runtime_configs/serotype.yaml
+        train_model_conf:
+          source: ml_assets/config/train_v0.0.1.yaml
+          runtime: ml_assets/runtime_configs/train.yaml
+    outs:
+    - path: ml_assets/runtime_configs/
+      hash: md5
+      md5: 0aac4131b21b7ee1af21aa10f9d42fa5.dir
+      size: 4883
+      nfiles: 5

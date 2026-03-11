@@ -92,7 +92,7 @@ This command will:
 ```bash
 conda activate conda_envs/<environment_name>
 ```
-Replace `<environment_name>` with preprocessing, feature_engineering, training, or inference.
+Replace `<environment_name>` with preprocessing, training, or kaptive3api.
 
 ## 3. Repository Structure
 ```
@@ -101,7 +101,6 @@ repo/
 │   ├── utils/             # Core utility functions (e.g., logging, common data manipulation).
 │   ├── orchestration/     # Custom mini-scheduler logic for sample discovery, parallel execution, and partial reruns.
 │   ├── preprocessing/     # Scripts for data cleaning and initial transformation.
-│   ├── feature_engineering/ # Logic for creating and selecting model features.
 │   ├── training/          # Model training, validation, and serialization logic.
 │   └── inference/         # Code for loading models and making predictions.
 ├── ml_assets/             # Storage for Data Version Control (DVC) tracked files.

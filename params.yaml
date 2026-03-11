@@ -7,14 +7,28 @@ vocab:
   variants_encoding: "vocab_clusters_single"
 
 
-prep:
-  prodigal_file: "ml_assets/config/prodigal_v0.0.1.yaml"
+#---------------------------------------------------
+# Config DVC Runtime Staging. Used by stage_runtime_configs()
+#---------------------------------------------------
+phage_preprocess_conf:
+  source: "ml_assets/config/preprocessing_phage_v1.0.0.yaml"
+  runtime: "ml_assets/runtime_configs/phage_preprocessing.yaml" # don't change this, hardcoded in dvc.yaml
 
-feature_engineering:
-  method: "default"
+ecoli_preprocess_conf:
+  source: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
+  runtime: "ml_assets/runtime_configs/bac_preprocessing.yaml" # don't change this, hardcoded in dvc.yaml
 
-kapsid:
-  kapsid_config: "ml_assets/config/kapsid3_config.yaml"
+serotype_conf:
+  source: "ml_assets/config/kaptive3api_v0.0.1.yaml"
+  runtime: "ml_assets/runtime_configs/serotype.yaml" # don't change this, hardcoded in dvc.yaml
+
+train_model_conf:
+  source: "ml_assets/config/train_v0.0.1.yaml"
+  runtime: "ml_assets/runtime_configs/train.yaml" # don't change this, hardcoded in dvc.yaml
+
+interactions_conf:
+  source: "ml_assets/config/interactions_v1.0.0.yaml"
+  runtime: "ml_assets/runtime_configs/interactions.yaml"
 
 model:
   name: "transformer_v3"
@@ -22,22 +36,18 @@ model:
 inference:
   batch_size: 64
 
-phage_config:  ml_assets/config/preprocessing_phage_v1.0.0.yaml
-
-train:
-  train_config: "ml_assets/config/train_v0.0.1.yaml"
-
 
 #---------------------------------------------------
 # Processing aggregation
 #---------------------------------------------------
+
 storage:
   feature_db: "ml_assets/data/processed/aggregated/features.db"
   training_data_dir: "ml_assets/data/processed/model_training"
   training_data_name: "train_data_v1"
 
 
-# Define the "Schema" of your aggregation
+# Define the "Schema" of the aggregation
 features:
   phage:
     table_name: "phage_variants_v1"

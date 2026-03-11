@@ -17,6 +17,25 @@ The pipeline follows a **Data Lake to Feature Store** pattern. Genomic sequences
 
 ---
 
+## ⚙️ Experimental Configuration (The "Control Panel")
+Before running the pipeline, you must define which configuration versions to use. This project uses a **Staging Mechanism** to decouple specific YAML versions from the static paths required by DVC.
+
+### How to Switch Versions
+To change the logic for a run (e.g., swapping a preprocessing version), update the mapping in the root `params.yaml`. **Do not** edit files in `ml_assets/runtime_configs/` directly.
+
+1.  **Edit `params.yaml`**: Update the `source` path for the relevant block.
+2.  **Execute**: Run `dvc repro`. The `stage_configs` stage will automatically sync your choice to the runtime directory.
+
+| Pipeline Stage | `params.yaml` Key | Runtime Path (Hardcoded in `dvc.yaml`) |
+| :--- | :--- | :--- |
+| **Phage Preprocessing** | `phage_preprocess_conf` | `ml_assets/runtime_configs/phage_preprocessing.yaml` |
+| **Bacterial Preprocessing** | `ecoli_preprocess_conf` | `ml_assets/runtime_configs/bac_preprocessing.yaml` |
+| **Model Training** | `train_model_conf` | `ml_assets/runtime_configs/train.yaml` |
+
+> ⚠️ **Warning**: The `runtime_configs/` directory is an automated output. Manual changes will be overwritten.
+
+---
+
 ## 🛤️ Parallel Processing Streams
 
 The pipeline splits into three primary streams to generate biological feature vectors:

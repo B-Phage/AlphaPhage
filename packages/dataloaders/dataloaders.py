@@ -10,7 +10,7 @@ import utils.consol_log as log
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, Sampler
 
-logger = log.get_logger(level=log.ERROR)
+logger = log.get_logger()
 
 
 # Runs at the beginning of each batch

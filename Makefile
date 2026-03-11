@@ -12,16 +12,13 @@ PACKAGES = utils orchestration variants hmm kaptive3api storage_io models traini
 # Mapping environment names
 ENV_PREPROCESSING = preprocessing
 ENV_KAPTIVE3API = kaptive3api
-ENV_HMM = hmmr_env
-ENV_FE = feature_engineering
 ENV_TRAINING = training
-ENV_INFERENCE = inference
 
 # Define the config file path
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) #$(ENV_FE)  $(ENV_INFERENCE)
+ENV_LIST = $(ENV_PREPROCESSING) $(ENV_TRAINING) $(ENV_KAPTIVE3API)
 
 # External Data Provisioning
 HMM_YAML := ml_assets/config/hmm_data_v0.0.1.setup.yaml
@@ -139,12 +136,6 @@ setup-storage_io:
 	$(call ensure_env,$(ENV_PREPROCESSING))
 	@echo "=== Installing storage input/output package ==="
 	conda run -n $(ENV_PREPROCESSING) pip install -e packages/storage_io
-
-.PHONY: setup-feature_engineering
-setup-feature_engineering:
-# 	$(call ensure_env,$(ENV_FE))
-	@echo "=== Installing feature_engineering package ==="
-# 	conda run -n $(ENV_FE) pip install -e packages/feature_engineering
 
 .PHONY: setup-training
 setup-training:

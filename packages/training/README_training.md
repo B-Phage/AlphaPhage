@@ -21,7 +21,7 @@ the most widely used output formats and dashboards used in modern AI.
 ### Considerations before choosing a model
 
 
-1. Alignment / Non-alignment. The feature_engineering package currently
+1. Alignment / Non-alignment. The feature engineering packages currently
 implements alignment of features through bioinformatics workflows, and primarily
 through genome annotation using profile-hidden markov models (PHMMs) - see
 preprocessing. Alignment has a strong positive impact on predictive accuracy.
