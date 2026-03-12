@@ -153,7 +153,7 @@ jobs:
         if: always() # Run even if 'Combine' failed
         run: |
           mkdir -p badges
-          BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
+          BASH_SCRIPT_PATH="packages/utils/scripts/create_badge.sh"
           chmod +x "$BASH_SCRIPT_PATH"
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
