@@ -78,7 +78,7 @@ repos:
     hooks:
       - id: update-dvc-dag
         name: Update DVC DAG Visualization
-        entry: ./tests/utils/generate_dag.sh
+        entry: ./packages/utils/scripts/generate_dag.sh
         language: script
         files: ^dvc\.yaml$
         pass_filenames: false

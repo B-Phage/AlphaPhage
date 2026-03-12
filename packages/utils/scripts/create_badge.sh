@@ -1,5 +1,6 @@
 #!/bin/bash
-# ... (rest of the script remains the same)
+# Generate a covergate badge
+# This script supports the CI documentation.
 
 LABEL_PREFIX=$1
 BRANCH_NAME=$2

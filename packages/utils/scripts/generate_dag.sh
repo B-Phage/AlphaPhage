@@ -1,5 +1,6 @@
 #!/bin/bash
-# scripts/generate_dag.sh
+# Generate the DVC pipeline DAG image.
+# This script supports automatic documentation of the docs/PIPELINE.m
 
 # 1. Check if dot (Graphviz) is installed
 if ! command -v dot &> /dev/null; then

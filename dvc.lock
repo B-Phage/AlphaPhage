@@ -180,9 +180,9 @@ stages:
       nfiles: 14
     - path: packages/utils
       hash: md5
-      md5: 86c2981ca350fd44289f77a7a8f7cf94.dir
-      size: 246214
-      nfiles: 41
+      md5: 8cbffe78cfa6c9f1d67f2e8b358e900d.dir
+      size: 255404
+      nfiles: 45
     - path: packages/variants
       hash: md5
       md5: 8a4c8c419b02f36f37ff862d48e7aed9.dir

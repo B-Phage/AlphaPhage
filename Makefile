@@ -113,10 +113,10 @@ dvc-pull:
 # =====================
 .PHONY: test test-int test-all
 test:
-	@bash tests/utils/run_all_unit_tests.sh
+	@bash tests/run_all_unit_tests.sh
 
 test-int:
-	@bash tests/utils/run_all_integration_tests.sh
+	@bash tests/run_all_integration_tests.sh
 
 test-all: test test-int
 
