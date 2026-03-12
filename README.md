@@ -11,10 +11,15 @@ This repository houses the **production-grade** implementation of our most robus
 
 We maintain a strict definition of "production-grade" code, which is enforced via Continuous Integration (CI) and code reviews. Contributions are held to the following standards:
 
-* **100% Code Coverage:** All core logic must be covered by unit and integration tests (enforced via **Unittests** and **Code Coverage** tools).
+* **Multi-Tiered Quality Assurance:**
+  - **Unit Test Level:** 100% coverage across all packages (`utils`, `models`, and the various preprocessing packages).
+  - **Integration Level:** Validation of critical "real-world" data flows and API interactions with minimal mocking.
+  - **Enforcement:** Automated via CI gatekeepers (GitHub Actions) and the `make test-all` suite.
 * **Reproducibility & Traceability:** All data pipelines, model training runs, and results must be completely **repeatable** and **versioned** (enforced via **DVC** for data/model versioning and **DVC Live** for metrics).
 * **Maintainability & Clarity:** Code must be clean, well-optimized, and thoroughly documented. This includes comprehensive **docstrings**, explanatory **code comments**, and clear documentation for the entire MLOps workflow.
 * **Seamless Deployment:** The application must be container-ready and follow a clear, standardized process for building, testing, and pushing to production environments.
+
+**Note on Coverage:** Running `make test` executes our unified test runner which aggregates coverage data across all three Conda environments (Preprocessing, Training, and Kaptive) into a single, comprehensive HTML report found in `htmlcov/`.
 
 ---
 
@@ -33,11 +38,17 @@ Follow the instructions in **[CONTRIBUTING.md](CONTRIBUTING.md)**, Section 2.3, 
 ### Checkout Code, Install Dependencies, DVC Pull & Run Pipeline
 
 ```bash
-git clone <repo>        # checkout code
+git clone <repo>
 cd <repo>
-make setup-all          # Sets up environments, packages, hooks, pulls DVC data
-make test               # Run the unit tests
-dvc repro               # Run the preprocessing and training pipeline
+# 1. Setup environments, packages, and pull DVC data
+make setup-all
+
+# 2. Run the unit tests (automatically handles env switching)
+make test
+
+# 3. Execute the pipeline (requires an active environment)
+conda activate preprocessing
+dvc repro
 ```
 ---
 
@@ -62,7 +73,8 @@ All production code is located within the `packages/` directory. Each package co
 | :--- | :--- | :--- |
 | `packages/orchestration` | **Workflow Management:** Custom mini-scheduler responsible for dynamic per-file processing, parallel execution, and state checking, called by the coarse DVC stages. | [Read Package README](packages/orchestration/README_orch.md) |
 | `packages/utils` | **Core Utilities:** Common code for logging, file handling, and shared data structures. | [Read Package README](packages/utils/README_utils.md) |
-| `packages/hmm` | **Preprocessing:** Handles the annotation of protein sets using HMM matching. | [Read Package README](packages/preprocessing/README_hmm.md) |
+| `packages/hmm` | **Preprocessing:** Handles the annotation of protein sets using HMM matching. | [Read Package README](packages/hmm/README_hmm.md) |
+| `packages/kaptive3api | Kaptive Integration: Specialized API wrapper (runs via osx-64 emulation).	| [Read Package README](packages/kaptive3api/README_kaptive3api.md) |
 | *(... and so on for the rest of our packages)* | | |
 
 ## 🚀 Execution & Reproducibility
