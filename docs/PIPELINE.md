@@ -15,16 +15,23 @@ The pipeline follows a **Data Lake to Feature Store** pattern. Genomic sequences
 * **Phenotypic Data**: Interaction labels are extracted from `ml_assets/data/interaction_data/interactions_v1.duckdb`.
 * **Remote Storage**: All raw assets are backed up to [Google Drive](https://drive.google.com/drive/folders/1pZeochptPcfzRrc_n76bh0CG-4fjqlvX). Use `dvc pull` to retrieve them.
 
+n
 ---
 
-## ⚙️ Experimental Configuration (The "Control Panel")
-Before running the pipeline, you must define which configuration versions to use. This project uses a **Staging Mechanism** to decouple specific YAML versions from the static paths required by DVC.
+## 🕹️ Experiment Control (Config Staging)
+To keep the DVC pipeline (`dvc.yaml`) static while allowing for versioned experiments, we use a **Staging Mechanism**. This decouples our immutable, versioned source configs from the ephemeral runtime paths required by the DVC DAG.
+
+### The Staging Pattern
+* **Source Configs** (`ml_assets/config/`): Immutable, versioned files (e.g., `train_v1.0.0.yaml`).
+* **Runtime Configs** (`ml_assets/runtime_configs/`): Temporary files used by the pipeline. **Never edit these manually.**
 
 ### How to Switch Versions
-To change the logic for a run (e.g., swapping a preprocessing version), update the mapping in the root `params.yaml`. **Do not** edit files in `ml_assets/runtime_configs/` directly.
+To change the logic or parameters for a run (e.g., swapping a preprocessing version), update the mapping in the root `params.yaml`:
 
-1.  **Edit `params.yaml`**: Update the `source` path for the relevant block.
-2.  **Execute**: Run `dvc repro`. The `stage_configs` stage will automatically sync your choice to the runtime directory.
+1.  **Edit `params.yaml`**: Update the `source` path for the relevant block (e.g., `v1.0.0.yaml` ➔ `v2.0.0.yaml`).
+2.  **Execute `dvc repro`**: The `stage_configs` stage will automatically:
+    * Sync your choice to the `ml_assets/runtime_configs/` directory.
+    * **Inject a `self_path` variable** into the YAML, allowing DVC stages to reference their own location via `${self_path}`.
 
 | Pipeline Stage | `params.yaml` Key | Runtime Path (Hardcoded in `dvc.yaml`) |
 | :--- | :--- | :--- |
@@ -32,7 +39,7 @@ To change the logic for a run (e.g., swapping a preprocessing version), update t
 | **Bacterial Preprocessing** | `ecoli_preprocess_conf` | `ml_assets/runtime_configs/bac_preprocessing.yaml` |
 | **Model Training** | `train_model_conf` | `ml_assets/runtime_configs/train.yaml` |
 
-> ⚠️ **Warning**: The `runtime_configs/` directory is an automated output. Manual changes will be overwritten.
+> ⚠️ **Warning**: The `runtime_configs/` directory is an automated output. Manual changes will be overwritten during the next pipeline execution.
 
 ---
 

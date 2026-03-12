@@ -86,7 +86,8 @@ stages:
     outs:
       # Use a dedicated subfolder to avoid circular dependencies
       # if runtime was inside the watched config folder
-      - ml_assets/runtime_configs/
+      - ml_assets/runtime_configs/:
+          persist: true
 
 # -----------------------------------------------------------------------------
 # Phage Preprocessing

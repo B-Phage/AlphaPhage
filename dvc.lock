@@ -179,13 +179,13 @@ stages:
       nfiles: 14
     - path: packages/utils
       hash: md5
-      md5: 869da9388a8fe9f3548fc5ff56998dcd.dir
-      size: 243586
+      md5: 2ada24390afc7dd3cdd5aff9cd22efc4.dir
+      size: 244011
       nfiles: 40
     - path: packages/variants
       hash: md5
-      md5: e94f9578f651787450473316661a4a7f.dir
-      size: 91414
+      md5: 8a4c8c419b02f36f37ff862d48e7aed9.dir
+      size: 91410
       nfiles: 28
     - path: workflows/create_msa_variants.py
       hash: md5
@@ -218,7 +218,7 @@ stages:
     outs:
     - path: ml_assets/data/artifacts/code_hashes
       hash: md5
-      md5: f81840a8c01f5659d8511d36ef9bbc34.dir
+      md5: 7e4609c706c15be473c47d9f69801887.dir
       size: 1088
       nfiles: 17
   create_phage_msas:
@@ -377,14 +377,14 @@ stages:
       nfiles: 10
     - path: ml_assets/runtime_configs/train.yaml
       hash: md5
-      md5: d20925a3738ee8ab165e2cb6863acdd7
-      size: 912
+      md5: 26f9936301708e173b4ac6faade2fdb0
+      size: 857
     outs:
     - path: ml_assets/data/training
       hash: md5
-      md5: 34fa69974e796afc248449647a5daeb6.dir
-      size: 2306969480
-      nfiles: 38
+      md5: 24b2ea296ccd1942b907570919bdabfe.dir
+      size: 2963026640
+      nfiles: 44
     - path: ml_assets/data/training_manifest.json
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
@@ -405,7 +405,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: 228510b98e60cad1b57cfad55a2e70a5
+      md5: d382b6488431c49be9ead6b768e1f509
       size: 64
     - path: ml_assets/data/processed/bacteria/msa_csa_manifest.json
       hash: md5
@@ -433,7 +433,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: 228510b98e60cad1b57cfad55a2e70a5
+      md5: d382b6488431c49be9ead6b768e1f509
       size: 64
     - path: ml_assets/data/processed/phage/msa_csa_manifest.json
       hash: md5
@@ -462,8 +462,8 @@ stages:
       nfiles: 416
     - path: ml_assets/runtime_configs/serotype.yaml
       hash: md5
-      md5: f26da02207446fb6efe4e37ade9d4a0b
-      size: 344
+      md5: f7ac03a2bd7168c02091f3f8a75b4823
+      size: 324
     outs:
     - path: ml_assets/data/processed/bacteria/kaptive
       hash: md5
@@ -491,7 +491,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: 228510b98e60cad1b57cfad55a2e70a5
+      md5: d382b6488431c49be9ead6b768e1f509
       size: 64
     outs:
     - path: ml_assets/data/processed/aggregated/features.db_phage_manifest.json
@@ -516,7 +516,7 @@ stages:
       size: 64
     - path: ml_assets/data/artifacts/code_hashes/variants.hash
       hash: md5
-      md5: 228510b98e60cad1b57cfad55a2e70a5
+      md5: d382b6488431c49be9ead6b768e1f509
       size: 64
     outs:
     - path:
@@ -613,8 +613,8 @@ stages:
       nfiles: 10
     - path: packages/utils/stage_configs.py
       hash: md5
-      md5: 7f7466c69e7989b848cc6f825665a386
-      size: 2175
+      md5: b5a30d6a32eccec610572141cc07010d
+      size: 2600
     params:
       params.yaml:
         ecoli_preprocess_conf:
@@ -635,6 +635,6 @@ stages:
     outs:
     - path: ml_assets/runtime_configs/
       hash: md5
-      md5: 0aac4131b21b7ee1af21aa10f9d42fa5.dir
-      size: 4883
+      md5: 758099e0003b9a91e20b4d174e220b1e.dir
+      size: 3866
       nfiles: 5

@@ -1,6 +1,7 @@
 import argparse
 import os
 import shutil
+from pathlib import Path
 from typing import Any, Dict
 
 import utils.consol_log as log
@@ -23,7 +24,6 @@ def stage_runtime_configs(params_path: str) -> None:
 
     # Counter for the summary
     staged_count = 0
-    ignored_keys = []
 
     # Filter and process blocks containing 'source' and 'runtime' keys
     for key, config_block in params.items():
@@ -41,18 +41,28 @@ def stage_runtime_configs(params_path: str) -> None:
                 logger.warning(f"Warning: Source file for '{key}' missing at {src}. Skipping.")
                 continue
 
-            # Create destination directory structure
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            # Load the source content
+            with open(src, "r") as f:
+                config_data = yaml.safe_load(f) or {}
 
-            logger.info(f"Staging Config: {key} | {src} -> {dst}")
-            shutil.copy2(src, dst)
-            staged_count += 1
-        else:
-            ignored_keys.append(key)
+            config_data["self_path"] = dst
+
+            # INJECTION: Set self_path to the RUNTIME path
+            # This ensures ${self_path} in dvc.yaml always resolves correctly
+            dst_path = Path(dst)
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write the "augmented" config to the runtime location
+            try:
+                with open(dst_path, "w") as f:
+                    yaml.dump(config_data, f, default_flow_style=False)
+                logger.info(f"STAGING & INJECTING: {key} | {src} -> {dst}")
+                staged_count += 1
+            except Exception as e:
+                logger.error(f"Failed to write to {dst}: {e}")
+                raise
 
     logger.info(f"Successfully staged {staged_count} config files.")
-    if ignored_keys:
-        logger.debug(f"Keys ignored (no source/runtime pattern): {', '.join(ignored_keys)}")
 
 
 def run_cli() -> None:

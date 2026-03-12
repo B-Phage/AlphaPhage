@@ -65,9 +65,12 @@ All production code is located within the `packages/` directory. Each package co
 | `packages/hmm` | **Preprocessing:** Handles the annotation of protein sets using HMM matching. | [Read Package README](packages/preprocessing/README_hmm.md) |
 | *(... and so on for the rest of our packages)* | | |
 
-## 📊 DVC Pipeline:
+## 🚀 Execution & Reproducibility
 
-A visual representation of our 500-line DVC DAG can be found in
-**[docs/PIPELINE.md](docs/PIPELINE.md)**
+AlphaPhage uses **DVC (Data Version Control)** to manage a complex, parallelised DAG.
 
-To learn how to swap model versions or preprocessing configurations, see *⚙️ Experimental Configuration* in **[docs/PIPELINE.md](docs/PIPELINE.md)**.
+* **View Pipeline Architecture**: A full visual representation of our processing streams can be found in [docs/PIPELINE.md](docs/PIPELINE.md).
+* **Run the Pipeline**: Use `dvc repro` to execute all out-of-date stages.
+* **Change Experiments**: To swap model architectures, preprocessing logic, or dataset versions, follow the [Experiment Control Guide](docs/PIPELINE.md#️-experiment-control-config-staging).
+
+> 💡 **Tip**: All experimental "switches" are managed in the root `params.yaml`. The pipeline automatically handles the staging and path injection for you.
