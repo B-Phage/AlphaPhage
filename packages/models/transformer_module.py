@@ -1,11 +1,14 @@
 """TransformerX module for training a Transformer model using PyTorch Lightning."""
 
+from typing import cast
+
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 import utils.consol_log as log
 from models.transformer_classifier import TransformerXClassifier
 from omegaconf import DictConfig, OmegaConf
+from torchmetrics.classification import BinaryRecall, BinarySpecificity
 
 logger = log.get_logger(level=log.WARNING)
 
@@ -23,6 +26,7 @@ class TransformerX(pl.LightningModule):
         length_padded: int,
         archspecs: dict,
         archspecs2: dict,
+        class_weights=None,
     ):
         super().__init__()
         self.cfg = cfg
@@ -94,27 +98,52 @@ class TransformerX(pl.LightningModule):
             length_padded=length_padded,
         )
 
+        # Register the weights so they move to GPU/CPU automatically
+        if class_weights is not None:
+            self.register_buffer("class_weights", class_weights)
+        else:
+            self.register_buffer("class_weights", None)
+
+        # Initialize metrics
+        # We use Binary versions assuming your 80/20 data is a binary classification
+        self.val_sensitivity = BinaryRecall()
+        self.val_specificity = BinarySpecificity()
+
     def forward(self, x):
         return self.model(x)  # .logits
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self.forward(x)
-        train_loss = torch.nn.functional.cross_entropy(logits, y)
+
+        # Cast self.class_weights to torch.Tensor to satisfy Pylance
+        weights = cast(torch.Tensor, self.class_weights) if self.class_weights is not None else None
+
+        train_loss = torch.nn.functional.cross_entropy(logits, y, weight=weights)
         self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return train_loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self.forward(x)
-        val_loss = torch.nn.functional.cross_entropy(logits, y)
 
-        # Calculate accuracy
+        # Cast self.class_weights to torch.Tensor to satisfy Pylance
+        weights = cast(torch.Tensor, self.class_weights) if self.class_weights is not None else None
+
+        val_loss = torch.nn.functional.cross_entropy(logits, y, weight=weights)
+
+        # Update and Log Metrics
+        # Setting prog_bar=True is what makes them appear in your terminal
         preds = torch.argmax(logits, dim=1)
         acc = (preds == y).float().mean()
+        sens = self.val_sensitivity(preds, y)
+        spec = self.val_specificity(preds, y)
 
         self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log("val_acc", acc, on_epoch=True, prog_bar=True)
+        self.log("val/sens", sens, on_epoch=True, prog_bar=True)
+        self.log("val/spec", spec, on_epoch=True, prog_bar=True)
+
         return val_loss
 
     def test_step(self, batch, batch_idx):
@@ -139,3 +168,10 @@ class TransformerX(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr)
         return optimizer
+
+    def on_save_checkpoint(self, checkpoint):
+        # Space saving override
+        # Remove the optimizer states and other heavy metadata
+        keys_to_remove = ["optimizer_states", "lr_schedulers", "loops", "callbacks"]
+        for key in keys_to_remove:
+            checkpoint.pop(key, None)

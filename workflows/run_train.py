@@ -26,6 +26,7 @@ from omegaconf import DictConfig, OmegaConf
 from orchestration.orchestrator import Orchestrator
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from training.train_utils import (
+    check_model_size,
     get_datamodule,
     get_experiment_tracker_method,
     get_model,
@@ -88,8 +89,11 @@ def run_trainer(input_path: Path, outputs: list):
         cfg.train_features_path, cfg.dataset_name_host, cfg.dataset_name_phage
     )
     datamodule = get_datamodule(cfg)
+    datamodule.setup(stage="fit")  # Required to define train_idx
+    weights = datamodule.get_class_weights()
 
-    model = get_model(cfg, num_tokens, cfg.vocab_size_out, length_padded)
+    model = get_model(cfg, num_tokens, cfg.vocab_size_out, length_padded, class_weights=weights)
+    check_model_size(model)  # Check for data leaks
 
     experiment_tracker_dir = os.path.join(output_dir, "tracker")
     experiment_tracker = get_experiment_tracker_method(cfg, experiment_tracker_dir)
@@ -105,7 +109,7 @@ def run_trainer(input_path: Path, outputs: list):
         callbacks=[checkpoint_callback, early_stop_callback],
         precision=cfg.precision,
         enable_progress_bar=True,
-        profiler="advanced",
+        profiler="advanced" if cfg.get("debug_mode", False) else None,
     )
 
     # ----------------------------------------------------

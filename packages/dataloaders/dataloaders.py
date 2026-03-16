@@ -192,6 +192,26 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
 
             self.predict_dataset = BinaryPairkeyFeatureDataset(self.cfg, p_feat, p_lab)
 
+    def get_class_weights(self):
+        # We only care about the training labels
+        with h5py.File(self.cfg.train_labels_path, "r") as f:
+            # Explicitly access the dataset object
+            dataset = f.get("data")
+            if not isinstance(dataset, h5py.Dataset):
+                raise ValueError("Dataset 'data' not found in HDF5 file.")
+
+            # Access the training indices specifically
+            # Using np.array() or [:] helps Pylance understand the return type
+            train_labels = np.array(dataset)[self.train_idx]
+
+        counts = np.bincount(train_labels)
+        total = len(train_labels)
+
+        # Formula: total_samples / (num_classes * class_count)
+        # This keeps the weights normalized around 1.0
+        weights = total / (len(counts) * counts)
+        return torch.tensor(weights, dtype=torch.float32)
+
     def train_dataloader(self):
         return DataLoader(
             dataset=self.full_dataset,

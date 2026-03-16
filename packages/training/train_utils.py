@@ -6,7 +6,7 @@ import utils.consol_log as log
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, IterableDataset
 
-logger = log.get_logger(level=log.WARNING)
+logger = log.get_logger()
 
 
 def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
@@ -72,12 +72,39 @@ def get_datamodule(cfg: DictConfig):
         raise ValueError(f"Unknown reader_mode: {cfg.reader_mode}")
 
 
-def get_model(cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int):
+def get_model(
+    cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int, class_weights=None
+):
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
         from models.transformer_archspecs import archspecs, archspecs2
         from models.transformer_module import TransformerX
 
-        return TransformerX(cfg, num_tokens, vocab_size_out, length_padded, archspecs, archspecs2)
+        return TransformerX(
+            cfg,
+            num_tokens,
+            vocab_size_out,
+            length_padded,
+            archspecs,
+            archspecs2,
+            class_weights=class_weights,
+        )
     else:
         raise ValueError(f"Unknown architecture: {cfg.architecture}")
+
+
+def check_model_size(model):
+    from sys import getsizeof
+
+    logger.warning(f"{'Name':<50} | {'Size (MB)':<10}")
+    logger.warning("-" * 65)
+
+    # Check Parameters
+    for name, param in model.named_parameters():
+        size = param.element_size() * param.nelement() / 1e6
+        logger.warning(f"{name:<50} | {size:>10.2f}")
+
+    # Check Buffers (The likely source of the 300MB)
+    for name, buffer in model.named_buffers():
+        size = buffer.element_size() * buffer.nelement() / 1e6
+        logger.warning(f"{name:<50} | {size:>10.2f}")

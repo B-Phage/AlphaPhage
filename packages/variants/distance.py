@@ -101,7 +101,9 @@ def _distance_matrix_blosum62_vectorized(alignment: Union[list[str], np.ndarray]
         return np.zeros((0, 0), dtype=np.float64)
 
     # 1. Convert to 2D numpy array of characters (if not already)
-    arr = np.asarray([list(s) for s in alignment] if isinstance(alignment, list) else alignment)
+    # 'S' is for byte-strings (ASCII), which is perfect for protein sequences.
+    # np.asarray will automatically pad shorter sequences with null bytes if they are ragged.
+    arr = np.array([list(s) for s in alignment], dtype="|S1")
     n_seqs, aln_len = arr.shape
 
     # 2. Prepare the substitution matrix and alphabet
@@ -121,12 +123,18 @@ def _distance_matrix_blosum62_vectorized(alignment: Union[list[str], np.ndarray]
     # final_lookup[gap_idx, gap_idx] = 1.0
 
     # 4. Fast Integer Mapping
-    char_to_int = np.full(256, gap_idx)  # Default everything unknown to Gap index
+    # We create a lookup table for all 256 possible ASCII byte values.
+    # We initialize it with 'gap_idx' so any weird characters default to a Gap.
+    char_to_int = np.full(256, gap_idx, dtype=np.int32)
+
+    # Fill the table: map each character in the alphabet to its position index.
     for i, char in enumerate(alphabet):
+        # ord(char) gives the ASCII integer (e.g., 'A' -> 65)
         char_to_int[ord(char)] = i
 
-    # Convert characters to integers via ASCII view
-    int_aln = char_to_int[arr.view("uint32")]
+    # NOW this line will work:
+    # We view the byte-array as integers and use them to index into char_to_int
+    int_aln = char_to_int[arr.view("uint8")]
 
     # 5. Calculate Scores (Looping over positions to save memory)
     total_scores = np.zeros((n_seqs, n_seqs), dtype=np.float64)
