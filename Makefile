@@ -145,3 +145,14 @@ snapshot:
 	python packages/utils/scripts/snapshot_inference.py \
 		--model $(MODEL) \
 		--epoch $(EPOCH)
+
+# =====================
+# Inference Run
+# =====================
+
+.PHONY: run-inference
+run-inference:
+	@$(MAKE) -C inference all SNAPSHOT=$(SNAPSHOT) QUERY_PHAGE=$(QUERY_PHAGE)
+
+.PHONY: clean-inference
+	@$(MAKE) -C inference clean
