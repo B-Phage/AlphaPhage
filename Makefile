@@ -126,3 +126,22 @@ clean:
 		echo "Removing $(env)..."; \
 		conda env remove -n $(env) -y; \
 	)
+
+# =====================
+# INFERENCE SNAPSHOT
+# =====================
+
+# Default values if not provided via command line
+MODEL ?= default_run
+EPOCH ?= 50
+NAME  ?= snapshot_$(shell date +%Y%m%d_%H%M)
+
+# e.g. usage:
+# make snapshot MODEL=default_run EPOCH=61
+.PHONY: snapshot
+snapshot:
+	@echo "🚀 Initiating snapshot for Model: $(MODEL), Epoch: $(EPOCH)"
+	PYTHONPATH=$(shell pwd)/packages conda run -n $(ENV_TRAINING) \
+	python packages/utils/scripts/snapshot_inference.py \
+		--model $(MODEL) \
+		--epoch $(EPOCH)
