@@ -2,7 +2,7 @@ self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
 
 general:
   lst_genomes:      ["ATCC12022", "ATCC25931", "Shigella-flexneri-2457T-2a"] #['AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
-  code_version:     "v1.0.1"
+  code_version:     "v1.0.2"
   name:             "ecoli"
 
 prodigal_config:
@@ -31,6 +31,6 @@ msa_config:
 
 msa_var:
   msa_variant_dir:  "ml_assets/data/processed/bacteria/msa_var"
-  msa_cluster_name: "clusters_16_reduction_false_matrix_identity"
+  msa_cluster_name: "clusters_16_reduction_false_matrix_blosum62"
   cluster_method:   16
-  dis_mat_method:   'identity' # either 'identity' or 'blosum62'
+  dis_mat_method:   'blosum62' # either 'identity' or 'blosum62'

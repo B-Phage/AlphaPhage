@@ -2,7 +2,7 @@ self_path: "ml_assets/config/preprocessing_phage_v1.0.0.yaml"
 
 general:
   lst_genomes:      ["ESh1", "ESh9", "ESh12", "ESh16"] #["409_P1", "409_P3", "409_P8"]        # optional whitelist of genomes, useful for testing
-  code_version:     "v1.0.2"
+  code_version:     "v1.0.3"
   name:             "phage"
 
 prodigal_config:
@@ -25,13 +25,12 @@ hmm_config:
 
   hmm_fasta_dir:    "ml_assets/data/processed/phage/hmm_fasta"
 
-
 msa_config:
   split_hmm_dir:    "../databases/hmm/pharokka_v1.4.0_databases/split"
   msa_csa_dir:      "ml_assets/data/processed/phage/msa_csa"
 
 msa_var:
   msa_variant_dir:  "ml_assets/data/processed/phage/msa_var"
-  msa_cluster_name: "clusters_16_reduction_false_matrix_identity"
+  msa_cluster_name: "clusters_16_reduction_false_matrix_blosum62"
   cluster_method:   16
-  dis_mat_method:   'identity' # either 'identity' or 'blosum62'
+  dis_mat_method:   'blosum62' # either 'identity' or 'blosum62'

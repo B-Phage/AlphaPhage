@@ -1,3 +1,5 @@
+export ROOT_DIR := $(strip $(CURDIR))
+
 # =====================
 # Variables
 # =====================
@@ -5,6 +7,10 @@
 ENV_PREPROC = preprocessing
 ENV_TRAINING = training
 ENV_KAPTIVE = kaptive3api
+
+
+# Then define your inference path
+INF_DATA_ROOT := $(abspath $(ROOT_DIR)/../databases/inference)
 
 # Unique environments for cleanup and hooks
 UNIQUE_ENVS = $(ENV_PREPROC) $(ENV_TRAINING) $(ENV_KAPTIVE)
@@ -146,13 +152,31 @@ snapshot:
 		--model $(MODEL) \
 		--epoch $(EPOCH)
 
+TRAIN_CONFIG = ml_assets/config/preprocessing_phage_v1.0.0.yaml
+INF_CONFIG = ml_assets/config/inference_phage.yaml
+BUFFER = 1.15
+
+# Rule to generate the config
+generate_inf_config:
+	python src/create_inference_config.py \
+		--training_config $(TRAIN_CONFIG) \
+		--output $(INF_CONFIG) \
+		--buffer $(BUFFER)
+
+
 # =====================
 # Inference Run
 # =====================
 
 .PHONY: run-inference
 run-inference:
-	@$(MAKE) -C inference all SNAPSHOT=$(SNAPSHOT) QUERY_PHAGE=$(QUERY_PHAGE)
+	@# Quick sanity check: Does the external data lake exist?
+	@if [ ! -d "$(INF_DATA_ROOT)" ]; then \
+		echo "ERROR: Inference directory not found at $(INF_DATA_ROOT)"; \
+		exit 1; \
+	fi
+	@echo ">>> Starting Inference Pipeline..."
+	@$(MAKE) -C inference all
 
 .PHONY: clean-inference
 	@$(MAKE) -C inference clean

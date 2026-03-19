@@ -10,33 +10,20 @@ import h5py
 import numpy as np
 import pandas as pd
 import utils.consol_log as log
+import yaml
 from data_contracts.h5_schema import H5DataKeys
+from omegaconf import OmegaConf
+from utils.scripts.create_inference_config import create_inference_config
 
 logger = log.get_logger()
 
-CONFIG_FILES = ["dvc.yaml", "dvc.lock", "params.yaml"]
+CONFIG_FILES = ["params.yaml"]
 TARGET_BASE_DIR = Path("../databases/inference")
 TRAINING_ROOT = Path("ml_assets/data/training")
-REFERENCE_DB = Path("ml_assets/data/processed/aggregated/features.db")
 RUNTIME_CONFIG = Path("ml_assets/runtime_configs")
 VOCAB_DIR = Path("ml_assets/vocab")
-MODEL_TRIANING_DATA = Path("/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/model_training")
-FEATURE_SET = "x_train_data_v1.h5"
-
-
-# # In your inference package/script
-# class InferenceSession:
-#     def __init__(self, snapshot_path):
-#         self.root = Path(snapshot_path)
-#         # Load the EXACT config used during that training run
-#         self.config = self._load_config(self.root / "params.yaml")
-
-#         # Load assets from the snapshot, NOT the repo root
-#         self.model_path = self.root / "model"
-#         self.cluster_ref = self.root / "clusters"
-
-#         print(f"Initialized with snapshot: {self.root.name}")
-#         print(f"Distance Metric: {self.config.get('distance_metric')}")
+MODEL_TRIANING_DATA = Path("ml_assets/data/processed/model_training")
+FEATURE_SET = "x_train_data_v1.h5"  # TODO: map this to the variable in params.yaml
 
 
 def extract_h5_info_metadata(h5_source_path: Path, output_dir: Path):
@@ -88,8 +75,33 @@ def run_cmd(cmd):
     return result.returncode, result.stdout.strip()
 
 
+def transform_to_inference_paths(cfg_dict):
+    """
+    Recursively updates paths in a config dictionary to be compatible
+    with the inference execution environment.
+    """
+    # Define our mapping rules
+    # 1. ml_assets/ -> ../../databases/inference/
+    # 2. ../databases/ -> ../../databases/
+
+    if isinstance(cfg_dict, dict):
+        return {k: transform_to_inference_paths(v) for k, v in cfg_dict.items()}
+    elif isinstance(cfg_dict, list):
+        return [transform_to_inference_paths(v) for v in cfg_dict]
+    elif isinstance(cfg_dict, str):
+        # Handle the ML Assets jump
+        if cfg_dict.startswith("ml_assets/"):
+            return cfg_dict.replace("ml_assets/", "../../databases/inference/", 1)
+
+        # Handle the Database depth adjustment (adding one level of '..')
+        if cfg_dict.startswith("../databases/"):
+            return cfg_dict.replace("../databases/", "../../databases/", 1)
+
+    return cfg_dict
+
+
 def validate_state():
-    print("🔍 Validating environment state...")
+    logger.info("🔍 Validating environment state...")
 
     # 1. Capture Git SHA
     ret_sha, sha = run_cmd("git rev-parse HEAD")
@@ -118,7 +130,7 @@ def find_checkpoint(model_name, epoch):
     return Path(matches[0])
 
 
-def snapshot(model_name, epoch):
+def snapshot(model_name, epoch, buffer_factor=1.1):
     try:
         git_sha, git_branch = validate_state()
 
@@ -138,23 +150,108 @@ def snapshot(model_name, epoch):
             shutil.rmtree(target_path)
         target_path.mkdir(parents=True)
 
-        (target_path / "model").mkdir()
-        (target_path / "reference").mkdir()
+        # Directory Setup
+        if target_path.exists():
+            shutil.rmtree(target_path)
+
+        folders = [
+            "model",
+            "config",
+            "vocab",
+            "runtime_config",
+            "reference/phage/variant_shards",
+            "reference/bac/variant_shards",
+            "reference/vector_info",
+        ]
+        for folder in folders:
+            (target_path / folder).mkdir(parents=True, exist_ok=True)
 
         # Porting Logic
         logger.info(f"📦 Copying model weights (epoch {epoch})...")
         shutil.copy2(ckpt_src, target_path / "model" / "model_weights.ckpt")
 
-        ref_snapshot_dir = target_path / "reference"
-        ref_snapshot_dir.mkdir(parents=True, exist_ok=True)
-
-        if REFERENCE_DB.exists():
-            logger.info(f"📦 Copying reference database: {REFERENCE_DB.name}")
-            # copy2 preserves file metadata (timestamps, etc.)
-            shutil.copy2(REFERENCE_DB, ref_snapshot_dir / "features.db")
-            logger.info(f"   ✅ Database ported to {ref_snapshot_dir}/features.db")
+        # copy all runtime configs
+        if RUNTIME_CONFIG.exists():
+            logger.info(f"📦 Copying specialized runtime_configs...")
+            shutil.copytree(RUNTIME_CONFIG, target_path / "runtime_config", dirs_exist_ok=True)
         else:
-            logger.error(f"❌ No reference database found at {REFERENCE_DB}")
+            logger.error(f"❌ No runtime config files exist at {RUNTIME_CONFIG}")
+
+        logger.info("📦 Archiving domain configurations...")
+        domains = ["phage", "bac"]
+        domain_params_map = {}
+
+        for domain in domains:
+            dest_cfg = target_path / "runtime_config" / f"{domain}_preprocessing.yaml"
+
+            if dest_cfg.exists():
+                # Load to drive the gallery porting
+                domain_params_map[domain] = OmegaConf.load(dest_cfg)
+            else:
+                logger.error(f"❌ Critical: {domain} config missing at {dest_cfg}")
+
+        # Port Galleries for BOTH domains
+        for domain, params in domain_params_map.items():
+            cluster_name = params.msa_var.msa_cluster_name
+            src_variant_dir = Path(params.msa_var.msa_variant_dir)
+
+            src_shards = src_variant_dir / cluster_name
+            # Store them in domain-specific subfolders inside the snapshot
+            dest_shards = target_path / "reference" / domain / "variant_shards" / cluster_name
+
+            if src_shards.exists():
+                logger.info(f"📦 Porting {domain.upper()} Gallery: {cluster_name}")
+                shutil.copytree(src_shards, dest_shards)
+            else:
+                logger.error(f"❌ {domain.upper()} Source Gallery not found: {src_shards}")
+
+        logger.info("📦 Rewiring all runtime configurations for inference...")
+        runtime_cfg_dir = target_path / "runtime_config"
+
+        # Iterate over every .yaml and .yml file in the copied runtime_config folder
+        for cfg_file in runtime_cfg_dir.glob("*.y*ml"):
+            try:
+                # 1. Load the original config using OmegaConf
+                # resolve=True ensures any ${vars} are processed before we swap paths
+                raw_cfg = OmegaConf.to_container(OmegaConf.load(cfg_file), resolve=True)
+
+                # 2. Transform the paths using our recursive function
+                inference_ready_cfg = transform_to_inference_paths(raw_cfg)
+
+                # 3. Save it back to the snapshot (overwriting the raw copy)
+                with open(cfg_file, "w") as f:
+                    yaml.dump(inference_ready_cfg, f, default_flow_style=False)
+
+                # 4. Update the map for downstream gallery porting
+                # We identify "phage" or "bac" (host) by the filename
+                for domain in ["phage", "bac"]:
+                    if domain in cfg_file.name:
+                        domain_params_map[domain] = OmegaConf.create(inference_ready_cfg)
+                        logger.info(f"   ✅ Processed & Mapped: {cfg_file.name} -> {domain}")
+                        break
+                else:
+                    logger.info(f"   ✅ Processed: {cfg_file.name}")
+
+            except Exception as e:
+                logger.error(f"   ❌ Failed to rewire {cfg_file.name}: {e}")
+
+        # Generate Unified Inference Configs
+        # We generate two inference configs (one per domain) that
+        # point to the internal snapshot paths.
+        for domain, params in domain_params_map.items():
+            inf_cfg_path = target_path / "config" / f"inference_{domain}.yaml"
+
+            # Create a localized version of the params
+            inference_params = params.copy()
+            # Redirect to the internal snapshot relative path
+            inference_params.msa_var.msa_variant_dir = f"reference/{domain}/variant_shards"
+
+            create_inference_config(
+                training_cfg=inference_params,
+                output_path=str(inf_cfg_path),
+                base_inf_dir=str(TARGET_BASE_DIR),
+                buffer_factor=buffer_factor,
+            )
 
         if VOCAB_DIR.exists():
             logger.info(f"📦 Copying vocab...")
@@ -169,12 +266,6 @@ def snapshot(model_name, epoch):
             else:
                 logger.error(f"❌ No config files exist at {cfg}")
 
-        if RUNTIME_CONFIG.exists():
-            logger.info(f"📦 Copying specialized runtime_configs...")
-            shutil.copytree(RUNTIME_CONFIG, target_path / "runtime_config", dirs_exist_ok=True)
-        else:
-            logger.error(f"❌ No runtime config files exist at {RUNTIME_CONFIG}")
-
         h5_path = MODEL_TRIANING_DATA / FEATURE_SET
         # Port Vector Info (The 'Labels')
         info_output_dir = target_path / "reference" / "vector_info"
@@ -188,6 +279,7 @@ def snapshot(model_name, epoch):
             "git_branch": git_branch,
             "training_run": model_name,
             "epoch": epoch,
+            "buffer_factor": buffer_factor,
             "created_at": datetime.now().isoformat(),
             "dvc_synced": "Verified via dvc status",
         }
