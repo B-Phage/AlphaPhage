@@ -25,6 +25,45 @@ def build_variants(
     num_clusters: int = 16,
     matrix: str = "identity",
 ):
+    """Processes an MSA file to generate clusters and writes variant shards to the lake.
+
+    This function executes the full training preprocessing pipeline for a single HMM.
+    It reads an MSA, standardizes characters, optionally reduces the feature space
+    via diversity partitioning, and performs agglomerative clustering.
+
+    The resulting assignments, along with the aligned sequences and calculated
+    cluster radii, are persisted as a Parquet shard. These shards serve as the
+    reference 'gallery' for future inference mapping.
+
+    Args:
+        in_file: Path to the input Multiple Sequence Alignment (MSA) file
+            (typically named after the HMM ID).
+        msa_cluster_dir: Directory where the resulting Parquet shards should
+            be saved.
+        vocab: Configuration object containing vocabulary mappings and
+            special characters (e.g., filler_char).
+        reduction_method: Optional method to subset MSA columns. Currently
+            supports 'diversity'. If None, the full alignment is used.
+        num_clusters: Target number of clusters to generate for the HMM.
+            Defaults to 16.
+        matrix: The distance metric used for clustering ('identity' or 'blosum62').
+            Defaults to 'identity'.
+
+    Returns:
+        None. The results are written directly to a Parquet file in
+        `msa_cluster_dir`.
+
+    Notes:
+        The output Parquet shard contains the following schema:
+        - organism_id (str): Unique identifier for the source genome.
+        - hmm_id (str): The HMM identifier associated with the protein set.
+        - variant_id (str): The tokenized cluster assignment.
+        - sequence_aligned (str): The raw aligned sequence used for the gallery.
+        - radius (float): The maximum internal distance of the cluster, used
+            for thresholding during inference mapping.
+        - clustering_version (str): Metadata string capturing the parameters
+            used for reproducibility.
+    """
     msa_cluster_dir = str(msa_cluster_dir)
     os.makedirs(msa_cluster_dir, exist_ok=True)
 
@@ -47,7 +86,7 @@ def build_variants(
 
     # 3. Generate Clustering
     # df_clusters: index is organism, columns are the variant assignments
-    df_clusters, _ = build_cluster_feature_table(
+    df_clusters, _, cluster_radii = build_cluster_feature_table(
         df=df,
         genomes=genomes,
         columns_subset=columns_subset,
@@ -57,6 +96,16 @@ def build_variants(
     )
     variant_assignments = df_clusters.index.tolist()
 
+    try:
+        # Strict lookup: If the ID isn't in the radii dict, it's a code-logic failure.
+        row_radii = [cluster_radii[v] for v in variant_assignments]
+    except KeyError as e:
+        logger.error(f"❌ Key Mismatch: Variant ID {e} not found in radii dictionary.")
+        raise
+
+    # Convert MSA dataframe back to raw strings for the "Gallery"
+    aligned_sequences = df.apply(lambda x: "".join(x), axis=1).tolist()
+
     red_method = reduction_method if reduction_method else "none"
     clustering_version = f"red-{red_method}_clusters-{num_clusters}_mat-{matrix}"
 
@@ -65,6 +114,8 @@ def build_variants(
             "organism_id": genomes,
             "variant_id": variant_assignments,
             "hmm_id": hmm_id,
+            "sequence_aligned": aligned_sequences,  # Required for distance mapping
+            "radius": row_radii,  # Required for unknown detection
             "clustering_version": clustering_version,
         }
     )
@@ -74,7 +125,7 @@ def build_variants(
     # Useful for debugging here because parquets are not human readable
     # Save to a temporary CSV in the current directory
     # shard_df.to_csv("debug_shard.csv", index=False)
-    logger.info(f"Shard saved: {out_parquet}")
+    logger.info(f"Rigorous Shard saved for {hmm_id} with {len(cluster_radii)} clusters.")
 
 
 def cli():

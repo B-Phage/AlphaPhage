@@ -17,8 +17,10 @@ def vocab():
 
 @pytest.fixture
 def mock_df():
-    """Minimal DataFrame returned by process_msa_table"""
-    return pd.DataFrame([[1, 2], [3, 4]], index=["genomeA", "genomeB"], columns=["pos1", "pos2"])
+    """Minimal DataFrame returned by process_msa_table - now with strings"""
+    return pd.DataFrame(
+        [["A", "C"], ["G", "T"]], index=["genomeA", "genomeB"], columns=["pos1", "pos2"]
+    )
 
 
 @patch("variants.build.write_variant_shard")  # New: Mock the lake writer
@@ -47,7 +49,8 @@ def test_build_variants_orchestration(
 
     # Mock clustering result: Index is the variant assignments (e.g. cluster 5 and 6)
     mock_clusters_df = pd.DataFrame({"AA_data": ["X", "Y"]}, index=[5, 6])
-    mock_build_cluster.return_value = (mock_clusters_df, None)
+    mock_radii = {5: 0.1, 6: 0.1}  # Added mock radii
+    mock_build_cluster.return_value = (mock_clusters_df, pd.DataFrame(), mock_radii)
 
     out_dir = tmp_path / "clusters"
     in_file = tmp_path / "phrog_1.csa"
@@ -108,7 +111,7 @@ def test_build_variants_no_reduction_version_string(tmp_path, vocab, mock_df):
         mock_process.return_value = mock_df
         mock_std.return_value = (mock_df, [0, 0])
         # Mock clustering: index is [1, 2] (the variants)
-        mock_build.return_value = (pd.DataFrame(index=[1, 2]), None)
+        mock_build.return_value = (pd.DataFrame(index=[1, 2]), pd.DataFrame(), {1: 0.1, 2: 0.1})
 
         # 3. Execute
         build_variants(

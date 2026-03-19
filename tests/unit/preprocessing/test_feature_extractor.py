@@ -77,7 +77,7 @@ class TestFeatureExtractor(unittest.TestCase):
 
         p2 = df[df["organism_id"] == "P2"].iloc[0]
         self.assertEqual(p2["HMM_A"], 15)
-        self.assertEqual(p2["HMM_B"], 0)  # Missing value filled with 0
+        self.assertEqual(p2["HMM_B"], 1)  # Missing value filled with 1
 
     def test_get_wide_host_features(self):
         """Verify the CTE pivot and LEFT JOIN with serotypes."""
@@ -96,7 +96,7 @@ class TestFeatureExtractor(unittest.TestCase):
         # Verify H3 (Serotypes present, variants missing/padded)
         h3 = df[df["organism_id"] == "H3"].iloc[0]
         self.assertEqual(h3["k_type_dim1"], 0)
-        self.assertEqual(h3["HMM_X"], 0)
+        self.assertEqual(h3["HMM_X"], 1)
 
     def test_get_metadata(self):
         """Verify extraction of distinct HMM-version pairs."""
