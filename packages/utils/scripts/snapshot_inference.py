@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import h5py
 import numpy as np
@@ -12,7 +13,7 @@ import pandas as pd
 import utils.consol_log as log
 import yaml
 from data_contracts.h5_schema import H5DataKeys
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from utils.scripts.create_inference_config import create_inference_config
 
 logger = log.get_logger()
@@ -211,29 +212,47 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
         # Iterate over every .yaml and .yml file in the copied runtime_config folder
         for cfg_file in runtime_cfg_dir.glob("*.y*ml"):
             try:
-                # 1. Load the original config using OmegaConf
-                # resolve=True ensures any ${vars} are processed before we swap paths
-                raw_cfg = OmegaConf.to_container(OmegaConf.load(cfg_file), resolve=True)
+                # 1. Load and resolve
+                raw_cfg = OmegaConf.load(cfg_file)
+                # We work with a container to make injection easy
+                cfg_container = OmegaConf.to_container(raw_cfg, resolve=True)
 
-                # 2. Transform the paths using our recursive function
-                inference_ready_cfg = transform_to_inference_paths(raw_cfg)
+                # 2. Transform standard paths (ml_assets -> ../../databases/...)
+                inference_ready_dict = transform_to_inference_paths(cfg_container)
 
-                # 3. Save it back to the snapshot (overwriting the raw copy)
-                with open(cfg_file, "w") as f:
-                    yaml.dump(inference_ready_cfg, f, default_flow_style=False)
+                # Convert back to OmegaConf to use our helper
+                temp_cfg = cast(DictConfig, OmegaConf.create(inference_ready_dict))
 
-                # 4. Update the map for downstream gallery porting
-                # We identify "phage" or "bac" (host) by the filename
+                # 3. Identify if this is a domain config and inject block
                 for domain in ["phage", "bac"]:
                     if domain in cfg_file.name:
-                        domain_params_map[domain] = OmegaConf.create(inference_ready_cfg)
-                        logger.info(f"   ✅ Processed & Mapped: {cfg_file.name} -> {domain}")
+                        logger.info(f"   💉 Injecting inference_config into {cfg_file.name}")
+
+                        # Fix the variant dir to point to the snapshot reference folder
+                        temp_cfg.msa_var.msa_variant_dir = (
+                            f"../../databases/inference/reference/{domain}/variant_shards"
+                        )
+
+                        # Generate the block
+                        from utils.scripts.create_inference_config import generate_inference_block
+
+                        inf_block = generate_inference_block(
+                            training_cfg=temp_cfg,
+                            base_inf_dir="../../databases/inference/data/processed",
+                            buffer_factor=buffer_factor,
+                        )
+
+                        # Insert the block
+                        temp_cfg.inference_config = inf_block
+                        domain_params_map[domain] = temp_cfg
                         break
-                else:
-                    logger.info(f"   ✅ Processed: {cfg_file.name}")
+
+                # 4. Save the "Super Config" back to the runtime_config folder
+                with open(cfg_file, "w") as f:
+                    yaml.dump(OmegaConf.to_container(temp_cfg), f, default_flow_style=False)
 
             except Exception as e:
-                logger.error(f"   ❌ Failed to rewire {cfg_file.name}: {e}")
+                logger.error(f"   ❌ Failed to process {cfg_file.name}: {e}")
 
         # Generate Unified Inference Configs
         # We generate two inference configs (one per domain) that

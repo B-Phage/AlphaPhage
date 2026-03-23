@@ -90,3 +90,8 @@ if __name__ == "__main__":
 
     convert_h5_to_folder(x_train_data)
     convert_h5_to_folder(cl_train_data)
+
+    # x_inf_data = (
+    #     "/Users/tamsen/Code/databases/inference/output/x_inference_set_v1.h5"
+    # )
+    # convert_h5_to_folder(x_inf_data)

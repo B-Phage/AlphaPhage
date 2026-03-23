@@ -100,6 +100,7 @@ class TransformerX(pl.LightningModule):
 
         # Register the weights so they move to GPU/CPU automatically
         if class_weights is not None:
+            logger.info(f"TransformerX assigned class weights of: {class_weights}")
             self.register_buffer("class_weights", class_weights)
         else:
             self.register_buffer("class_weights", None)

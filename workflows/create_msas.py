@@ -7,6 +7,7 @@ orchestrated parallel processing.
 
 import argparse
 import os
+import pathlib
 from functools import partial
 from pathlib import Path
 
@@ -15,9 +16,11 @@ from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config
 from utils.hash import compute_combined_code_version, create_manifest
 
-DEFAULT_RUNTIME_PATH = "ml_assets/config/runtime.yaml"
-HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
-
+# --- Path Anchoring ---
+SCRIPT_PATH = pathlib.Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parent.parent
+DEFAULT_RUNTIME_PATH = REPO_ROOT / "ml_assets" / "config" / "runtime.yaml"
+DEFAULT_HASH_DIR = REPO_ROOT / "ml_assets" / "data" / "workflow" / "hashes"
 
 # -----------------------------------------------------------------------------
 # Multiprocessing Workers (Must be top-level for 'spawn' pickling)
@@ -27,15 +30,13 @@ HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 def msa_worker(input_path: Path, outputs: list, split_path: Path):
     """
     Executes the MSA generation for a single HMM fasta file.
-
-    Args:
-        input_path: Path to the input .fasta file.
-        outputs: List containing the target output path (from output_func).
-        split_path: Directory containing the reference .hmm files.
     """
     hmm_name = input_path.stem
     out_csa = outputs[0]
     individual_hmm = split_path / f"{hmm_name}.hmm"
+
+    # Ensure output directory for this worker exists
+    out_csa.parent.mkdir(parents=True, exist_ok=True)
 
     make_msa(hmm_seq_hits_file=input_path, hmm_file_path=individual_hmm, out_msa_path=out_csa)
 
@@ -43,7 +44,6 @@ def msa_worker(input_path: Path, outputs: list, split_path: Path):
 def get_msa_outputs(input_path: Path, output_dir: Path) -> list[Path]:
     """
     Maps an input fasta file to its expected .csa output path.
-    Used by the Orchestrator to check for existing results.
     """
     hmm_name = input_path.stem
     return [output_dir / f"{hmm_name}.csa"]
@@ -54,42 +54,43 @@ def get_msa_outputs(input_path: Path, output_dir: Path) -> list[Path]:
 # -----------------------------------------------------------------------------
 
 
-def run_msa_workflow(config_path: str, code_hash, force: bool = False):
+def run_msa_workflow(config_path: str, code_hash, hash_store_dir=None, force: bool = False):
     """
     Orchestrates the MSA generation process.
-
-    Loads configuration, prepares the file manifest, and executes the
-    parallel processing loop via the Orchestrator.
     """
-    # Load configuration sets
-    run_cfg = get_config(DEFAULT_RUNTIME_PATH, params_set="meta")
+    # 1. Load configuration
+    run_cfg = get_config(str(DEFAULT_RUNTIME_PATH), params_set="meta")
     gen_cfg = get_config(override_path=config_path, params_set="general")
     hmm_cfg = get_config(override_path=config_path, params_set="hmm_config")
     msa_cfg = get_config(override_path=config_path, params_set="msa_config")
 
-    # Path resolution
+    # 2. Resolve Paths
     hmm_file_dir = Path(hmm_cfg.hmm_fasta_dir)
     split_path = Path(msa_cfg.split_hmm_dir)
     output_dir = Path(msa_cfg.msa_csa_dir)
-    conf_code_version = gen_cfg.code_version
+
+    # Logic: CLI Override > Repo Default
+    hash_dir = Path(hash_store_dir) if hash_store_dir else DEFAULT_HASH_DIR
+
+    # 3. Code Versioning
     code_version = compute_combined_code_version(
-        base_version=conf_code_version,
+        base_version=gen_cfg.code_version,
         hash_files=code_hash,
         config_items=[hmm_cfg.hmm_fasta_dir, msa_cfg],
     )
 
-    # Setup environment
+    # 4. Setup environment
     hmm_fasta_files = sorted(hmm_file_dir.glob("*.fasta"))
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Partial functions allow passing extra context (paths) to workers
-    # while remaining picklable for multiprocessing.
+    # 5. Partial functions for picklable workers
     worker_with_args = partial(msa_worker, split_path=split_path)
     output_func_with_args = partial(get_msa_outputs, output_dir=output_dir)
 
+    # 6. Run orchestrator
     orch = Orchestrator(
         workflow_name=f"msa_{gen_cfg.get('name', 'test')}",
-        hash_store_dir=HASH_STORE_DIR,
+        hash_store_dir=hash_dir,
         logger_name="msa",
     )
 
@@ -104,35 +105,28 @@ def run_msa_workflow(config_path: str, code_hash, force: bool = False):
         wipe_dirs=[output_dir],
     )
 
-    msa_files = list(output_dir.glob("*.fa"))
-    MANIFEST_FILE = Path(msa_cfg.msa_csa_dir + "_manifest.json")
-    create_manifest(msa_files, MANIFEST_FILE)
+    # 7. Manifest Generation (Looking for .csa files)
+    msa_results = list(output_dir.glob("*.csa"))
+    manifest_path = Path(str(msa_cfg.msa_csa_dir) + "_manifest.json")
+    create_manifest(msa_results, manifest_path)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Generate MSAs from protein-HMM hit files.")
-    parser.add_argument(
-        "--config", type=str, required=True, help="Path to the YAML configuration file."
-    )
-    parser.add_argument(
-        "--code_hash",
-        action="append",
-        type=Path,
-        required=True,
-        help="Path to a hash file (repeatable)",
-    )
-    parser.add_argument(
-        "--force", action="store_true", help="Bypass hash checks and rerun all inputs."
-    )
+    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--code_hash", action="append", type=Path, required=True)
+    parser.add_argument("--hash_store", help="Optional override for metadata hashes")
+    parser.add_argument("--force", action="store_true")
 
     args = parser.parse_args(argv)
 
-    run_msa_workflow(config_path=args.config, code_hash=args.code_hash, force=args.force)
+    run_msa_workflow(
+        config_path=args.config,
+        code_hash=args.code_hash,
+        hash_store_dir=args.hash_store,
+        force=args.force,
+    )
 
-
-# -----------------------------------------------------------------------------
-# CLI Entry Point
-# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()

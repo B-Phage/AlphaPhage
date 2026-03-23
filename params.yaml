@@ -55,7 +55,7 @@ features:
     input_dir: "ml_assets/data/processed/phage/msa_var"
   bacteria:
     table_name: "bacteria_variants_v1"
-    vocab_key: "bacteria_tokens"
+    vocab_key: "vocab_clusters_single"
     input_dir: "ml_assets/data/processed/bacteria/msa_var"
   serotype:
     table_name: "bacteria_serotypes_v1"

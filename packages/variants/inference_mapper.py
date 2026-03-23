@@ -36,7 +36,8 @@ class InferenceMapper:
                 results.append(
                     {
                         "organism_id": row["organism_id"],
-                        "assigned_variant_id": shortcut_map[seq],
+                        "variant_id": shortcut_map[seq],  # Renamed
+                        "sequence_aligned": seq,  # Added
                         "distance": 0.0,
                         "mapping_method": "exact_match",
                     }
@@ -75,7 +76,8 @@ class InferenceMapper:
                 results.append(
                     {
                         "organism_id": queries_df.loc[q_idx, "organism_id"],
-                        "assigned_variant_id": assigned_ids[i],
+                        "variant_id": assigned_ids[i],
+                        "sequence_aligned": queries_df.loc[q_idx, "sequence_aligned"],
                         "distance": confidence_scores[i],
                         "mapping_method": f"distance_{matrix_type}",
                     }

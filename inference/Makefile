@@ -8,12 +8,13 @@ HASH_DIR_HOST  := $(INF_DATA_ROOT)/hashes/bacteria
 .PHONY: all phage host post-process
 
 # The Master Workflow
-all: phage host #post-process
+all: phage host post-process
 
 # --- PHAGE BRANCH ---
 phage:
 	@echo ">>> Running 7-Stage Phage Pipeline"
 	$(MAKE) -f variants.mk \
+		DOMAIN=phage \
 		CFG=$(RUNTIME_CFG)/phage_preprocessing.yaml \
 		HASH_DIR=$(INF_WORKSPACE)/hashes/phage \
 		all_stages
@@ -22,15 +23,19 @@ phage:
 host:
 	@echo ">>> Running 7-Stage Host Pipeline + 2 Serotype Stages"
 	$(MAKE) -f variants.mk \
+		DOMAIN=bac \
 		CFG=$(RUNTIME_CFG)/bac_preprocessing.yaml \
 		HASH_DIR=$(INF_WORKSPACE)/hashes/bacteria \
 		all_stages
-# 	$(MAKE) -f host_only.mk \
-# 		CFG=$(RUNTIME_CFG)/serotype.yaml \
-# 		HASH_DIR=$(INF_WORKSPACE)/hashes/bacteria \
-# 		serotype_stages
+	$(MAKE) -f host_only.mk \
+		CFG=$(RUNTIME_CFG)/serotype.yaml \
+		HASH_DIR=$(INF_WORKSPACE)/hashes/bacteria \
+		serotype_stages
 
 # # --- FINAL INFERENCE ---
+post-process:
+	@echo ">>> Running Interaction Matrix Construction & Aggregation"
+	$(MAKE) -f post_process.mk final_stages
 # post-process:
 # 	@echo ">>> Running Interaction Extraction & Model Inference"
 # 	$(MAKE) -f post_process.mk \

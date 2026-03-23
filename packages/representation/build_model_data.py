@@ -1,9 +1,11 @@
 import argparse
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import utils.consol_log as log
+from data_contracts.h5_schema import TrainingManifest
 
 # Import our new components
 from representation.feature_extractor import FeatureExtractor
@@ -14,12 +16,124 @@ from storage_io.duckdb_client import DuckDBClient
 logger = log.get_logger()
 
 
-def load_interaction_pairs(path: str) -> pd.DataFrame:
-    """Helper to unpivot and filter unknown labels."""
+def load_interaction_pairs(path: str, include_unknown: bool = False) -> pd.DataFrame:
+    """
+    Unpivots the matrix.
+    If include_unknown is False (Training), it drops -1.
+    If include_unknown is True (Inference), it keeps everything.
+    """
     df = pd.read_csv(path, sep="\t", index_col=0)
     pairs = df.stack().reset_index()
     pairs.columns = ["host", "phage", "label"]
-    return pairs[pairs["label"] != -1].copy()
+
+    if not include_unknown:
+        return pairs[pairs["label"] != -1].copy()
+    return pairs
+
+
+def align_features_from_list(
+    df: pd.DataFrame, target_cols: List[str], missing_token: int
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Forces the DataFrame columns to match a specific list of strings.
+    Pads missing HMMs with missing_token and drops HMMs not in target_cols.
+    """
+    # Reindex handles both ordering and padding (fillna)
+    aligned_df = df.set_index("organism_id").reindex(columns=target_cols).fillna(missing_token)
+    return aligned_df.reset_index(), target_cols
+
+
+# --- Logic Subfunctions ---
+
+
+def _extract_raw_features(
+    db_path: str, phage_table: str, host_table: str, serotype_table: str, vocab_path: Optional[str]
+):
+    """Step 1: Get data out of DuckDB."""
+    with DuckDBClient(db_path, read_only=True) as client:
+        extractor = FeatureExtractor(client, vocab_path=vocab_path)
+        return (
+            extractor.get_wide_phage_features(phage_table),
+            extractor.get_wide_host_features(host_table, serotype_table),
+            extractor.get_metadata(phage_table),
+            extractor.get_metadata(host_table),
+            extractor.missing_token,
+        )
+
+
+def _align_all_features(
+    phage_df: pd.DataFrame,
+    host_df: pd.DataFrame,
+    phage_ref_path: Optional[str],
+    host_ref_path: Optional[str],
+    m_token: int,
+) -> Tuple[pd.DataFrame, List[str], pd.DataFrame, List[str]]:
+    """Step 2 & 3: Align features to reference TSVs."""
+
+    # Phage Alignment
+    if phage_ref_path and Path(phage_ref_path).exists():
+        logger.info(f"🎯 Aligning phage features to reference: {phage_ref_path}")
+        ref_p = pd.read_csv(phage_ref_path, sep="\t", header=None).values.astype("S100")
+        target_p_cols = [c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in ref_p[0]]
+        phage_df, phage_cols = align_features_from_list(phage_df, target_p_cols, m_token)
+    else:
+        phage_cols = [c for c in phage_df.columns if c != "organism_id"]
+
+    # Host Alignment
+    serotype_cols = ["k_type_dim1", "k_type_dim2"]
+    if host_ref_path and Path(host_ref_path).exists():
+        logger.info(f"🎯 Aligning host features to reference: {host_ref_path}")
+        ref_h = pd.read_csv(host_ref_path, sep="\t", header=None).values.astype("S100")
+        all_ref_names = [c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in ref_h[0]]
+        hmm_ref_cols = [c for c in all_ref_names if c not in serotype_cols]
+
+        hmm_only_df = host_df.drop(columns=serotype_cols)
+        aligned_hmm_df, _ = align_features_from_list(hmm_only_df, hmm_ref_cols, m_token)
+
+        host_df = host_df[["organism_id"] + serotype_cols].merge(aligned_hmm_df, on="organism_id")
+        host_cols = serotype_cols + hmm_ref_cols
+    else:
+        host_cols = serotype_cols + [
+            c for c in host_df.columns if c not in ["organism_id"] + serotype_cols
+        ]
+
+    return phage_df, phage_cols, host_df, host_cols
+
+
+def _validate_and_trim(
+    interactions: pd.DataFrame, phage_df: pd.DataFrame, host_df: pd.DataFrame
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Step 4: The intersection/filtering logic."""
+    tsv_phages, tsv_hosts = set(interactions["phage"]), set(interactions["host"])
+    feat_phages, feat_hosts = set(phage_df["organism_id"]), set(host_df["organism_id"])
+
+    # Log missing
+    m_p, m_h = tsv_phages - feat_phages, tsv_hosts - feat_hosts
+    if m_p:
+        logger.warning(f"⚠️ {len(m_p)} phages in interactions missing features: {list(m_p)[:5]}...")
+    if m_h:
+        logger.warning(f"⚠️ {len(m_h)} hosts in interactions missing features: {list(m_h)[:5]}...")
+
+    # Filter interactions
+    valid_data = interactions[
+        interactions["phage"].isin(feat_phages) & interactions["host"].isin(feat_hosts)
+    ].copy()
+    if valid_data.empty:
+        raise ValueError("❌ ZERO overlap found between interactions and features.")
+
+    # Trim features to ONLY what is used in interactions
+    final_p_ids, final_h_ids = set(valid_data["phage"]), set(valid_data["host"])
+    logger.info(
+        f"✂️ Trimmed unused: {len(feat_phages)-len(final_p_ids)} phages, {len(feat_hosts)-len(final_h_ids)} hosts."
+    )
+
+    trimmed_phage = phage_df[phage_df["organism_id"].isin(final_p_ids)].reset_index(drop=True)
+    trimmed_host = host_df[host_df["organism_id"].isin(final_h_ids)].reset_index(drop=True)
+
+    return valid_data, trimmed_phage, trimmed_host
+
+
+# --- Main Orchestrator ---
 
 
 def build_model_data(
@@ -30,87 +144,104 @@ def build_model_data(
     phage_table: str,
     host_table: str,
     serotype_table: str,
+    phage_ref_path: Optional[str] = None,
+    host_ref_path: Optional[str] = None,
+    vocab_path: Optional[str] = None,
+    is_inference: bool = False,
 ) -> None:
-    """
-    Orchestrates the construction of relational HDF5 training datasets.
+    """Orchestrates the construction of paired HDF5 datasets for model training or inference.
 
-    This function extracts unique host and phage feature vectors and maps them
-    to interaction labels using integer indices. This "relational" approach
-    avoids data redundancy by storing unique features once and using a
-    pointer-based mapping (pair_indices) for each interaction.
+    This function performs a full ETL pipeline: extracting raw features from DuckDB,
+    aligning them against reference schemas, filtering interaction pairs based on
+    feature availability, and trimming unused features to minimize the output file size.
+
+    The final HDF5 file contains compressed integer-encoded feature vectors for phages
+    and hosts, interaction labels, and an index mapping for reconstruction.
 
     Args:
-        interaction_tsv: Path to the tab-separated matrix containing
-            ground-truth host-phage interactions.
-        db_path: Path to the persistent DuckDB file containing feature tables.
-        output_dir: Directory where the resulting HDF5 files will be saved.
-        base_filename: Core name for output files (x_*.h5 and cl_*.h5).
-        phage_table: Name of the DuckDB table containing phage variants.
-        host_table: Name of the DuckDB table containing host variants.
-        serotype_table: Name of the DuckDB table containing host serotypes.
+        interaction_tsv: Path to the TSV file containing 'phage', 'host', and 'label' columns.
+        db_path: Path to the DuckDB database file containing feature tables.
+        output_dir: Directory where the resulting HDF5 and metadata files will be saved.
+        base_filename: Prefix used for the generated output files.
+        phage_table: Name of the table in DuckDB containing phage HMM features.
+        host_table: Name of the table in DuckDB containing host HMM features.
+        serotype_table: Name of the table in DuckDB containing host serotype/K-type data.
+        phage_ref_path: Optional; path to a reference TSV to enforce a specific phage
+            feature schema/ordering.
+        host_ref_path: Optional; path to a reference TSV to enforce a specific host
+            feature schema/ordering.
+        vocab_path: Optional; path to a YAML file for vocabulary mapping in the extractor.
+        is_inference: If True, retains rows with unknown labels (-1). If False,
+            filters for known interactions only.
 
-    Returns:
-        None: Saves 'x_[base_filename].h5' (features/indices) and
-              'cl_[base_filename].h5' (labels) to output_dir.
+    Raises:
+        ValueError: If no overlap exists between the organisms in the interaction TSV
+            and the organisms available in the feature database.
+        FileNotFoundError: If the provided database path or interaction TSV does not exist.
+
+    Note:
+        The function logs warnings for any organisms found in the interaction TSV that
+        are missing from the feature database. These organisms are excluded from the
+        final HDF5 output.
     """
+
+    # 1. Extraction
+    phage_df, host_df, p_meta, h_meta, m_token = _extract_raw_features(
+        db_path, phage_table, host_table, serotype_table, vocab_path
+    )
+
+    # 2 & 3. Alignment
+    phage_df, p_cols, host_df, h_cols = _align_all_features(
+        phage_df, host_df, phage_ref_path, host_ref_path, m_token
+    )
+
+    # 4. Interaction Mapping & Trimming
+    interactions = load_interaction_pairs(interaction_tsv, include_unknown=is_inference)
+    data, phage_df, host_df = _validate_and_trim(interactions, phage_df, host_df)
+
+    # Create Integer Mapping
+    p_map = {id_: i for i, id_ in enumerate(phage_df["organism_id"])}
+    h_map = {id_: i for i, id_ in enumerate(host_df["organism_id"])}
+
+    # Use np.asarray() to explicitly convert Pandas/Extension types to pure NumPy
+    h_idx = np.asarray(data["host"].map(h_map), dtype="int32")
+    p_idx = np.asarray(data["phage"].map(p_map), dtype="int32")
+
+    # Use a list of explicit ndarrays
+    pair_indices = np.stack([h_idx, p_idx], axis=1)
+
+    # 5. Write HDF5
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    # 1. Extraction (Unique Features Only)
-    with DuckDBClient(db_path, read_only=True) as client:
-        extractor = FeatureExtractor(client)
-        # These dataframes now contain UNIQUE rows per organism
-        phage_df = extractor.get_wide_phage_features(phage_table)
-        host_df = extractor.get_wide_host_features(host_table, serotype_table)
-
-        p_meta = extractor.get_metadata(phage_table)
-        h_meta = extractor.get_metadata(host_table)
-
-    # 2. Alignment & Index Mapping
-    logger.info("🔗 Mapping interactions to integer indices...")
-    interactions = load_interaction_pairs(interaction_tsv)
-
-    # Create a mapping of Organism_ID -> Row_Index (0 to N-unique)
-    phage_id_to_idx = {id_: i for i, id_ in enumerate(phage_df["organism_id"])}
-    host_id_to_idx = {id_: i for i, id_ in enumerate(host_df["organism_id"])}
-
-    # Filter interactions to only those where we have features for BOTH
-    valid_mask = interactions["phage"].isin(phage_id_to_idx) & interactions["host"].isin(
-        host_id_to_idx
-    )
-    data = interactions[valid_mask].copy()
-
-    # Convert the string columns into integer pointers
-    # These refer to the row number in the unique phage_df and host_df matrices
-    phage_indices = data["phage"].map(phage_id_to_idx).values.astype("int32")
-    host_indices = data["host"].map(host_id_to_idx).values.astype("int32")
-
-    # This Nx2 array maps Interaction[i] -> [Host_Library[j], Phage_Library[k]]
-    pair_indices = np.stack([host_indices, phage_indices], axis=1)
-
-    # 3. Prepare Feature Matrices (No Redundancy)
-    phage_cols = [c for c in phage_df.columns if c != "organism_id"]
-    host_cols = ["k_type_dim1", "k_type_dim2"] + [
-        c for c in host_df.columns if c not in ["organism_id", "k_type_dim1", "k_type_dim2"]
-    ]
-
-    # 4. Final Output (HDF5)
     writer = H5TrainingWriter(out_path, base_filename)
-    payload = {
-        # Unique libraries (Rows = Num Unique Organisms)
-        "phage_vecs": phage_df[phage_cols].values.astype("int32"),
-        "host_vecs": host_df[host_cols].values.astype("int32"),
-        # Mapping and Labels (Rows = Num Total Interactions)
-        "labels": data["label"].values.astype("int32"),
-        "pair_indices": pair_indices,
-        "pair_keys": data[["phage", "host"]].values.astype("S100"),
-    }
 
-    phage_info = MetadataManager.build_info_array(phage_cols, p_meta)
-    host_info = MetadataManager.build_info_array(host_cols, h_meta)
+    # Pass variables directly. No dict keys to misspell!
+    x_file, cl_file = writer.write(
+        phage_vecs=np.asarray(phage_df[p_cols], dtype="int32"),
+        host_vecs=np.asarray(host_df[h_cols], dtype="int32"),
+        pair_indices=pair_indices,
+        pair_keys=np.asarray(data[["phage", "host"]], dtype="S100"),
+        labels=np.asarray(data["label"], dtype="int32"),
+        phage_info=MetadataManager.build_info_array(p_cols, p_meta),
+        host_info=MetadataManager.build_info_array(h_cols, h_meta),
+    )
 
-    x_file, cl_file = writer.write(payload, phage_info, host_info)
-    logger.info(f"✅ Created relational training set: {x_file.name} and {cl_file.name}")
+    # 6. Optional: Log the Manifest stats (matches TrainingManifest contract)
+    manifest = TrainingManifest(
+        phage_dim=len(p_cols),
+        host_dim=len(h_cols),
+        num_samples=len(data),
+        phage_table=phage_table,
+        host_table=host_table,
+        serotype_table=serotype_table,
+        vocab_hash="hash_placeholder",  # You can implement a real hash here if needed
+    )
+
+    logger.info(f"✅ Created HDF5: {x_file.name}")
+    logger.info(
+        f"📊 Manifest: {manifest.num_samples} samples, {manifest.phage_dim}p x {manifest.host_dim}h features."
+    )
 
 
 def main():
@@ -126,6 +257,14 @@ def main():
     parser.add_argument("--phage_table", required=True)
     parser.add_argument("--host_table", required=True)
     parser.add_argument("--serotype_table", required=True)
+    parser.add_argument("--phage_ref", help="Path to phage_info.tsv reference")
+    parser.add_argument("--host_ref", help="Path to host_info.tsv reference")
+    parser.add_argument("-v", "--vocab", help="Path to vocab.yaml")
+
+    # Inference Mode Flag
+    parser.add_argument(
+        "--inference", action="store_true", help="If set, keeps unknown labels (-1) for prediction"
+    )
 
     args = parser.parse_args()
 
@@ -137,6 +276,10 @@ def main():
         phage_table=args.phage_table,
         host_table=args.host_table,
         serotype_table=args.serotype_table,
+        phage_ref_path=args.phage_ref,  # Will be None if flag is missing
+        host_ref_path=args.host_ref,  # Will be None if flag is missing
+        vocab_path=args.vocab,
+        is_inference=args.inference,
     )
 
 

@@ -3,7 +3,7 @@ self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
 general:
   lst_genomes:      ["ATCC12022", "ATCC25931", "Shigella-flexneri-2457T-2a"] #['AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
   code_version:     "v1.0.2"
-  name:             "ecoli"
+  name:             "bacteria" # Don't change this, it is used for domain logic
 
 prodigal_config:
   checkpoint:       null
@@ -19,7 +19,7 @@ hmm_config:
 
   hmm_scan_dir:     "ml_assets/data/processed/bacteria/hmm_scan"
   data_lake:        "ml_assets/data/processed/bacteria/hmm_scan_lake"
-  duckdb:           "../databases/production/duckdb/proteins.duckdb"
+  duckdb:           "ml_assets/data/processed/duckdb/proteins.duckdb"
   db_fingerprint:   "ml_assets/data/artifacts/hmm_pfam_summary.fingerprint"
   summary_tbl:      "hmm_pfam_summary"
 

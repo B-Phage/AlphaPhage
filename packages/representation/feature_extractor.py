@@ -4,9 +4,9 @@ from utils.config_loader import get_vocab
 
 
 class FeatureExtractor:
-    def __init__(self, client: DuckDBClient):
+    def __init__(self, client: DuckDBClient, vocab_path: str | None = None):
         self.client = client
-        vocab = get_vocab()
+        vocab = get_vocab(override_path=vocab_path)
         self.missing_token = vocab.vocab_clusters_single.missing
 
     def get_wide_phage_features(self, table_name: str) -> pd.DataFrame:
