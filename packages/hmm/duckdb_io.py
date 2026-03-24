@@ -21,12 +21,12 @@ already been performed and that input data is provided in tabular
 (pandas DataFrame) and pyhmmer easel formats.
 """
 
-import hashlib
 from pathlib import Path
 from typing import Iterable, List
 
 import duckdb
 import pandas as pd
+import psutil
 import utils.consol_log as log
 from data_contracts.hmm_lake import (
     HMM_LAKE_PRIMARY_KEYS,
@@ -38,6 +38,19 @@ from storage_io.duckdb_client import DuckDBClient
 from storage_io.parquet_lake import enforce_schema, write_parquet_partition
 
 logger = log.get_logger()
+
+
+def get_safe_duckdb_memory_limit(fraction: float = 0.75) -> str:
+    """
+    Calculates a safe memory limit in GB based on total system RAM.
+    Defaults to 75% of total RAM.
+    """
+    total_ram_bytes = psutil.virtual_memory().total
+    # Convert bytes to GB and apply the fraction
+    total_ram_gb = total_ram_bytes / (1024**3)
+    safe_ram_gb = int(total_ram_gb * fraction)
+    logger.info(f"The total RAM is {total_ram_gb}GB. Setting DuckDB safe limit to {safe_ram_gb}GB")
+    return f"{safe_ram_gb}GB"
 
 
 def write_hmm_results_with_sequences(
@@ -164,29 +177,16 @@ def build_hmm_summary_table(
     """
 
     con = duckdb.connect(str(db_path))
+    mem_limit = get_safe_duckdb_memory_limit(0.75)
+
+    con.execute(f"SET max_memory='{mem_limit}';")
+    con.execute("SET threads TO 4;")  # Prevents too many simultaneous allocations
+
     parquet_glob = str(lake_root / "organism=*" / "proteins.parquet")
 
-    # Drop the table if it exists (fully regenerative)
-    con.execute(f"DROP TABLE IF EXISTS {table_name};")
-
-    # Create the fresh table
-    con.execute(
-        f"""
-        CREATE TABLE {table_name} (
-            protein_name VARCHAR,
-            organism_name VARCHAR,
-            hmm_domain_name VARCHAR,
-            annot VARCHAR,
-            sequence VARCHAR,
-            PRIMARY KEY (protein_name, organism_name, hmm_domain_name)
-        );
-        """
-    )
-
-    # Populate the table from the current Parquet lake
-    con.execute(
-        f"""
-        INSERT INTO {table_name}
+    # Use 'CREATE OR REPLACE' for a more efficient disk-streaming operation
+    query = f"""
+        CREATE OR REPLACE TABLE {table_name} AS
         SELECT
             protein_name,
             organism_name,
@@ -200,10 +200,12 @@ def build_hmm_summary_table(
                 top_hmm_domain_hit_on_prot = 1
                 OR score > {min_score}
             );
-        """
-    )
+    """
 
-    con.close()
+    try:
+        con.execute(query)
+    finally:
+        con.close()
 
 
 def get_distinct_hmms(

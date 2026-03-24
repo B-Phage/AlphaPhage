@@ -6,13 +6,12 @@ include common.mk
 # Ensure DOMAIN is passed from the parent. If not, this might fail.
 # We use $(filter ...) to check the domain string
 ifeq ($(DOMAIN),phage)
-    TABLE_NAME := $(PHAGE_TABLE_NAME)
-    VOCAB_KEY  := vocab_clusters_single
+TABLE_NAME := $(PHAGE_TABLE_NAME)
+VOCAB_KEY := vocab_clusters_single
 else
-    TABLE_NAME := $(BAC_TABLE_NAME)
-    VOCAB_K
-	EY  := vocab_clusters_single
-	DOMAIN := bac
+TABLE_NAME := $(BAC_TABLE_NAME)
+VOCAB_KEY := vocab_clusters_single
+DOMAIN := bac
 endif
 
 # Helper for conditional force flag
@@ -25,10 +24,6 @@ STAGE3_WORK_DIR := $(HASH_DIR)/stage_3_temp
 # We extract the cluster name from the config to match the folder structure
 # This shell command pulls the value from the YAML
 CLUSTER_NAME := $(shell grep 'msa_cluster_name:' $(CFG) | awk '{print $$2}')
-
-# The vocab_key (vocab_section) depends on the domain
-# In DVC this was 'vocab_clusters_single' for phage
-VOCAB_KEY := $(if $(filter phage,$(DOMAIN)),vocab_clusters_single,bacteria_tokens)
 
 # Dynamically extract the output dir from the config
 MAPPED_DIR := $(abspath $(shell grep 'mapped_output_dir:' $(CFG) | awk '{print $$2}'))

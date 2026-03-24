@@ -2,7 +2,7 @@ import sys
 import unittest
 from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -12,9 +12,6 @@ from representation.build_model_data import build_model_data, load_interaction_p
 class TestBuildModelData(unittest.TestCase):
     def setUp(self):
         """Set up dummy data for alignment testing."""
-        # Create a dummy interaction matrix (TSV format)
-        self.tsv_content = "phage\tPhage_1\tPhage_2\n" "Host_A\t1\t0\n" "Host_B\t0\t-1\n"
-
         # Mock DataFrames representing wide features
         self.mock_phage_df = pd.DataFrame(
             {"organism_id": ["Phage_1", "Phage_2"], "token_1": [10, 11]}
@@ -30,26 +27,21 @@ class TestBuildModelData(unittest.TestCase):
 
     def test_load_interaction_pairs(self):
         """Verify unpivoting logic and filtering of -1 labels."""
-        # Define exactly what the "wide" matrix looks like before unpivoting
+        # Create a wide matrix as if read from TSV
         wide_df = pd.DataFrame(
             [[1, 0], [0, -1]], index=["Host_A", "Host_B"], columns=["Phage_1", "Phage_2"]
         )
-        wide_df.index.name = "host"  # Ensure the index has a name for reset_index()
+        wide_df.index.name = "host"
 
         with patch("pandas.read_csv") as mock_read:
-            # Tell the mock to return our pre-constructed wide DataFrame
             mock_read.return_value = wide_df
 
-            df = load_interaction_pairs("dummy.tsv")
+            # Default: Training mode (drops -1)
+            df = load_interaction_pairs("dummy.tsv", include_unknown=False)
 
-            # 1. Check if the labels were filtered correctly (-1 removed)
             # Host_A/Phage_1 (1), Host_A/Phage_2 (0), Host_B/Phage_1 (0) -> 3 rows
             self.assertEqual(len(df), 3)
-
-            # 2. Verify we don't have any -1 labels left
             self.assertNotIn(-1, df["label"].values)
-
-            # 3. Verify column names match our expectations in build_model_data
             self.assertListEqual(list(df.columns), ["host", "phage", "label"])
 
     @patch("representation.build_model_data.DuckDBClient")
@@ -61,7 +53,8 @@ class TestBuildModelData(unittest.TestCase):
         self, mock_load, mock_writer_cls, mock_meta, mock_extractor_cls, mock_db
     ):
         """Verify the full orchestration: Extract -> Align -> Meta -> Write."""
-        # Setup mocks
+        # 1. Setup mocks
+        # Only Host_A and Phage_1 are in the interaction set
         mock_load.return_value = pd.DataFrame(
             {"host": ["Host_A"], "phage": ["Phage_1"], "label": [1]}
         )
@@ -69,11 +62,12 @@ class TestBuildModelData(unittest.TestCase):
         extractor = mock_extractor_cls.return_value
         extractor.get_wide_phage_features.return_value = self.mock_phage_df
         extractor.get_wide_host_features.return_value = self.mock_host_df
+        extractor.missing_token = 0
 
         writer = mock_writer_cls.return_value
         writer.write.return_value = (Path("x.h5"), Path("cl.h5"))
 
-        # Run the function
+        # 2. Run the function
         build_model_data(
             interaction_tsv="pairs.tsv",
             db_path="feat.db",
@@ -84,20 +78,28 @@ class TestBuildModelData(unittest.TestCase):
             serotype_table="s_tab",
         )
 
-        # 1. Check if alignments were correct
-        # The payload sent to writer.write is the best way to verify the join worked
-        args, _ = writer.write.call_args
-        payload = args[0]
+        # 3. Verify writer was called with correct TRIMMED data
+        # We check kwargs because our refactored writer uses named arguments
+        _, kwargs = writer.write.call_args
 
-        # Verify merged host vecs: [k1, k2, HMM_X]
-        # Host_A features from mock_host_df are [1, 10, 100]
-        np.testing.assert_array_equal(payload["host_vecs"], [[1, 10, 100]])
-        # Phage_1 features from mock_phage_df are [10]
-        np.testing.assert_array_equal(payload["phage_vecs"], [[10]])
+        # Host_A features: [k_type_dim1, k_type_dim2, HMM_X] -> [1, 10, 100]
+        # It should only have 1 row because Host_B was trimmed
+        host_vecs = kwargs["host_vecs"]
+        self.assertEqual(host_vecs.shape[0], 1)
+        np.testing.assert_array_equal(host_vecs, [[1, 10, 100]])
+
+        # Phage_1 features: [token_1] -> [10]
+        # It should only have 1 row because Phage_2 was trimmed
+        phage_vecs = kwargs["phage_vecs"]
+        self.assertEqual(phage_vecs.shape[0], 1)
+        np.testing.assert_array_equal(phage_vecs, [[10]])
+
+        # Pair indices should be [[0, 0]] because both are at index 0 of their trimmed dfs
+        np.testing.assert_array_equal(kwargs["pair_indices"], [[0, 0]])
 
     @patch("representation.build_model_data.build_model_data")
     def test_cli_parsing(self, mock_build):
-        """Verify CLI flags map to correct function arguments."""
+        """Verify CLI flags map to correct function arguments including defaults."""
         test_args = [
             "script_name",
             "-i",
@@ -119,6 +121,7 @@ class TestBuildModelData(unittest.TestCase):
         with patch.object(sys, "argv", test_args):
             main()
 
+        # Check all arguments, including the ones that default to None/False
         mock_build.assert_called_once_with(
             interaction_tsv="interact.tsv",
             db_path="db.db",
@@ -127,6 +130,10 @@ class TestBuildModelData(unittest.TestCase):
             phage_table="p_table",
             host_table="h_table",
             serotype_table="s_table",
+            phage_ref_path=None,
+            host_ref_path=None,
+            vocab_path=None,
+            is_inference=False,
         )
 
     def test_cli_missing_args(self):
@@ -134,7 +141,7 @@ class TestBuildModelData(unittest.TestCase):
         test_args = ["script_name", "-i", "only_one_arg"]
         with patch.object(sys, "argv", test_args):
             with self.assertRaises(SystemExit):
-                with patch("sys.stderr", StringIO()):  # Suppress help text in console
+                with patch("sys.stderr", StringIO()):
                     main()
 
 

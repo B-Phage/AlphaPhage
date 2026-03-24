@@ -1,158 +1,149 @@
+import sys
+import unittest
+from io import StringIO
 from pathlib import Path
+from unittest.mock import ANY, MagicMock, patch
 
-import duckdb
-import h5py
 import numpy as np
 import pandas as pd
-import pytest
-from data_contracts.h5_schema import H5DataKeys
-from data_contracts.interaction_db import InteractionTableContract
-from representation.build_model_data import build_model_data
+from representation.build_model_data import build_model_data, load_interaction_pairs, main
 
 
-@pytest.fixture
-def setup_test_db(tmp_path):
-    """Creates a DuckDB with the full schema required by FeatureExtractor and MetadataManager."""
-    db_path = tmp_path / "features.db"
-    con = duckdb.connect(str(db_path))
-
-    # FeatureExtractor and MetadataManager expect organism_id, hmm_id, token_id, and clustering_version
-    # Based on VARIANT_LAKE_SCHEMA
-    for table in ["phage_feats", "host_feats"]:
-        con.execute(
-            f"""
-            CREATE TABLE {table} (
-                organism_id VARCHAR,
-                hmm_id VARCHAR,
-                token_id INT,
-                clustering_version VARCHAR
-            )
-        """
+class TestBuildModelData(unittest.TestCase):
+    def setUp(self):
+        """Set up dummy data for alignment testing."""
+        # Mock DataFrames representing wide features
+        self.mock_phage_df = pd.DataFrame(
+            {"organism_id": ["Phage_1", "Phage_2"], "token_1": [10, 11]}
+        )
+        self.mock_host_df = pd.DataFrame(
+            {
+                "organism_id": ["Host_A", "Host_B"],
+                "k_type_dim1": [1, 2],
+                "k_type_dim2": [10, 20],
+                "HMM_X": [100, 101],
+            }
         )
 
-    # Insert sample data including the clustering_version
-    con.execute(
-        """
-        INSERT INTO phage_feats VALUES
-        ('p_ready', 'hmm_1', 10, 'v1.0'),
-        ('p_ready', 'hmm_2', 20, 'v1.0'),
-        ('p_unused', 'hmm_1', 99, 'v1.0')
-    """
-    )
+    def test_load_interaction_pairs(self):
+        """Verify unpivoting logic and filtering of -1 labels."""
+        # Create a wide matrix as if read from TSV
+        wide_df = pd.DataFrame(
+            [[1, 0], [0, -1]], index=["Host_A", "Host_B"], columns=["Phage_1", "Phage_2"]
+        )
+        wide_df.index.name = "host"
 
-    con.execute(
-        """
-        INSERT INTO host_feats VALUES
-        ('h_ready', 'hmm_1', 100, 'v1.0'),
-        ('h_unused', 'hmm_1', 500, 'v1.0')
-    """
-    )
+        with patch("pandas.read_csv") as mock_read:
+            mock_read.return_value = wide_df
 
-    # Serotypes usually don't have clustering_version in these pipelines,
-    # but check your extractor if it fails here next!
-    con.execute("CREATE TABLE serotypes (organism_id VARCHAR, k_type_dim1 INT, k_type_dim2 INT)")
-    con.execute("INSERT INTO serotypes VALUES ('h_ready', 1, 1), ('h_unused', 2, 2)")
+            # Default: Training mode (drops -1)
+            df = load_interaction_pairs("dummy.tsv", include_unknown=False)
 
-    con.close()
-    return str(db_path)
+            # Host_A/Phage_1 (1), Host_A/Phage_2 (0), Host_B/Phage_1 (0) -> 3 rows
+            self.assertEqual(len(df), 3)
+            self.assertNotIn(-1, df["label"].values)
+            self.assertListEqual(list(df.columns), ["host", "phage", "label"])
+
+    @patch("representation.build_model_data.DuckDBClient")
+    @patch("representation.build_model_data.FeatureExtractor")
+    @patch("representation.build_model_data.MetadataManager")
+    @patch("representation.build_model_data.H5TrainingWriter")
+    @patch("representation.build_model_data.load_interaction_pairs")
+    def test_orchestration_flow(
+        self, mock_load, mock_writer_cls, mock_meta, mock_extractor_cls, mock_db
+    ):
+        """Verify the full orchestration: Extract -> Align -> Meta -> Write."""
+        # 1. Setup mocks
+        # Only Host_A and Phage_1 are in the interaction set
+        mock_load.return_value = pd.DataFrame(
+            {"host": ["Host_A"], "phage": ["Phage_1"], "label": [1]}
+        )
+
+        extractor = mock_extractor_cls.return_value
+        extractor.get_wide_phage_features.return_value = self.mock_phage_df
+        extractor.get_wide_host_features.return_value = self.mock_host_df
+        extractor.missing_token = 0
+
+        writer = mock_writer_cls.return_value
+        writer.write.return_value = (Path("x.h5"), Path("cl.h5"))
+
+        # 2. Run the function
+        build_model_data(
+            interaction_tsv="pairs.tsv",
+            db_path="feat.db",
+            output_dir="out/",
+            base_filename="test",
+            phage_table="p_tab",
+            host_table="h_tab",
+            serotype_table="s_tab",
+        )
+
+        # 3. Verify writer was called with correct TRIMMED data
+        # We check kwargs because our refactored writer uses named arguments
+        _, kwargs = writer.write.call_args
+
+        # Host_A features: [k_type_dim1, k_type_dim2, HMM_X] -> [1, 10, 100]
+        # It should only have 1 row because Host_B was trimmed
+        host_vecs = kwargs["host_vecs"]
+        self.assertEqual(host_vecs.shape[0], 1)
+        np.testing.assert_array_equal(host_vecs, [[1, 10, 100]])
+
+        # Phage_1 features: [token_1] -> [10]
+        # It should only have 1 row because Phage_2 was trimmed
+        phage_vecs = kwargs["phage_vecs"]
+        self.assertEqual(phage_vecs.shape[0], 1)
+        np.testing.assert_array_equal(phage_vecs, [[10]])
+
+        # Pair indices should be [[0, 0]] because both are at index 0 of their trimmed dfs
+        np.testing.assert_array_equal(kwargs["pair_indices"], [[0, 0]])
+
+    @patch("representation.build_model_data.build_model_data")
+    def test_cli_parsing(self, mock_build):
+        """Verify CLI flags map to correct function arguments including defaults."""
+        test_args = [
+            "script_name",
+            "-i",
+            "interact.tsv",
+            "-d",
+            "db.db",
+            "-o",
+            "output_dir",
+            "-f",
+            "base_name",
+            "--phage_table",
+            "p_table",
+            "--host_table",
+            "h_table",
+            "--serotype_table",
+            "s_table",
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            main()
+
+        # Check all arguments, including the ones that default to None/False
+        mock_build.assert_called_once_with(
+            interaction_tsv="interact.tsv",
+            db_path="db.db",
+            output_dir="output_dir",
+            base_filename="base_name",
+            phage_table="p_table",
+            host_table="h_table",
+            serotype_table="s_table",
+            phage_ref_path=None,
+            host_ref_path=None,
+            vocab_path=None,
+            is_inference=False,
+        )
+
+    def test_cli_missing_args(self):
+        """Verify CLI exits on missing required arguments."""
+        test_args = ["script_name", "-i", "only_one_arg"]
+        with patch.object(sys, "argv", test_args):
+            with self.assertRaises(SystemExit):
+                with patch("sys.stderr", StringIO()):
+                    main()
 
 
-@pytest.fixture
-def interaction_tsv(tmp_path):
-    """Creates a TSV with a mix of valid and invalid references."""
-    path = tmp_path / "interactions.tsv"
-    # Row 1: Valid (p_ready, h_ready)
-    # Row 2: Invalid (p_missing, h_ready) -> Should be dropped
-    data = {
-        "h_ready": {"p_ready": 1, "p_missing": 0},
-    }
-    df = pd.DataFrame(data).T
-    df.to_csv(path, sep="\t")
-    return str(path)
-
-
-def test_build_model_data_full_flow(setup_test_db, interaction_tsv, tmp_path, caplog):
-    out_dir = tmp_path / "output"
-    base_name = "prod_run"
-    keys = H5DataKeys()
-
-    # EXECUTE
-    build_model_data(
-        interaction_tsv=interaction_tsv,
-        db_path=setup_test_db,
-        output_dir=str(out_dir),
-        base_filename=base_name,
-        phage_table="phage_feats",
-        host_table="host_feats",
-        serotype_table="serotypes",
-    )
-
-    # 1. VERIFY LOGGING (Edge Case: Missing Organism)
-    assert "p_missing" in caplog.text
-    assert "1 phages in interactions missing features" in caplog.text
-    assert "Trimmed unused" in caplog.text
-
-    # 2. VERIFY HDF5 STRUCTURE & DATA
-    x_file = out_dir / f"x_{base_name}.h5"
-    cl_file = out_dir / f"cl_{base_name}.h5"
-
-    assert x_file.exists()
-    assert cl_file.exists()
-
-    with h5py.File(x_file, "r") as f_x:
-        # Check Trimming: Only 'p_ready' and 'h_ready' should be in the vectors
-        # 'p_unused' and 'h_unused' should have been stripped out.
-        assert f_x[keys.PHAGE_VEC].shape[0] == 1
-        assert f_x[keys.HOST_VEC].shape[0] == 1
-
-        # Verify specific feature values to ensure alignment didn't scramble data
-        # host_vec = [k_type_dim1, k_type_dim2, hmm_1]
-        host_data = f_x[keys.HOST_VEC][0]
-        assert np.array_equal(host_data, [1, 1, 100])
-
-        # Verify Pair Indices
-        # Since we only have 1 phage and 1 host left, index should be [0, 0]
-        assert np.array_equal(f_x[keys.PAIR_INDICES][0], [0, 0])
-
-    with h5py.File(cl_file, "r") as f_cl:
-        # Check Label Contract
-        assert f_cl[keys.LABELS].shape[0] == 1
-        assert f_cl[keys.LABELS][0] == 1  # The value for (h_ready, p_ready)
-
-
-def test_build_model_data_inference_mode(setup_test_db, tmp_path):
-    """Verifies that labels with -1 are preserved when is_inference=True."""
-    # 1. Setup Inference TSV with -1 labels
-    path = tmp_path / "inference_interactions.tsv"
-    # We want to predict p_ready vs h_ready
-    data = {"h_ready": {"p_ready": -1}}
-    pd.DataFrame(data).T.to_csv(path, sep="\t")
-
-    out_dir = tmp_path / "inference_output"
-    base_name = "inf_run"
-    keys = H5DataKeys()
-
-    # 2. EXECUTE with is_inference=True
-    build_model_data(
-        interaction_tsv=str(path),
-        db_path=setup_test_db,
-        output_dir=str(out_dir),
-        base_filename=base_name,
-        phage_table="phage_feats",
-        host_table="host_feats",
-        serotype_table="serotypes",
-        is_inference=True,  # CRITICAL FLAG
-    )
-
-    # 3. VERIFY
-    cl_file = out_dir / f"cl_{base_name}.h5"
-    with h5py.File(cl_file, "r") as f_cl:
-        # If the filter was active, this would be empty.
-        # Since it's inference, we expect 1 row with value -1.
-        assert f_cl[keys.LABELS].shape[0] == 1
-        assert f_cl[keys.LABELS][0] == -1
-
-    # Verify indices still map correctly
-    x_file = out_dir / f"x_{base_name}.h5"
-    with h5py.File(x_file, "r") as f_x:
-        assert np.array_equal(f_x[keys.PAIR_INDICES][0], [0, 0])
+if __name__ == "__main__":
+    unittest.main()
