@@ -29,12 +29,22 @@ class TransformerX(pl.LightningModule):
         class_weights=None,
     ):
         super().__init__()
+
+        # 1. Resolve the config so paths and variables are absolute strings/ints
+        resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
+
+        # 2. Save the resolved config AND the standalone metadata
+        # We pass them as a dict to ensure everything is captured in one go
+        self.save_hyperparameters(
+            {
+                "cfg": resolved_cfg,
+                "num_tokens": num_tokens,
+                "vocab_size_out": vocab_size_out,
+                "length_padded": length_padded,
+            }
+        )
+
         self.cfg = cfg
-
-        # Save hyperparameters as dict
-        hparams = OmegaConf.to_container(cfg, resolve=True)
-        self.save_hyperparameters(hparams)
-
         self.archspecs = archspecs
         self.archspecs2 = archspecs2
 

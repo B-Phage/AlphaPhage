@@ -6,8 +6,11 @@ INF_DATA_ROOT := $(abspath $(ROOT_DIR)/../databases/inference)
 INF_WORKSPACE := $(INF_DATA_ROOT)/workspace
 
 # 1. Base Paths
-SNAPSHOT_NAME := default_run_ep61_20260319
+SNAPSHOT_NAME := default_run_ep3_20260324
+SNAPSHOT_NAME := $(strip $(SNAPSHOT_NAME))
 SNAPSHOT_DIR  := $(INF_DATA_ROOT)/$(SNAPSHOT_NAME)
+CHECKPOINT_PATH := $(INF_DATA_ROOT)/$(SNAPSHOT_NAME)/model/model_weights.ckpt
+MODEL_CONFIG := $(INF_DATA_ROOT)/$(SNAPSHOT_NAME)/runtime_config/train.yaml
 # Point specifically to the versioned YAML inside the snapshot
 VOCAB_FILE    := $(SNAPSHOT_DIR)/vocab/vocab_v0.0.1.yaml
 

@@ -30,7 +30,7 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         assert isinstance(Xh5_phage, h5py.Dataset)
 
         # Just getting length_padded as length of first pair joined
-        length_padded = len(Xh5_host[0]) + len(Xh5_phage[0])
+        length_padded = int(len(Xh5_host[0]) + len(Xh5_phage[0]))
         logger.info(f"length_padded  : {length_padded}")
 
         tokens_in_data = set({})
@@ -39,7 +39,7 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         for i in range(len(Xh5_phage)):
             tokens_in_data.update(set(Xh5_phage[i].astype(np.int32)))
         tokens_in_data = list(tokens_in_data)
-        num_tokens = max(tokens_in_data) + 1
+        num_tokens = int(max(tokens_in_data) + 1)
         logger.info(f"num_tokens  : {num_tokens}")
 
     return length_padded, num_tokens, tokens_in_data

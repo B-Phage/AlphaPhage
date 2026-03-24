@@ -1,3 +1,4 @@
+MAKEFLAGS += --output-sync=none
 include common.mk
 
 # --- Hash Stores ---

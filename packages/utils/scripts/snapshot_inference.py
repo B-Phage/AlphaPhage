@@ -124,9 +124,10 @@ def validate_state():
 
 def find_checkpoint(model_name, epoch):
     checkpoint_dir = TRAINING_ROOT / model_name / "checkpoints"
-    pattern = str(checkpoint_dir / f"*epoch={epoch}*.ckpt")
+    pattern = str(checkpoint_dir / f"*epoch={epoch:02d}-*.ckpt")
     matches = glob.glob(pattern)
     if not matches:
+        logger.error(f"Missing model in {pattern}")
         raise FileNotFoundError(f"No checkpoint for {model_name} at epoch {epoch}")
     return Path(matches[0])
 
