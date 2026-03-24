@@ -1,3 +1,5 @@
+# export KMP_DUPLICATE_LIB_OK=TRUE && conda run -n training python tests/utils/inspection/inspect_h5.py
+
 import sys
 from pathlib import Path
 
@@ -81,17 +83,15 @@ if __name__ == "__main__":
     # convert_h5_to_folder(train_features_path)
     # convert_h5_to_folder(train_labels_path)
 
-    x_train_data = (
-        "/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/model_training/x_train_data_v1.h5"
-    )
-    cl_train_data = (
-        "/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/model_training/cl_train_data_v1.h5"
-    )
-
-    convert_h5_to_folder(x_train_data)
-    convert_h5_to_folder(cl_train_data)
-
-    # x_inf_data = (
-    #     "/Users/tamsen/Code/databases/inference/output/x_inference_set_v1.h5"
+    # x_train_data = (
+    #     "/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/model_training/x_train_data_v1.h5"
     # )
-    # convert_h5_to_folder(x_inf_data)
+    # cl_train_data = (
+    #     "/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/model_training/cl_train_data_v1.h5"
+    # )
+
+    # convert_h5_to_folder(x_train_data)
+    # convert_h5_to_folder(cl_train_data)
+
+    x_inf_data = "/Users/tamsen/Code/databases/inference/output/x_inference_set_v1.h5"
+    convert_h5_to_folder(x_inf_data)

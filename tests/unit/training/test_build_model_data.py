@@ -144,6 +144,102 @@ class TestBuildModelData(unittest.TestCase):
                 with patch("sys.stderr", StringIO()):
                     main()
 
+    @patch("representation.build_model_data.pd.read_csv")
+    @patch("representation.build_model_data.Path.exists")
+    def test_align_all_features_tsv_layouts(self, mock_exists, mock_read):
+        """Verify that both vertical and horizontal TSVs result in correct feature counts."""
+        from representation.build_model_data import _align_all_features
+
+        mock_exists.return_value = True
+
+        # Scenario A: Vertical TSV (Many rows, 1 column)
+        # This was the layout causing the bug
+        vertical_df = pd.DataFrame({"0": ["HMM_1", "HMM_2", "HMM_3"]})
+        mock_read.return_value = vertical_df
+
+        # We only need to test the phage side for simplicity
+        _, p_cols, _, _ = _align_all_features(
+            self.mock_phage_df,
+            self.mock_host_df,
+            phage_ref_path="phage.tsv",
+            host_ref_path=None,
+            m_token=0,
+        )
+        self.assertEqual(len(p_cols), 3, "Vertical TSV failed to find all 3 features")
+        self.assertListEqual(p_cols, ["HMM_1", "HMM_2", "HMM_3"])
+
+        # Scenario B: Horizontal TSV (1 row, many columns)
+        horizontal_df = pd.DataFrame([["HMM_1", "HMM_2", "HMM_3"]])
+        mock_read.return_value = horizontal_df
+
+        _, p_cols, _, _ = _align_all_features(
+            self.mock_phage_df,
+            self.mock_host_df,
+            phage_ref_path="phage.tsv",
+            host_ref_path=None,
+            m_token=0,
+        )
+        self.assertEqual(len(p_cols), 3, "Horizontal TSV failed to find all 3 features")
+
+    @patch("representation.build_model_data.pd.read_csv")
+    @patch("representation.build_model_data.Path.exists")
+    def test_align_forces_reference_length(self, mock_exists, mock_read):
+        """Verify that the output width matches the reference, even if data is missing."""
+        from representation.build_model_data import _align_all_features
+
+        mock_exists.return_value = True
+
+        # Reference expects 5 features
+        ref_df = pd.DataFrame([["F1", "F2", "F3", "F4", "F5"]])
+        mock_read.return_value = ref_df
+
+        # Input data only has 1 feature ("token_1" which isn't in the ref)
+        # This simulates the "silent trim" where everything becomes a missing_token
+        p_df, p_cols, _, _ = _align_all_features(
+            self.mock_phage_df,
+            self.mock_host_df,
+            phage_ref_path="phage.tsv",
+            host_ref_path=None,
+            m_token=99,
+        )
+
+        # Width must be exactly 5
+        self.assertEqual(len(p_cols), 5)
+        self.assertEqual(p_df.shape[1], 6)  # 5 features + 1 organism_id
+
+        # Check that missing data was padded with the m_token (99)
+        # Taking the first sample, first feature
+        self.assertEqual(p_df.iloc[0]["F1"], 99)
+
+    @patch("representation.build_model_data.pd.read_csv")
+    @patch("representation.build_model_data.Path.exists")
+    def test_host_alignment_preserves_serotypes(self, mock_exists, mock_read):
+        """Ensure k_type columns are preserved even if HMM alignment shrinks."""
+        from representation.build_model_data import _align_all_features
+
+        mock_exists.return_value = True
+
+        # Ref only has 1 HMM
+        mock_read.return_value = pd.DataFrame([["HMM_X"]])
+
+        _, _, h_df, h_cols = _align_all_features(
+            self.mock_phage_df,
+            self.mock_host_df,
+            phage_ref_path=None,
+            host_ref_path="host.tsv",
+            m_token=0,
+        )
+
+        # Final columns should be: [k_type_dim1, k_type_dim2, HMM_X]
+        self.assertEqual(len(h_cols), 3)
+        self.assertEqual(h_cols[0], "k_type_dim1")
+        self.assertEqual(h_cols[1], "k_type_dim2")
+        self.assertEqual(h_cols[2], "HMM_X")
+
+        # Verify the data merged correctly
+        self.assertEqual(h_df.iloc[0]["k_type_dim1"], 1)
+        self.assertEqual(h_df.iloc[0]["HMM_X"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()

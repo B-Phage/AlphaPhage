@@ -44,26 +44,30 @@ def extract_h5_info_metadata(h5_source_path: Path, output_dir: Path):
             if key in f:
                 item = f[key]
 
-                # Check if it's actually a dataset (resolves Pylance warning)
+                # KEEP: Explicit type check for Pylance/Runtime safety
                 if isinstance(item, h5py.Dataset):
-                    data = item[()]  # Using [()] is the h5py-idiomatic way to get all data
+                    # item[()] gets the raw numpy-like array
+                    data_array = item[()]
 
-                    # Convert to numpy for easier handling
-                    data_array = np.array(data)
-
+                    # FIX: Process byte strings while PRESERVING 2D SHAPE
                     if data_array.dtype.kind in {"S", "U"}:
-                        # Decode byte strings to utf-8 strings
-                        clean_data = [
-                            x.decode("utf-8") if isinstance(x, bytes) else x
-                            for x in data_array.flatten()
-                        ]
+                        # Map the decode function across the 2D array
+                        func = np.vectorize(
+                            lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
+                        )
+                        clean_data = func(data_array)
                     else:
-                        clean_data = data_array.tolist()
+                        clean_data = data_array
 
+                    # FIX: Create DataFrame from 2D array so it stays 2 rows by N columns
                     df = pd.DataFrame(clean_data)
+
                     out_file = output_dir / f"{key}.tsv"
+                    # KEEP: sep="\t" and no index/header
                     df.to_csv(out_file, sep="\t", index=False, header=False)
-                    logger.info(f"   ✅ Extracted {key} ({len(clean_data)} entries)")
+
+                    # UPDATE: Log the actual shape (e.g., 2 x 2167)
+                    logger.info(f"   ✅ Extracted {key} {clean_data.shape}")
                 else:
                     logger.warning(f"   ⚠️ Key '{key}' exists but is a {type(item)}, not a Dataset.")
             else:

@@ -51,7 +51,7 @@ class TestTransformerXLightning(unittest.TestCase):
         """Verify that hyperparameters are saved for Lightning checkpointing."""
         # Lightning stores these in self.hparams
         self.assertTrue(hasattr(self.model, "hparams"))
-        self.assertEqual(self.model.hparams["dim"], 8)
+        self.assertEqual(self.model.hparams["cfg"]["dim"], 8)
 
     def test_training_step(self):
         """Test the training loop's forward pass and loss calculation."""

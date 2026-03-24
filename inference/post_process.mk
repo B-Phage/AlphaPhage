@@ -1,10 +1,10 @@
 # post_process.mk
 include common.mk
 
-.PHONY: final_stages build_inference_matrix aggregate_features
+.PHONY: final_stages build_inference_matrix aggregate_features run_model_inference
 
 # Add your next stages here as you build them (e.g., aggregate_features)
-final_stages: build_inference_matrix aggregate_features
+final_stages: build_inference_matrix aggregate_features run_model_inference
 
 build_inference_matrix:
 	@echo "🔀 [Inference] Building All-vs-All Interaction Matrix..."
@@ -29,3 +29,12 @@ aggregate_features: build_inference_matrix
 		--phage_ref $(PHAGE_REF_INFO) \
 		--host_ref $(HOST_REF_INFO) \
 		--inference
+
+
+run_model_inference: aggregate_features
+	@echo "🧠 [Inference] Running TransformerX Model Predictions..."
+	$(CONDA_RUN_TRAIN) python $(WRKFLOW_DIR)/run_inference.py \
+		--config $(MODEL_CONFIG) \
+		--checkpoint $(CHECKPOINT_PATH) \
+		--features $(INF_OUT)/x_$(MODEL_FEATURE_DATA_NAME).h5 \
+		--output $(INF_OUT)/final_predictions.csv

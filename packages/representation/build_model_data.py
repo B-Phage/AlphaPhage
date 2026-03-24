@@ -70,33 +70,50 @@ def _align_all_features(
 ) -> Tuple[pd.DataFrame, List[str], pd.DataFrame, List[str]]:
     """Step 2 & 3: Align features to reference TSVs."""
 
-    # Phage Alignment
+    serotype_cols = ["k_type_dim1", "k_type_dim2"]
+
+    # --- Phage Alignment ---
     if phage_ref_path and Path(phage_ref_path).exists():
         logger.info(f"🎯 Aligning phage features to reference: {phage_ref_path}")
-        ref_p = pd.read_csv(phage_ref_path, sep="\t", header=None).values.astype("S100")
-        target_p_cols = [c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in ref_p[0]]
+
+        # Load reference and flatten to ensure we get all IDs
+        ref_p = pd.read_csv(phage_ref_path, sep="\t", header=None, nrows=1)
+        target_p_cols = ref_p.values.flatten().astype(str).tolist()
+
+        # Force the dataframe to match these columns (padding with missing_token)
         phage_df, phage_cols = align_features_from_list(phage_df, target_p_cols, m_token)
     else:
+        # Fallback: Just take whatever is in the DB
         phage_cols = [c for c in phage_df.columns if c != "organism_id"]
 
-    # Host Alignment
-    serotype_cols = ["k_type_dim1", "k_type_dim2"]
+    # --- Host Alignment ---
     if host_ref_path and Path(host_ref_path).exists():
         logger.info(f"🎯 Aligning host features to reference: {host_ref_path}")
-        ref_h = pd.read_csv(host_ref_path, sep="\t", header=None).values.astype("S100")
-        all_ref_names = [c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in ref_h[0]]
+
+        # Load reference and flatten
+        ref_h = pd.read_csv(host_ref_path, sep="\t", header=None, nrows=1)
+        all_ref_names = ref_h.values.flatten().astype(str).tolist()
+
+        # Separate the HMM IDs from the Serotype dimensions
         hmm_ref_cols = [c for c in all_ref_names if c not in serotype_cols]
 
-        hmm_only_df = host_df.drop(columns=serotype_cols)
+        # Isolate HMMs, align them, then merge back with Serotypes
+        hmm_only_df = host_df.drop(columns=[c for c in serotype_cols if c in host_df.columns])
         aligned_hmm_df, _ = align_features_from_list(hmm_only_df, hmm_ref_cols, m_token)
 
+        # Re-attach Serotypes to the aligned HMM matrix
         host_df = host_df[["organism_id"] + serotype_cols].merge(aligned_hmm_df, on="organism_id")
         host_cols = serotype_cols + hmm_ref_cols
     else:
+        # Fallback: Serotypes first, then everything else
         host_cols = serotype_cols + [
             c for c in host_df.columns if c not in ["organism_id"] + serotype_cols
         ]
 
+    # Final Verification Log
+    logger.info(
+        f"📏 Final Feature Vector Dimensions -> Phage: {len(phage_cols)}, Host: {len(host_cols)}"
+    )
     return phage_df, phage_cols, host_df, host_cols
 
 

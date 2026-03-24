@@ -48,7 +48,7 @@ def rigorous_assignment(distances, gallery_ids, cluster_thresholds=None, consens
 
         # --- FINAL DECISION ---
         if not is_within_limit:
-            final_id = "UNKNOWN_NEW_VARIANT"
+            final_id = "2"
         elif counts[most_freq_idx] >= 2:
             # Check if the consensus is "comparably close" to the 1-NN
             # If 1-NN is much better (ratio > 1.2), ignore the consensus

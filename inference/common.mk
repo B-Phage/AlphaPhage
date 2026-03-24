@@ -18,7 +18,6 @@ VOCAB_FILE    := $(SNAPSHOT_DIR)/vocab/vocab_v0.0.1.yaml
 PHAGE_TABLE_NAME := phage_variants_v1
 BAC_TABLE_NAME   := bacteria_variants_v1
 FEATURE_DB       := $(INF_DATA_ROOT)/data/processed/duckdb/features.duckdb
-
 SEROTYPE_TABLE_NAME := bacteria_serotypes_v1
 PHAGE_REF_INFO 		:= $(SNAPSHOT_DIR)/reference/vector_info/phage_vec_1_info.tsv
 HOST_REF_INFO		:= $(SNAPSHOT_DIR)/reference/vector_info/host_vec_1_info.tsv

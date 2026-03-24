@@ -31,20 +31,26 @@ class TransformerX(pl.LightningModule):
         super().__init__()
 
         # 1. Resolve the config so paths and variables are absolute strings/ints
-        resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
+        # If cfg is already a dict (restored from ckpt), don't try to resolve it again
+        if isinstance(cfg, DictConfig):
+            resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
+        else:
+            resolved_cfg = cfg  # It's already a standard dict
 
-        # 2. Save the resolved config AND the standalone metadata
-        # We pass them as a dict to ensure everything is captured in one go
+        # 2. Save hyperparameters using the plain dict
         self.save_hyperparameters(
             {
                 "cfg": resolved_cfg,
-                "num_tokens": num_tokens,
-                "vocab_size_out": vocab_size_out,
-                "length_padded": length_padded,
+                "num_tokens": int(num_tokens),
+                "vocab_size_out": int(vocab_size_out),
+                "length_padded": int(length_padded),
             }
         )
 
-        self.cfg = cfg
+        # 3. CRITICAL: Convert back to a dot-accessible object
+        # This fixes the 'AttributeError: dict object has no attribute'
+        self.cfg = OmegaConf.create(resolved_cfg)
+
         self.archspecs = archspecs
         self.archspecs2 = archspecs2
 

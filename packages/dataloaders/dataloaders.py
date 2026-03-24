@@ -109,24 +109,47 @@ class BinaryPairkeyFeatureDataset(Dataset):
         self.dataset_name_phage = cfg.dataset_name_phage
         self.batch_size = cfg.batch_size
 
+        # --- INFERENCE MODE DETECTION ---
+        # Determine if we are running in inference (labels missing)
+        self.is_inference = False
+        if self.labels_path == self.features_path:
+            self.is_inference = True
+
         # Pre-calculate length
-        with h5py.File(self.labels_path, "r") as f_y:
-            self.total_size = len(f_y["data"])
+        with h5py.File(self.features_path, "r") as f_x:
+            if self.is_inference:
+                # Use interaction pairs to define size if labels aren't available
+                self.total_size = len(f_x[self.pair_indices_name])
+            else:
+                with h5py.File(self.labels_path, "r") as f_y:
+                    if "data" in f_y:
+                        self.total_size = len(f_y["data"])
+                    else:
+                        # Fallback if label file exists but is empty/inference-only
+                        self.is_inference = True
+                        self.total_size = len(f_x[self.pair_indices_name])
 
         ## workers must == 0
         self.open_h5()
 
         # Map the datasets to the persistent file handles. workers must == 0
-        self.Ynp = self.f_y["data"]
         self.Xh5_host = self.f_x[self.dataset_name_host]
         self.Xh5_phage = self.f_x[self.dataset_name_phage]
         self.pair_indices = self.f_x[self.pair_indices_name]
 
+        # Handle label mapping safely
+        if self.is_inference:
+            self.Ynp = None
+        else:
+            self.Ynp = self.f_y["data"]
+
     def open_h5(self):
         """Reading an h5 file"""
-        if not hasattr(self, "Ynp"):  # Lazy loading avoids opening an already opened file
-            self.f_y = h5py.File(self.labels_path, "r", libver="latest", swmr=True)
+        if not hasattr(self, "f_x"):  # Lazy loading
             self.f_x = h5py.File(self.features_path, "r", libver="latest", swmr=True)
+
+        if not self.is_inference and not hasattr(self, "f_y"):
+            self.f_y = h5py.File(self.labels_path, "r", libver="latest", swmr=True)
 
     def __getitem__(self, idx):
         """Returns a single sample consisting of concatenated host and phage
@@ -137,9 +160,15 @@ class BinaryPairkeyFeatureDataset(Dataset):
         data_host = self.Xh5_host[ii_host]
         data_phage = self.Xh5_phage[ii_phage]
 
+        # Handle label: return dummy 0.0 in inference mode to avoid KeyError
+        if self.is_inference:
+            label_val = 0.0
+        else:
+            label_val = self.Ynp[idx]
+
         return (
             torch.from_numpy(np.concatenate((data_host, data_phage), axis=0)).long(),
-            torch.tensor(self.Ynp[idx]).long(),
+            torch.tensor(label_val).long(),
         )
 
     def __len__(self):
