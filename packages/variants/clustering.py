@@ -89,7 +89,7 @@ def perform_msa_clustering(
     dist_mtx = calculate_distance_matrix(df_subset.values, matrix)
 
     if num_unique <= 1:
-        labels = ["1"] * len(df_subset)
+        labels = ["0"] * len(df_subset)
         return labels, "single_row_default", 1, dist_mtx
 
     final_k = min(num_clusters, num_unique)
@@ -97,7 +97,7 @@ def perform_msa_clustering(
     # Clustering logic
     model = AgglomerativeClustering(n_clusters=final_k, linkage=linkage, metric="precomputed")
     clusters = model.fit_predict(dist_mtx)
-    labels = [str(int(c) + 1) for c in clusters]
+    labels = [str(int(c)) for c in clusters]
 
     return labels, "agglomerative", final_k, dist_mtx
 
@@ -141,22 +141,24 @@ def build_cluster_feature_table(
     """
 
     # 1. Cluster and get the Matrix
+    # cluster_labels will be strings like ['0', '1', '2'...]
     cluster_labels, algorithm, final_k, dist_mtx = perform_msa_clustering(
         df[columns_subset], num_clusters, matrix
     )
 
-    # 2. Tokenize (IDs change from "1" to "3", etc.)
-    # Note: encode_onecol_vocab_vec is imported from your representation module
-    from representation.encoding_methods import encode_onecol_vocab_vec
+    # 2. Use the raw labels as your Variant IDs
+    # We strip the "tokenization" step here so the IDs match your vocab KEYS
+    flat_variant_ids = cluster_labels
 
-    nested_tokens = encode_onecol_vocab_vec(vec=cluster_labels, vocab_dict=vocab_dict)
-    flat_variant_ids = [str(t) for t in nested_tokens[0]]
+    logger.warning(f"Variant IDs (original cluster indices): {flat_variant_ids}")
 
-    # 3. Calculate Radii using FINAL IDs
+    # 3. Calculate Radii using the cluster strings ('0', '1', etc.)
     fallback_radius = IDENTITY_FLOOR if matrix == "identity" else BLOSUM_FLOOR
     radii = _calculate_radii(flat_variant_ids, dist_mtx, fallback_radius)
 
     # 4. Update DataFrame
+    # Now the index of df_clusters will be '0', '1', '2'...
+    # which matches the LEFT side of your vocab dict.
     df_clusters = df.copy()
     df_clusters.index = flat_variant_ids
 

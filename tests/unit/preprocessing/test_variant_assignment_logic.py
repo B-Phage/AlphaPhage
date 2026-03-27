@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 from variants.cluster_map import rigorous_assignment
 
+UNKNOWN_NEW_VARIANT = "2"
+
 
 def test_rigorous_assignment_consensus():
     """Matches Logic 2: Top matches reach consensus (2 out of 3)."""
@@ -35,7 +37,7 @@ def test_rigorous_assignment_explicit_threshold_violation():
 
     ids, scores = rigorous_assignment(distances, gallery_ids, cluster_thresholds=thresholds)
 
-    assert ids == ["UNKNOWN_NEW_VARIANT"]
+    assert ids == [UNKNOWN_NEW_VARIANT]
     assert scores == [0.25]
 
 
@@ -46,7 +48,7 @@ def test_rigorous_assignment_fallback_threshold_violation():
 
     ids, scores = rigorous_assignment(distances, gallery_ids)
 
-    assert ids == ["UNKNOWN_NEW_VARIANT"]
+    assert ids == [UNKNOWN_NEW_VARIANT]
     assert scores == [0.51]
 
 
@@ -76,7 +78,7 @@ def test_rigorous_assignment_multi_query():
     ids, scores = rigorous_assignment(distances, gallery_ids)
 
     assert ids[0] == "A"
-    assert ids[1] == "UNKNOWN_NEW_VARIANT"
+    assert ids[1] == UNKNOWN_NEW_VARIANT
     assert len(ids) == 2
 
 

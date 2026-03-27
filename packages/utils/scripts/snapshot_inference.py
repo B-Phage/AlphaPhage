@@ -234,8 +234,13 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
                         logger.info(f"   💉 Injecting inference_config into {cfg_file.name}")
 
                         # Fix the variant dir to point to the snapshot reference folder
-                        temp_cfg.msa_var.msa_variant_dir = (
-                            f"../../databases/inference/reference/{domain}/variant_shards"
+                        temp_cfg.msa_var.gallery_path = str(
+                            "../"
+                            / target_path
+                            / "reference"
+                            / domain
+                            / "variant_shards"
+                            / cluster_name
                         )
 
                         # Generate the block
@@ -269,6 +274,9 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
             inference_params = params.copy()
             # Redirect to the internal snapshot relative path
             inference_params.msa_var.msa_variant_dir = f"reference/{domain}/variant_shards"
+            inference_params.msa_var.gallery_path = (
+                "../" / target_path / "reference" / domain / "variant_shards" / cluster_name
+            )
 
             create_inference_config(
                 training_cfg=inference_params,

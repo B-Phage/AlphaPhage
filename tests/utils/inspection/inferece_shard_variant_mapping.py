@@ -9,6 +9,7 @@ import pandas as pd
 from utils.consol_log import get_logger
 from variants.inference_mapper import InferenceMapper
 
+UNKNOWN_NEW_VARIANT = "2"
 logger = get_logger()
 
 
@@ -51,7 +52,8 @@ def run_sanity_check(shard_path: str, num_q: int, matrix: str, buffer: float, ra
     mapper = InferenceMapper(buffer_factor=buffer, consensus_ratio=ratio)
 
     # 3. Perform Mapping
-    results = mapper.map_to_variants(queries, gallery, matrix_type=matrix)
+    hmm_id = pathlib.Path(shard_path).stem
+    results = mapper.map_to_variants(queries, gallery, matrix_type=matrix, hmm_id=hmm_id)
 
     # 4. Detailed Output
     print("\n" + "=" * 90)
@@ -59,7 +61,7 @@ def run_sanity_check(shard_path: str, num_q: int, matrix: str, buffer: float, ra
     print("-" * 90)
 
     for _, row in results.iterrows():
-        is_unknown = row["assigned_variant_id"] == "UNKNOWN_NEW_VARIANT"
+        is_unknown = row["assigned_variant_id"] == UNKNOWN_NEW_VARIANT
         status_tag = "[!]" if is_unknown else "[OK]"
 
         # Color-coded feel for terminals (optional)
@@ -74,7 +76,7 @@ def run_sanity_check(shard_path: str, num_q: int, matrix: str, buffer: float, ra
 
     # 5. Summary
     total = len(results)
-    unknowns = (results["assigned_variant_id"] == "UNKNOWN_NEW_VARIANT").sum()
+    unknowns = (results["assigned_variant_id"] == UNKNOWN_NEW_VARIANT).sum()
     logger.info(
         f"Results for {pathlib.Path(shard_path).stem}: {total - unknowns}/{total} mapped successfully."
     )
@@ -103,6 +105,7 @@ if __name__ == "__main__":
     # file_name = "shard_Wzy_C.tsv"
     # num_queries = 300
     file_name = "shard_phrog_17.tsv"
+    file_name = "/Users/tamsen/Code/AlphaPhage/ml_assets/data/processed/phage/msa_var/clusters_16_reduction_false_matrix_blosum62/phrog_17.parquet"
     num_queries = 50
     matrix = "blosum62"
     radius_buffer = 1.1

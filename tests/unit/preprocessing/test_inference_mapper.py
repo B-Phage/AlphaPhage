@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from variants.inference_mapper import InferenceMapper
 
+UNKNOWN_NEW_VARIANT = "2"
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
@@ -84,11 +85,11 @@ def test_map_to_variants_outside_radius_unknown(mock_dist, mapper, gallery_df):
 
     # Mocking rigorous_assignment to return the 'UNKNOWN' sentinel
     with patch("variants.inference_mapper.rigorous_assignment") as mock_assign:
-        mock_assign.return_value = (["UNKNOWN_NEW_VARIANT"], [0.3])
+        mock_assign.return_value = ([UNKNOWN_NEW_VARIANT], [0.3])
 
         result = mapper.map_to_variants(queries_df, gallery_df, "blosum62")
 
-        assert result.iloc[0]["variant_id"] == "UNKNOWN_NEW_VARIANT"
+        assert result.iloc[0]["variant_id"] == UNKNOWN_NEW_VARIANT
         assert result.iloc[0]["distance"] == 0.3
         assert result.iloc[0]["mapping_method"] == "distance_blosum62"
 

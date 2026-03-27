@@ -34,7 +34,7 @@ def create_inference_config(
     # Logic: It uses the msa_variant_dir and msa_cluster_name defined in the config.
     # Note: In the snapshot script, you should override msa_variant_dir to the
     # relative path 'reference/{domain}/variant_shards' before calling this.
-    gallery_path = os.path.join(inf.msa_var.msa_variant_dir, inf.msa_var.msa_cluster_name)
+    gallery_path = inf.msa_var.gallery_path
 
     # 5. Inject the new inference-specific block
     inf.inference_config = {
@@ -61,9 +61,7 @@ def generate_inference_block(
     domain_name = training_cfg.general.get("name", "unknown_domain")
 
     # The gallery is relative to the snapshot root: reference/{domain}/...
-    gallery_path = os.path.join(
-        training_cfg.msa_var.msa_variant_dir, training_cfg.msa_var.msa_cluster_name
-    )
+    gallery_path = training_cfg.msa_var.gallery_path
 
     # 2. Build the block (using your requested relative paths)
     return {
