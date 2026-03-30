@@ -47,8 +47,7 @@ outputs/*
 dvc_plots/
 
 # Trained model artifacts
-models/
-models/*
+*.ckpt
 
 # Human readable inspection files
 *.csv
