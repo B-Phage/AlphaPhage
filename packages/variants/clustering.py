@@ -108,42 +108,34 @@ def build_cluster_feature_table(
     columns_subset: List[str],
     num_clusters: int,
     matrix: str,
-    vocab_dict: Dict[str, int],
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, float]]:
-    """Orchestrates MSA clustering, vocabulary encoding, and radius calculation.
+    """Orchestrates MSA clustering and initial radius calculation.
 
-    This is the primary entry point for transforming an alignment into a
-    tokenized feature table. It ensures that the calculated radii are
-    correctly mapped to the final vocabulary tokens, preventing key mismatches
-    between the variant gallery and the distance thresholds.
+    This function transforms an alignment into a feature table indexed by raw
+    cluster labels. Radii are calculated based on these raw labels.
+
+    Note: Mapping these labels to final vocabulary tokens is expected to
+    be performed by the caller or a downstream process.
 
     Args:
-        df: The input MSA DataFrame where rows represent genomes and columns
-            represent alignment positions.
-        genomes: A list of unique identifiers (e.g., organism_id) corresponding
-            to the rows in `df`.
-        columns_subset: The list of alignment positions (columns) used as
-            features for clustering.
-        num_clusters: Target number of clusters to generate.
-        matrix: The distance metric to use for pairwise comparisons
-            ('identity' or 'blosum62').
-        vocab_dict: A dictionary mapping raw cluster labels to integer
-            tokens (e.g., {'1': 3, '2': 4}).
+        df: Input MSA DataFrame.
+        genomes: Unique identifiers for the rows in `df`.
+        columns_subset: Alignment positions used for clustering.
+        num_clusters: Target number of clusters.
+        matrix: Distance metric ('identity' or 'blosum62').
 
     Returns:
         A tuple containing:
-            - df_clusters (pd.DataFrame): The original sequence data with an
-                index consisting of the tokenized cluster IDs.
-            - df_cluster_info (pd.DataFrame): Summary table of the clustering
-                parameters (algorithm, linkage, etc.) for metadata tracking.
-            - radii (Dict[str, float]): A mapping of final variant tokens
-                to their associated radii (max internal distance or floor).
+            - df_clusters (pd.DataFrame): Data indexed by raw cluster labels.
+            - df_cluster_info (pd.DataFrame): Metadata about the clustering run.
+            - radii (Dict[str, float]): Max internal distance per raw cluster label.
     """
 
     # 1. Cluster and get the Matrix
     # cluster_labels will be strings like ['0', '1', '2'...]
+    df_subset = cast(pd.DataFrame, df[columns_subset])
     cluster_labels, algorithm, final_k, dist_mtx = perform_msa_clustering(
-        df[columns_subset], num_clusters, matrix
+        df_subset, num_clusters, matrix
     )
 
     # 2. Use the raw labels as your Variant IDs

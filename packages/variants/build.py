@@ -25,7 +25,7 @@ def build_variants(
     num_clusters: int = 16,
     matrix: str = "identity",
 ):
-    """Processes an MSA file to generate clusters and writes variant shards to the lake.
+    """Processes an MSA file to generate clusters and writes raw variant shards.
 
     This function executes the full training preprocessing pipeline for a single HMM.
     It reads an MSA, standardizes characters, optionally reduces the feature space
@@ -56,13 +56,13 @@ def build_variants(
     Notes:
         The output Parquet shard contains the following schema:
         - organism_id (str): Unique identifier for the source genome.
-        - hmm_id (str): The HMM identifier associated with the protein set.
-        - variant_id (str): The tokenized cluster assignment.
-        - sequence_aligned (str): The raw aligned sequence used for the gallery.
-        - radius (float): The maximum internal distance of the cluster, used
-            for thresholding during inference mapping.
-        - clustering_version (str): Metadata string capturing the parameters
-            used for reproducibility.
+        - hmm_id (str): The HMM identifier.
+        - variant_id (str): The RAW cluster label (e.g., "0", "1").
+            Note: These are mapped to global vocabulary tokens in a
+            separate downstream process.
+        - sequence_aligned (str): The raw aligned sequence.
+        - radius (float): Max internal distance of the cluster (biological floor applied).
+        - clustering_version (str): Metadata for reproducibility.
     """
     msa_cluster_dir = str(msa_cluster_dir)
     os.makedirs(msa_cluster_dir, exist_ok=True)
@@ -92,15 +92,15 @@ def build_variants(
         columns_subset=columns_subset,
         num_clusters=num_clusters,
         matrix=matrix,
-        vocab_dict=vocab.vocab_clusters_single,
     )
+    # These are the raw cluster strings from the clustering index
     variant_assignments = df_clusters.index.tolist()
 
     try:
-        # Strict lookup: If the ID isn't in the radii dict, it's a code-logic failure.
+        # Validates that every row's cluster label has a corresponding radius entry
         row_radii = [cluster_radii[v] for v in variant_assignments]
     except KeyError as e:
-        logger.error(f"❌ Key Mismatch: Variant ID {e} not found in radii dictionary.")
+        logger.error(f"❌ Radius Lookup Failure: Label {e} not found in radii dict.")
         raise
 
     # Convert MSA dataframe back to raw strings for the "Gallery"
