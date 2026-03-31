@@ -1,11 +1,11 @@
-import logging
 from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
+import utils.consol_log as log
 from omegaconf import DictConfig
 
-logger = logging.getLogger(__name__)
+logger = log.get_logger()
 
 # ===============================
 # Core functions for table/msa processing

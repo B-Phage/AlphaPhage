@@ -131,7 +131,8 @@ class TransformerX(pl.LightningModule):
         return test_loss
 
     def predict_step(self, batch, batch_idx):
-        x, y = batch
+        # function might only be provided with x (features) without y (labels).
+        x = batch[0] if isinstance(batch, (tuple, list)) else batch
         logits = self(x)
         return torch.softmax(logits, dim=-1)
 

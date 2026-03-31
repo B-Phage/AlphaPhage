@@ -34,10 +34,13 @@ import os
 from functools import partial
 from pathlib import Path
 
+import utils.consol_log as log
 from orchestration.orchestrator import Orchestrator
 from utils.config_loader import get_config, get_vocab
 from utils.hash import compute_combined_code_version, create_manifest
 from variants.build import build_variants
+
+logger = log.get_logger()
 
 DEFAULT_RUNTIME_PATH = "ml_assets/config/runtime.yaml"
 HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
@@ -77,7 +80,8 @@ def get_variant_outputs(input_path: Path, output_dir: Path) -> list[Path]:
     Maps an input MSA file to its expected .mva and .mcd output paths.
     """
     hmm_name = input_path.stem
-    return [output_dir / f"{hmm_name}.mva", output_dir / f"{hmm_name}.mcd"]
+    # The Orchestrator expects a list of expected files
+    return [output_dir / f"{hmm_name}.parquet"]
 
 
 # -----------------------------------------------------------------------------
@@ -101,8 +105,8 @@ def run_variant_workflow(config_path: str, code_hash, force: bool = False):
     msa_input_dir = Path(msa_cfg.msa_csa_dir)
     output_dir = Path(var_cfg.msa_variant_dir) / var_cfg.msa_cluster_name
 
-    print(f"The msa var output dir is {output_dir}")
-    print(f"The msa input dir is {msa_input_dir}")
+    logger.info(f"The msa var output dir is {output_dir}")
+    logger.info(f"The msa input dir is {msa_input_dir}")
 
     conf_code_version = gen_cfg.code_version
     code_version = compute_combined_code_version(
@@ -142,10 +146,11 @@ def run_variant_workflow(config_path: str, code_hash, force: bool = False):
         wipe_dirs=[output_dir],
     )
 
-    # Generate manifest of the primary variant files (.mva)
-    variant_results = list(output_dir.glob("*.mva"))
+    # Generate manifest of the parquet shards
+    variant_results = list(output_dir.glob("*.parquet"))
     MANIFEST_FILE = output_dir.parent / f"{var_cfg.msa_cluster_name}_manifest.json"
     create_manifest(variant_results, MANIFEST_FILE)
+    logger.info(f"✅ Created manifest with {len(variant_results)} shards.")
 
 
 def main(argv=None):

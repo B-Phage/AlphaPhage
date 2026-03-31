@@ -18,6 +18,8 @@ class DuckDBClient:
     - light metadata helpers
     """
 
+    con: duckdb.DuckDBPyConnection
+
     def __init__(
         self,
         db_path: str = ":memory:",
@@ -301,3 +303,55 @@ class DuckDBClient:
             [table_name],
         ).fetchall()
         return [row[0] for row in rows]
+
+    # ------------------------------------------------------------------
+    # Data Inspection
+    # ------------------------------------------------------------------
+
+    def head(self, table_name: str, n: int = 5) -> pd.DataFrame:
+        """
+        Returns the first N rows of a table as a pandas DataFrame.
+
+        Args:
+            table_name: Name of the table to inspect.
+            n: Number of rows to return (default 5).
+
+        Returns:
+            A pandas DataFrame containing the top N rows.
+
+        Raises:
+            ValueError: If the table does not exist.
+        """
+        if not self.table_exists(table_name):
+            raise ValueError(f"Table '{table_name}' does not exist in the database.")
+
+        # We leverage the existing .table() method which handles safe quoting,
+        # then apply a limit and convert to a DataFrame.
+        return self.table(table_name).limit(n).df()
+
+    def get_table_hash(self, table_name: str) -> str:
+        """
+        Computes a deterministic, order-independent hash of a table's content.
+
+        This allows DVC or downstream stages to verify the 'identity' of the
+        data inside the database without tracking the entire binary .db file.
+        """
+        if not self.table_exists(table_name):
+            raise ValueError(f"Table '{table_name}' does not exist.")
+
+        # 1. Get column names and quote them safely
+        cols = [self._quote_ident(c) for c in self.list_columns(table_name)]
+
+        # 2. Build the row-string representation for hashing
+        # We use a separator ' | ' to prevent collision between different column values
+        row_expr = " || ' | ' || ".join([f"COALESCE(CAST({c} AS VARCHAR), 'NULL')" for c in cols])
+
+        # 3. Compute the XORed hash across all rows
+        # bit_xor is commutative, so the result is identical regardless of row order.
+        query = f"SELECT upper(hex(bit_xor(hash({row_expr})))) FROM {self._quote_ident(table_name)}"
+
+        result = self.con.execute(query).fetchone()
+
+        if result and result[0] is not None:
+            return str(result[0])
+        return "EMPTY_TABLE"

@@ -2,7 +2,8 @@
 # vocab_v0.0.1.yaml
 # exported from vocabulary.py using AlphaX/investigations/vocab_coversion.py
 
-filler_char: '_'
+filler_char: '_' # idicates an item is missing
+filler_token: 1
 
 vocab1:
   '0': 0

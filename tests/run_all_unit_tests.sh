@@ -6,7 +6,7 @@ ENV_PREPROC="preprocessing"
 ENV_KAPTIVE="kaptive3api"
 
 # 2. Setup paths
-PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 export COVERAGE_FILE="$PROJECT_ROOT/.coverage"

@@ -10,7 +10,7 @@ import utils.consol_log as log
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, Sampler
 
-logger = log.get_logger(level=log.ERROR)
+logger = log.get_logger()
 
 
 # Runs at the beginning of each batch
@@ -163,6 +163,7 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
         # self.save_hyperparameters()
 
     def setup(self, stage=None):
+        # 1. Determine base paths based on debug mode
         if self.cfg.debug_mode:
             features_path = self.cfg.debug_features_path
             labels_path = self.cfg.debug_labels_path
@@ -170,26 +171,26 @@ class BinaryPairkeyDataModule(pl.LightningDataModule):
             features_path = self.cfg.train_features_path
             labels_path = self.cfg.train_labels_path
 
-        # Build out stages: "fit", "validate", "test", or "predict"
+        # 2. Logic for Training and Validation
         if stage == "fit" or stage is None:
             self.full_dataset = BinaryPairkeyFeatureDataset(self.cfg, features_path, labels_path)
-
             all_indices = list(range(len(self.full_dataset)))
-            # Partition indices
             self.train_idx, self.val_idx = train_test_split(
                 all_indices, test_size=self.cfg.val_fraction, random_state=self.cfg.seed
             )
-            print("Setup: Train and Val sets created.")
 
+        # 3. Logic for Testing
         if stage == "test" or stage is None:
             self.test_dataset = BinaryPairkeyFeatureDataset(self.cfg, features_path, labels_path)
-            print("Setup: Test set created.")
 
-        # 3. Logic for Production Prediction
+        # 4. Logic for Production Prediction
         if stage == "predict":
-            self.predict_dataset = BinaryPairkeyFeatureDataset(
-                self.cfg, self.cfg.predict_features_path, self.cfg.predict_labels_path
-            )
+            # FALLBACK: Use specific predict paths if they exist,
+            # otherwise fall back to the paths determined above.
+            p_feat = getattr(self.cfg, "predict_features_path", features_path)
+            p_lab = getattr(self.cfg, "predict_labels_path", labels_path)
+
+            self.predict_dataset = BinaryPairkeyFeatureDataset(self.cfg, p_feat, p_lab)
 
     def train_dataloader(self):
         return DataLoader(

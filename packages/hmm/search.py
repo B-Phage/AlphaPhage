@@ -10,16 +10,16 @@ Responsibilities:
 This module is pure computation and contains no persistence or CLI logic.
 """
 
-import logging
 from typing import Iterable, Union
 
 import pandas as pd
 import pyhmmer
+import utils.consol_log as log
 from hmm.annotations import AnnotationProvider
 from pyhmmer.easel import DigitalSequenceBlock
 from pyhmmer.plan7 import HMM
 
-logger = logging.getLogger(__name__)
+logger = log.get_logger()
 
 
 def normalize_name(name: str | bytes | bytearray | memoryview) -> str:

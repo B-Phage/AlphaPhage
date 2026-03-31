@@ -1,20 +1,34 @@
 {
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-
     "python.testing.pytestArgs": [
         "tests"
     ],
 
     "python.envFile": "${workspaceFolder}/.env",
 
+    // This helps Pylance/Intellisense find your modules
     "python.analysis.extraPaths": [
-        "./packages"
+        "${workspaceFolder}/packages"
     ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/packages"
+    ],
+
+    // This injects PYTHONPATH into the terminal when you hit "Run"
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/packages:${env:PYTHONPATH}"
+    },
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/packages:${env:PYTHONPATH}"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/packages;${env:PYTHONPATH}"
+    },
 
     "files.associations": {
         "*.dvc": "yaml",
         ".dvc/config": "ini"
     },
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "basic"
 }

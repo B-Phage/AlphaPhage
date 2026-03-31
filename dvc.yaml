@@ -1,6 +1,14 @@
 # Run with
 # dvc update # this brings in the remote raw data
 # dvc repro  # this runs all changed piplines, see https://doc.dvc.org/command-reference/repro#options
+vars:
+  - params.yaml:
+      vocab:
+  #     version
+  #     file
+  #     variants_encoding
+
+
 
 
 stages:
@@ -34,6 +42,8 @@ stages:
       workflows/run_train.py
       packages/hmm/msa.py
       packages/hmm/duckdb_io.py
+      packages/representation/typing_aggregator.py
+      packages/representation/build_model_data.py
       --output-dir ml_assets/data/artifacts/code_hashes '
     deps:
       - packages/hmm
@@ -52,6 +62,32 @@ stages:
     outs:
       - ml_assets/data/artifacts/code_hashes # whole directory
 
+# -----------------------------------------------------------------------------
+# Config Setup
+# -----------------------------------------------------------------------------
+
+
+  stage_configs:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -u packages/utils/stage_configs.py --params params.yaml
+      '
+    deps:
+      - packages/utils/stage_configs.py
+      - ml_assets/config/
+    params:
+      - phage_preprocess_conf
+      - ecoli_preprocess_conf
+      - serotype_conf
+      - train_model_conf
+      - interactions_conf
+    outs:
+      # Use a dedicated subfolder to avoid circular dependencies
+      # if runtime was inside the watched config folder
+      - ml_assets/runtime_configs/:
+          persist: true
 
 # -----------------------------------------------------------------------------
 # Phage Preprocessing
@@ -74,13 +110,13 @@ stages:
       - ${prodigal_config.genome_dir}
       - ${self_path}
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
     outs:
       - ${prodigal_config.proteins_dir}_manifest.json
       - ${prodigal_config.proteins_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/prodigal_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/prodigal_${general.name}.json:
+      #     persist: true
 
 
   hmm_scan_all_phage:
@@ -106,10 +142,10 @@ stages:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:
           persist: true
-      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
 
   build_phage_hmm_summary:
   # Summarise the parquet lake to optimise the next HMM extraction step
@@ -131,7 +167,7 @@ stages:
     # We are intentionally not tracking the DuckDB table itself in DVC. The parquet lake already has all the info.
       - ${hmm_config.db_fingerprint}
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
 
   extract_phage_hmm_fastas:
   # if anything changed with the code deps or the db_fingerprint:
@@ -152,10 +188,10 @@ stages:
       - ${hmm_config.hmm_fasta_dir}_manifest.json
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
 
   create_phage_msas:
     cmd: >
@@ -175,10 +211,10 @@ stages:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/msa_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/msa_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
 
   create_phage_msa_vars:
     cmd: >
@@ -187,12 +223,10 @@ stages:
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/create_msa_variants.py
       --config "${self_path}"
-      --code_hash ml_assets/data/artifacts/code_hashes/representation.hash
       --code_hash ml_assets/data/artifacts/code_hashes/variants.hash
       --code_hash ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       '
     deps:
-      - ml_assets/data/artifacts/code_hashes/representation.hash
       - ml_assets/data/artifacts/code_hashes/variants.hash
       - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       - ${msa_config.msa_csa_dir}_manifest.json
@@ -200,10 +234,32 @@ stages:
     outs:
       - ${msa_var.msa_variant_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/variants_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/variants_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_phage_v1.0.0.yaml
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
+
+  aggregate_phage_variants:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -m variants.long_table_builder
+      -i ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}
+      -d ${storage.feature_db}
+      -t ${features.phage.table_name}
+      -s ${vocab.variants_encoding}
+      -mp ${storage.feature_db}_phage_manifest.json
+      '
+    deps:
+      - ml_assets/data/artifacts/code_hashes/variants.hash
+      - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      # - ml_assets/data/workflow/hashes/variants_${general.name}.json
+      - ${self_path}
+    outs:
+      - ${storage.feature_db}_phage_manifest.json
+    vars:
+      - ml_assets/runtime_configs/phage_preprocessing.yaml
 
 
 # -----------------------------------------------------------------------------
@@ -212,24 +268,42 @@ stages:
 
   kaptive_ecoli:
     vars:
-      - ml_assets/config/kaptive3api_v0.0.1.yaml
+      - ml_assets/runtime_configs/serotype.yaml
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate kaptive3api &&
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/run_kaptive3api.py
-      --config "ml_assets/config/kaptive3api_v0.0.1.yaml"
+      --config "ml_assets/runtime_configs/serotype.yaml"
       --code_hash ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
       '
     deps:
       - ml_assets/data/artifacts/code_hashes/run_kaptive3api.hash
       - ${kaptive_config.genome_dir}
-      - ml_assets/config/kaptive3api_v0.0.1.yaml
+      - ml_assets/runtime_configs/serotype.yaml
     outs:
-      # - ml_assets/data/processed/bacteria/kaptive_manifest.json
       - ${kaptive_config.kaptive_dir}_manifest.json
       - ${kaptive_config.kaptive_dir}:
           persist: true
+
+  aggregate_serotypes:
+    vars:
+      - ml_assets/runtime_configs/serotype.yaml
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -m representation.typing_aggregator
+      -i ${kaptive_config.kaptive_dir}
+      -d ${storage.feature_db}
+      -t ${features.serotype.table_name}
+      -m ${storage.feature_db}_serotypes.json
+      '
+    deps:
+      - ${kaptive_config.kaptive_dir}_manifest.json
+      - ml_assets/data/artifacts/code_hashes/representation.hash
+    outs:
+      - ${storage.feature_db}_serotypes.json
 
   prodigal_ecoli:
     # NOTE: The input folder can be added in or updated (with -force) from external folders using the `dvc add` command.
@@ -250,7 +324,7 @@ stages:
       - ${prodigal_config.genome_dir}
       - ${self_path}
     vars:
-      - "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
     outs:
       - ${prodigal_config.proteins_dir}_manifest.json
       - ${prodigal_config.proteins_dir}:
@@ -276,10 +350,10 @@ stages:
       - ${hmm_config.data_lake}_manifest.json
       - ${hmm_config.data_lake}:
           persist: true
-      - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/hmm_scan_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
   build_ecoli_hmm_summary:
   # Summarise the parquet lake to optimise the next HMM extraction step
@@ -299,7 +373,7 @@ stages:
     # We are intentionally not tracking the DuckDB table itself in DVC. The parquet lake already has all the info.
       - ${hmm_config.db_fingerprint}
     vars:
-      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
   extract_ecoli_hmm_fastas:
     cmd: >
@@ -316,10 +390,10 @@ stages:
       - ${hmm_config.hmm_fasta_dir}_manifest.json
       - ${hmm_config.hmm_fasta_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/export_${general.name}_hmm_fastas.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
   create_ecoli_msas:
     cmd: >
@@ -340,10 +414,10 @@ stages:
       - ${msa_config.msa_csa_dir}_manifest.json
       - ${msa_config.msa_csa_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/msa_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/msa_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
   create_ecoli_msa_vars:
     cmd: >
@@ -352,12 +426,10 @@ stages:
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
       python -u workflows/create_msa_variants.py
       --config "${self_path}"
-      --code_hash ml_assets/data/artifacts/code_hashes/representation.hash
       --code_hash ml_assets/data/artifacts/code_hashes/variants.hash
       --code_hash ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       '
     deps:
-      - ml_assets/data/artifacts/code_hashes/representation.hash
       - ml_assets/data/artifacts/code_hashes/variants.hash
       - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
       - ${msa_config.msa_csa_dir}_manifest.json
@@ -366,24 +438,81 @@ stages:
       # - ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}_manifest.json
       - ${msa_var.msa_variant_dir}:
           persist: true
-      - ml_assets/data/workflow/hashes/variants_${general.name}.json:
-          persist: true
+      # - ml_assets/data/workflow/hashes/variants_${general.name}.json:
+      #     persist: true
     vars:
-      - ml_assets/config/preprocessing_ecoli_v1.0.0.yaml
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
-  # feature_engineering:
-  #   cmd: python packages/feature_engineering/run_feature_engineering.py \
-  #           --config configs/feature_engineering.yaml \
-  #           --input ml_assets/data/clean \
-  #           --output ml_assets/data/features
-  #   deps:
-  #     - packages/feature_engineering/
-  #     - ml_assets/data/clean
-  #     - configs/feature_engineering.yaml
-  #     - ${vocab.file}
-  #   outs:
-  #     - ml_assets/data/features
+  aggregate_ecoli_variants:
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate preprocessing &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+      python -m variants.long_table_builder
+      -i ${msa_var.msa_variant_dir}/${msa_var.msa_cluster_name}
+      -d ${storage.feature_db}
+      -t ${features.bacteria.table_name}
+      -s ${vocab.variants_encoding}
+      -mp ${storage.feature_db}_bacteria_manifest.json
+      '
+    deps:
+      - ml_assets/data/artifacts/code_hashes/variants.hash
+      - ml_assets/data/artifacts/code_hashes/create_msa_variants.hash
+      # - ml_assets/data/workflow/hashes/variants_${general.name}.json
+      - ${self_path}
+    outs:
+      - ${storage.feature_db}_bacteria_manifest.json
+      # - ${storage.feature_db} :
+      #     persist: true
+    vars:
+      - ml_assets/runtime_configs/bac_preprocessing.yaml
 
+# -----------------------------------------------------------------------------
+# Aggregate Training Data
+# -----------------------------------------------------------------------------
+
+  extract_interaction_matrix:
+      vars:
+        - ml_assets/runtime_configs/interactions.yaml
+      cmd: >
+        bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+        conda activate preprocessing &&
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/packages &&
+        python -m external_db_provisioning.extract_interactions
+        -c ${self_path}
+        '
+      deps:
+        - ${data_intake.source_db}
+        - ${self_path}
+      outs:
+        - ${data_intake.output_matrix}
+
+  build_training_data:
+    vars:
+      - ml_assets/runtime_configs/interactions.yaml
+    cmd: >
+      bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
+      conda activate training &&
+      export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
+      python -m representation.build_model_data
+      -i ${data_intake.output_matrix}
+      -d ${storage.feature_db}
+      -o ${storage.training_data_dir}
+      -f ${storage.training_data_name}
+      --phage_table ${features.phage.table_name}
+      --host_table ${features.bacteria.table_name}
+      --serotype_table ${features.serotype.table_name}
+      '
+    deps:
+      - ${data_intake.output_matrix}
+      - ${storage.feature_db}_phage_manifest.json
+      - ${storage.feature_db}_bacteria_manifest.json
+      - ${storage.feature_db}_serotypes.json
+      - ml_assets/data/artifacts/code_hashes/representation.hash
+      - ml_assets/data/artifacts/code_hashes/data_contracts.hash
+    outs:
+      - ${storage.training_data_dir} :
+          persist: true
 
 # -----------------------------------------------------------------------------
 # Train Model
@@ -391,18 +520,19 @@ stages:
 
   train_model:
     vars:
-      - ml_assets/config/train_v0.0.1.yaml
+      - ml_assets/runtime_configs/train.yaml
     cmd: >
       bash -c 'source ~/miniforge3/etc/profile.d/conda.sh &&
       conda activate training &&
       export PYTHONPATH=$PYTHONPATH:$(pwd)/packages:$(pwd)/workflows &&
       export CUDA_VISIBLE_DEVICES="" &&
       python workflows/run_train.py
-      --config ml_assets/config/train_v0.0.1.yaml
+      --config ml_assets/runtime_configs/train.yaml
       --code_hash ml_assets/data/artifacts/code_hashes/run_train.hash
       '
     deps:
-      - ml_assets/config/train_v0.0.1.yaml
+      - ml_assets/runtime_configs/train.yaml
+      - ${storage.training_data_dir}
     outs:
       - ${experiment_tracker_dir}_manifest.json
       - ${experiment_tracker_dir}:

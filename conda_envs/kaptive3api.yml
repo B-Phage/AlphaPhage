@@ -20,5 +20,6 @@ dependencies:
   - colorlog
   - torchmetrics
   - pip
+  - pre_commit
   - pip:
     - omegaconf

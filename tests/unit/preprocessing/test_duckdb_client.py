@@ -291,6 +291,90 @@ class TestDuckDBClient(unittest.TestCase):
         if temp_dir.exists():
             temp_dir.rmdir()
 
+    def test_head_returns_correct_rows(self):
+        """Verify head returns the requested number of rows as a DataFrame."""
+        # Table has: {1: 'apple', 2: 'banana', 3: 'cherry'}
+        df_head = self.db.head("items", n=2)
+
+        self.assertIsInstance(df_head, pd.DataFrame)
+        self.assertEqual(len(df_head), 2)
+
+        # Verify all returned names are actually in our known set
+        valid_names = {"apple", "banana", "cherry"}
+        returned_names = set(df_head["name"])
+
+        self.assertTrue(returned_names.issubset(valid_names))
+        self.assertEqual(len(returned_names), 2)
+
+    def test_head_default_n(self):
+        """Verify head defaults to 5 rows (or total table size if smaller)."""
+        # Table has 3 rows, default n is 5
+        df_head = self.db.head("items")
+
+        self.assertEqual(len(df_head), 3)
+        self.assertIsInstance(df_head, pd.DataFrame)
+
+    def test_head_raises_error_for_missing_table(self):
+        """Verify head raises ValueError if the table is missing."""
+        with self.assertRaises(ValueError) as cm:
+            self.db.head("ghost_table")
+
+        self.assertIn("does not exist", str(cm.exception))
+
+    def test_head_with_quoted_identifiers(self):
+        """Verify head handles table names that require quoting."""
+        # Create a table with a space in the name
+        complex_name = "complex items"
+        self.db.con.execute(f'CREATE TABLE "{complex_name}" (val INTEGER)')
+        self.db.con.execute(f'INSERT INTO "{complex_name}" VALUES (1), (2), (3)')
+
+        df_head = self.db.head(complex_name, n=1)
+        self.assertEqual(len(df_head), 1)
+        self.assertEqual(df_head.iloc[0]["val"], 1)
+
+    def test_get_table_hash_raises_error_for_missing_table(self):
+        """Verify get_table_hash raises ValueError if the table is missing."""
+        with self.assertRaises(ValueError) as cm:
+            self.db.get_table_hash("non_existent_table")
+
+        self.assertIn("does not exist", str(cm.exception))
+
+    def test_get_table_hash_empty_table(self):
+        """Verify get_table_hash returns 'EMPTY_TABLE' for a table with no rows."""
+        self.db.con.execute("CREATE TABLE empty_table (id INTEGER, val VARCHAR)")
+
+        result = self.db.get_table_hash("empty_table")
+        self.assertEqual(result, "EMPTY_TABLE")
+
+    def test_get_table_hash_determinism(self):
+        """Verify the hash is order-independent and content-specific."""
+        self.db.con.execute("CREATE TABLE hash_test (id INTEGER, val VARCHAR)")
+
+        # Insert data in one order
+        self.db.con.execute("INSERT INTO hash_test VALUES (1, 'A'), (2, 'B')")
+        hash_1 = self.db.get_table_hash("hash_test")
+
+        # Create identical table but insert in different order
+        self.db.con.execute("CREATE TABLE hash_test_2 (id INTEGER, val VARCHAR)")
+        self.db.con.execute("INSERT INTO hash_test_2 VALUES (2, 'B'), (1, 'A')")
+        hash_2 = self.db.get_table_hash("hash_test_2")
+
+        # Hashes must match because bit_xor is commutative
+        self.assertEqual(hash_1, hash_2)
+        self.assertNotEqual(hash_1, "EMPTY_TABLE")
+
+    def test_get_table_hash_handles_nulls(self):
+        """Verify hash handles NULL values via COALESCE logic."""
+        self.db.con.execute("CREATE TABLE null_test (id INTEGER, val VARCHAR)")
+        self.db.con.execute("INSERT INTO null_test (id) VALUES (1)")  # val is NULL
+
+        try:
+            hash_val = self.db.get_table_hash("null_test")
+            self.assertIsInstance(hash_val, str)
+            self.assertNotEqual(hash_val, "EMPTY_TABLE")
+        except Exception as e:
+            self.fail(f"get_table_hash failed on NULL values: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

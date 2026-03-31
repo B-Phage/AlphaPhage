@@ -72,3 +72,13 @@ repos:
           fi'
         language: system
         stages: [pre-push]
+
+  # run in terminal with this `pre-commit run update-dvc-dag --all-files`
+  - repo: local
+    hooks:
+      - id: update-dvc-dag
+        name: Update DVC DAG Visualization
+        entry: ./packages/utils/scripts/generate_dag.sh
+        language: script
+        files: ^dvc\.yaml$
+        pass_filenames: false
