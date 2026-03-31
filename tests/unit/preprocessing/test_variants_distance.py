@@ -196,3 +196,27 @@ def test_blosum62_single_sequence_internal_engine():
 
     assert matrix.shape == (1, 1)
     assert matrix[0, 0] == 0.0
+
+
+def test_to_byte_array_1d_numpy_strings():
+    """
+    Verify that a 1D numpy array of strings (e.g., ['ACT', 'ACG'])
+    is correctly expanded into a 2D byte array of characters.
+    """
+    from variants.distance import _to_byte_array
+
+    # Input: 1D NumPy array of strings
+    # This specifically hits: if data.ndim == 1
+    input_data = np.array(["ACGT", "TGCA"])
+
+    res = _to_byte_array(input_data)
+
+    # Validation
+    assert res.ndim == 2
+    assert res.shape == (2, 4)
+    assert res.dtype == "|S1"
+
+    # Check specific character mapping
+    expected = np.array([["A", "C", "G", "T"], ["T", "G", "C", "A"]], dtype="|S1")
+
+    np.testing.assert_array_equal(res, expected)

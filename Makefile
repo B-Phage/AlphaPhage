@@ -151,16 +151,6 @@ snapshot:
 	@echo "🚀 Initiating snapshot for Model: $(MODEL), Epoch: $(EPOCH)"
 	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_TRAINING),python packages/utils/scripts/snapshot_inference.py --model $(MODEL) --epoch $(EPOCH))
 
-TRAIN_CONFIG = ml_assets/config/preprocessing_phage_v1.0.0.yaml
-INF_CONFIG = ml_assets/config/inference_phage.yaml
-BUFFER = 1.15
-
-generate_inf_config:
-	python src/create_inference_config.py \
-		--training_config $(TRAIN_CONFIG) \
-		--output $(INF_CONFIG) \
-		--buffer $(BUFFER)
-
 # =====================
 # Inference Run
 # =====================
@@ -173,7 +163,3 @@ run-inference:
 	fi
 	@echo ">>> Starting Inference Pipeline..."
 	@$(MAKE) -C inference all
-
-.PHONY: clean-inference
-clean-inference:
-	@$(MAKE) -C inference clean

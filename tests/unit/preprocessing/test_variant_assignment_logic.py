@@ -47,3 +47,24 @@ def test_rigorous_assignment_k_limit():
     # Should not crash, should just use K=1
     ids, _ = rigorous_assignment(distances, gallery_ids)
     assert ids == ["V1"]
+
+
+def test_rigorous_assignment_cluster_threshold_violation():
+    """
+    Verify that if a variant is in cluster_thresholds but the distance
+    exceeds that specific threshold, it returns 'UNK'.
+    """
+    # V1 is the closest at 0.3
+    distances = np.array([[0.3, 0.4, 0.4]])
+    gallery_ids = np.array(["V1", "V2", "V2"])
+
+    # Define a threshold for V1 that is tighter than the actual distance (0.3 > 0.2)
+    cluster_thresholds = {"V1": 0.2}
+
+    assigned_variants, _ = rigorous_assignment(
+        distances, gallery_ids, cluster_thresholds=cluster_thresholds
+    )
+
+    # Even though V1 is the closest and V2 has consensus,
+    # it should be UNK because V1 failed its specific threshold check.
+    assert assigned_variants == ["UNK"]

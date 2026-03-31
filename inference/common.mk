@@ -6,7 +6,7 @@ INF_DATA_ROOT := $(abspath $(ROOT_DIR)/../databases/inference)
 INF_WORKSPACE := $(INF_DATA_ROOT)/workspace
 
 # 1. Base Paths
-SNAPSHOT_NAME := default_run_ep24_20260326
+SNAPSHOT_NAME := default_run_ep27_20260331
 SNAPSHOT_NAME := $(strip $(SNAPSHOT_NAME))
 SNAPSHOT_DIR  := $(INF_DATA_ROOT)/$(SNAPSHOT_NAME)
 CHECKPOINT_PATH := $(INF_DATA_ROOT)/$(SNAPSHOT_NAME)/model/model_weights.ckpt

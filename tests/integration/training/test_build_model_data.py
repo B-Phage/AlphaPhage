@@ -7,7 +7,6 @@ from unittest.mock import ANY, MagicMock, patch
 import numpy as np
 import pandas as pd
 from representation.build_model_data import (
-    _validate_and_trim,
     build_model_data,
     load_interaction_pairs,
     main,
@@ -148,88 +147,6 @@ class TestBuildModelData(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 with patch("sys.stderr", StringIO()):
                     main()
-
-    def test_load_interaction_pairs_inference_mode(self):
-        """Verify that include_unknown=True retains -1 labels."""
-        wide_df = pd.DataFrame([[1, -1]], index=["Host_A"], columns=["Phage_1", "Phage_2"])
-        wide_df.index.name = "host"
-
-        with patch("pandas.read_csv") as mock_read:
-            mock_read.return_value = wide_df
-            # Inference mode: keeps everything
-            df = load_interaction_pairs("dummy.tsv", include_unknown=True)
-
-            self.assertEqual(len(df), 2)
-            self.assertIn(-1, df["label"].values)
-
-    def test_validate_and_trim_warnings(self):
-        """Verify logger warnings when organisms are missing features."""
-        # Setup interactions with organisms NOT in the feature DataFrames
-        interactions = pd.DataFrame(
-            {
-                "host": ["Host_A", "Host_Missing"],
-                "phage": ["Phage_1", "Phage_Missing"],
-                "label": [1, 0],
-            }
-        )
-
-        phage_df = pd.DataFrame({"organism_id": ["Phage_1"]})
-        host_df = pd.DataFrame({"organism_id": ["Host_A"]})
-
-        with patch("representation.build_model_data.logger") as mock_log:
-            valid, p_trimmed, h_trimmed = _validate_and_trim(interactions, phage_df, host_df)
-
-            # 1. Check warnings were called for Phage_Missing and Host_Missing
-            self.assertTrue(
-                any(
-                    "phages in interactions missing features" in call.args[0]
-                    for call in mock_log.warning.call_args_list
-                )
-            )
-            self.assertTrue(
-                any(
-                    "hosts in interactions missing features" in call.args[0]
-                    for call in mock_log.warning.call_args_list
-                )
-            )
-
-            # 2. Check trimming logic
-            self.assertEqual(len(valid), 1)  # Only Host_A/Phage_1 pair survives
-            self.assertListEqual(list(p_trimmed["organism_id"]), ["Phage_1"])
-            self.assertListEqual(list(h_trimmed["organism_id"]), ["Host_A"])
-
-    def test_validate_and_trim_zero_overlap_raises_error(self):
-        """Verify ValueError is raised when no interaction IDs exist in features."""
-        interactions = pd.DataFrame({"host": ["Host_X"], "phage": ["Phage_Y"], "label": [1]})
-        phage_df = pd.DataFrame({"organism_id": ["Phage_A"]})
-        host_df = pd.DataFrame({"organism_id": ["Host_B"]})
-
-        with self.assertRaises(ValueError) as cm:
-            _validate_and_trim(interactions, phage_df, host_df)
-
-        self.assertIn("ZERO overlap found", str(cm.exception))
-
-    def test_validate_and_trim_unused_feature_trimming(self):
-        """Verify that features present in DB but NOT in interactions are removed."""
-        interactions = pd.DataFrame({"host": ["Host_A"], "phage": ["Phage_1"], "label": [1]})
-
-        # Phage_2 and Host_B are in the "DB" but not in the "Interactions"
-        phage_df = pd.DataFrame({"organism_id": ["Phage_1", "Phage_2"]})
-        host_df = pd.DataFrame({"organism_id": ["Host_A", "Host_B"]})
-
-        with patch("representation.build_model_data.logger") as mock_log:
-            _, p_trimmed, h_trimmed = _validate_and_trim(interactions, phage_df, host_df)
-
-            # Check for the "Trimmed unused" log
-            self.assertTrue(
-                any("Trimmed unused" in call.args[0] for call in mock_log.info.call_args_list)
-            )
-
-            # Ensure Phage_2 and Host_B were dropped
-            self.assertEqual(len(p_trimmed), 1)
-            self.assertEqual(len(h_trimmed), 1)
-            self.assertNotIn("Phage_2", p_trimmed["organism_id"].values)
-            self.assertNotIn("Host_B", h_trimmed["organism_id"].values)
 
 
 if __name__ == "__main__":

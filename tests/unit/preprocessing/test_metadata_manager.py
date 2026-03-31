@@ -62,6 +62,28 @@ class TestMetadataManager(unittest.TestCase):
         self.assertEqual(result.dtype.kind, "S")
         self.assertEqual(result.dtype.itemsize, 100)
 
+    def test_build_info_array_k_type_fallbacks(self):
+        """
+        Verify that k_type columns default to 'serotype_v1'
+        when not explicitly overridden in source_map.
+        """
+        # Define columns specifically targeting the elif branch
+        cols = ["k_type_dim1", "k_type_dim2", "phrog_1"]
+
+        # We leave source_map as None (or empty) so it falls through to the elif
+        result = MetadataManager.build_info_array(cols, self.meta_df)
+
+        # Row 0: Column names (decoded from bytes)
+        self.assertEqual(result[0, 0].decode(), "k_type_dim1")
+        self.assertEqual(result[0, 1].decode(), "k_type_dim2")
+
+        # Row 1: The 'serotype_v1' fallback logic
+        self.assertEqual(result[1, 0].decode(), "serotype_v1")
+        self.assertEqual(result[1, 1].decode(), "serotype_v1")
+
+        # Normal columns should still work via the meta_df lookup
+        self.assertEqual(result[1, 2].decode(), "v1.0")
+
 
 if __name__ == "__main__":
     unittest.main()
