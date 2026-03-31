@@ -18,8 +18,8 @@ UNIQUE_ENVS = $(ENV_PREPROC) $(ENV_TRAINING) $(ENV_KAPTIVE)
 DVC_CONFIG_LOCAL = .dvc/config.local
 
 # External Data Configs
-HMM_YAML := ml_assets/config/hmm_data_v0.0.1.setup.yaml
-KAPTIVE_YAML := ml_assets/config/kaptive3api_v0.0.1.setup.yaml
+HMM_YAML := ml_assets/config/hmm_data_v1.0.0.setup.yaml
+KAPTIVE_YAML := ml_assets/config/kaptive3api_v1.0.0.setup.yaml
 
 # =====================
 # Help
