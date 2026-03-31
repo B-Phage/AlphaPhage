@@ -85,3 +85,15 @@ AlphaPhage uses **DVC (Data Version Control)** to manage a complex, parallelised
 * **Change Experiments**: To swap model architectures, preprocessing logic, or dataset versions, follow the [Experiment Control Guide](docs/PIPELINE.md#️-experiment-control-config-staging).
 
 > 💡 **Tip**: All experimental "switches" are managed in the root `params.yaml`. The pipeline automatically handles the staging and path injection for you.
+
+## 🧬 Inference Pipeline
+
+AlphaPhage includes a inference engine for phage-host interaction prediction. It operates independently of the training DAG.
+
+* **Workflow:** Uses a snapshot-based system to lock model weights and configs.
+* **Execution:** ```bash
+    make snapshot MODEL=...  # Step 1: Lock the model
+    make run-inference       # Step 2: Execute pipeline
+    ```
+* **Documentation:** * See **[docs/INFERENCE.md](docs/INFERENCE.md)** for the full architectural specification.
+    * See **[inference/README_inf.md](inference/README_inf.md)** for local CLI usage and variable overrides.

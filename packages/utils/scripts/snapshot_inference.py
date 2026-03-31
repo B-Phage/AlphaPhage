@@ -13,8 +13,8 @@ import pandas as pd
 import utils.consol_log as log
 import yaml
 from data_contracts.h5_schema import H5DataKeys
-from omegaconf import DictConfig, ListConfig, OmegaConf
-from utils.scripts.create_inference_config import create_inference_config
+from omegaconf import DictConfig, OmegaConf
+from utils.scripts.create_inference_config import generate_inference_block
 
 logger = log.get_logger()
 
@@ -24,7 +24,6 @@ TRAINING_ROOT = Path("ml_assets/data/training")
 RUNTIME_CONFIG = Path("ml_assets/runtime_configs")
 VOCAB_DIR = Path("ml_assets/vocab")
 MODEL_TRIANING_DATA = Path("ml_assets/data/processed/model_training")
-FEATURE_SET = "x_train_data_v1.h5"  # TODO: map this to the variable in params.yaml
 
 
 def extract_h5_info_metadata(h5_source_path: Path, output_dir: Path):
@@ -80,29 +79,31 @@ def run_cmd(cmd):
     return result.returncode, result.stdout.strip()
 
 
-def transform_to_inference_paths(cfg_dict):
+def transform_to_inference_paths(cfg_item, inference_base="../../databases/inference/"):
     """
-    Recursively updates paths in a config dictionary to be compatible
-    with the inference execution environment.
+    Recursively updates paths using Pathlib logic to ensure structural
+    integrity rather than simple string replacement.
     """
-    # Define our mapping rules
-    # 1. ml_assets/ -> ../../databases/inference/
-    # 2. ../databases/ -> ../../databases/
+    if isinstance(cfg_item, dict):
+        return {k: transform_to_inference_paths(v, inference_base) for k, v in cfg_item.items()}
+    elif isinstance(cfg_item, list):
+        return [transform_to_inference_paths(v, inference_base) for v in cfg_item]
+    elif isinstance(cfg_item, str):
+        p = Path(cfg_item)
+        parts = p.parts
 
-    if isinstance(cfg_dict, dict):
-        return {k: transform_to_inference_paths(v) for k, v in cfg_dict.items()}
-    elif isinstance(cfg_dict, list):
-        return [transform_to_inference_paths(v) for v in cfg_dict]
-    elif isinstance(cfg_dict, str):
-        # Handle the ML Assets jump
-        if cfg_dict.startswith("ml_assets/"):
-            return cfg_dict.replace("ml_assets/", "../../databases/inference/", 1)
+        # Case 1: Path starts with ml_assets/
+        # logic: drop 'ml_assets' and join remaining to inference_base
+        if parts and parts[0] == "ml_assets":
+            return str(Path(inference_base) / Path(*parts[1:]))
 
-        # Handle the Database depth adjustment (adding one level of '..')
-        if cfg_dict.startswith("../databases/"):
-            return cfg_dict.replace("../databases/", "../../databases/", 1)
+        # Case 2: Path starts with ../databases/
+        # logic: ensure it has the correct depth for the inference env
+        if len(parts) >= 2 and parts[0] == ".." and parts[1] == "databases":
+            # We skip the first '..' to effectively turn ../databases into ../../databases
+            return str(Path("../../") / Path(*parts[1:]))
 
-    return cfg_dict
+    return cfg_item
 
 
 def validate_state():
@@ -140,6 +141,9 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
     try:
         git_sha, git_branch = validate_state()
 
+        h5_path = resolve_feature_set_path()
+        logger.info(f"🔍 Resolved training data to: {h5_path}")
+
         # Setup naming
         timestamp = datetime.now().strftime("%Y%m%d")
         label = f"{model_name}_ep{epoch}_{timestamp}"
@@ -155,10 +159,6 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
             logger.warning(f"Snapshot directory {target_path} already exists. Overwritting")
             shutil.rmtree(target_path)
         target_path.mkdir(parents=True)
-
-        # Directory Setup
-        if target_path.exists():
-            shutil.rmtree(target_path)
 
         folders = [
             "model",
@@ -243,9 +243,6 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
                             / cluster_name
                         )
 
-                        # Generate the block
-                        from utils.scripts.create_inference_config import generate_inference_block
-
                         inf_block = generate_inference_block(
                             training_cfg=temp_cfg,
                             base_inf_dir="../../databases/inference/data/processed",
@@ -264,27 +261,6 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
             except Exception as e:
                 logger.error(f"   ❌ Failed to process {cfg_file.name}: {e}")
 
-        # Generate Unified Inference Configs
-        # We generate two inference configs (one per domain) that
-        # point to the internal snapshot paths.
-        for domain, params in domain_params_map.items():
-            inf_cfg_path = target_path / "config" / f"inference_{domain}.yaml"
-
-            # Create a localized version of the params
-            inference_params = params.copy()
-            # Redirect to the internal snapshot relative path
-            inference_params.msa_var.msa_variant_dir = f"reference/{domain}/variant_shards"
-            inference_params.msa_var.gallery_path = (
-                "../" / target_path / "reference" / domain / "variant_shards" / cluster_name
-            )
-
-            create_inference_config(
-                training_cfg=inference_params,
-                output_path=str(inf_cfg_path),
-                base_inf_dir=str(TARGET_BASE_DIR),
-                buffer_factor=buffer_factor,
-            )
-
         if VOCAB_DIR.exists():
             logger.info(f"📦 Copying vocab...")
             shutil.copytree(VOCAB_DIR, target_path / "vocab", dirs_exist_ok=True)
@@ -298,7 +274,6 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
             else:
                 logger.error(f"❌ No config files exist at {cfg}")
 
-        h5_path = MODEL_TRIANING_DATA / FEATURE_SET
         # Port Vector Info (The 'Labels')
         info_output_dir = target_path / "reference" / "vector_info"
         info_output_dir.mkdir(parents=True, exist_ok=True)
@@ -321,8 +296,45 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
 
         logger.info(f"✅ Success! Snapshot archived at: {target_path}")
 
+        logger.info("-" * 30)
+        logger.info(f"✅ SNAPSHOT COMPLETE")
+        logger.info(f"📍 Location: {target_path}")
+        logger.info(f"🧬 Data:     {h5_path.name}")
+        logger.info(f"🧠 Model:    {ckpt_src.name}")
+        logger.info(f"🔗 Git:      {git_sha[:7]} [{git_branch}]")
+        logger.info("-" * 30)
+
     except Exception as e:
         logger.error(f"❌ Aborted: {e}")
+
+
+def resolve_feature_set_path(params_path: Path = Path("params.yaml")) -> Path:
+    """
+    Dynamically constructs the path to the training H5 file based on params.yaml.
+    Expected structure: {training_data_dir}/x_{training_data_name}.h5
+    """
+    if not params_path.exists():
+        raise FileNotFoundError(f"❌ Could not find {params_path} to resolve feature set.")
+
+    # Load the params
+    conf = OmegaConf.load(params_path)
+
+    try:
+        # Extract values from the 'storage' block
+        data_dir = Path(conf.storage.training_data_dir)
+        data_name = conf.storage.training_data_name
+
+        # Construct the full path (assuming the 'x_' prefix is your convention)
+        feature_set_path = data_dir / f"x_{data_name}.h5"
+
+        if not feature_set_path.exists():
+            logger.warning(f"⚠️ Resolved path {feature_set_path} does not exist on disk!")
+
+        return feature_set_path
+
+    except Exception as e:
+        logger.error(f"❌ Failed to parse storage block in {params_path}: {e}")
+        raise
 
 
 if __name__ == "__main__":

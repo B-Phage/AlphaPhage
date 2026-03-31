@@ -43,61 +43,80 @@ def calculate_distance(
 
 
 # --- Core Engines (Shared by Training & Inference) ---
-
-
 def _engine_identity(q_arr: np.ndarray, t_arr: np.ndarray) -> np.ndarray:
     """Calculates Identity Distance using Pairwise Deletion."""
-    # Short-circuit for empty inputs
     if q_arr.size == 0 or t_arr.size == 0:
         return np.zeros((q_arr.shape[0], t_arr.shape[0]), dtype=np.float64)
 
-    # Broadcasting (M, 1, L) == (1, N, L) -> (M, N, L)
-    matches = q_arr[:, None, :] == t_arr[None, :, :]
+    # 1. Cast to uint8 immediately to ensure integer comparisons work (45, 46)
+    q_val = q_arr.view(np.uint8)
+    t_val = t_arr.view(np.uint8)
 
-    # ... rest of the shared gaps logic ...
-    is_gap_q = (q_arr == 45) | (q_arr == 46)
-    is_gap_t = (t_arr == 45) | (t_arr == 46)
-    shared_gaps = is_gap_q[:, None, :] & is_gap_t[None, :, :]
+    # 2. Expand dimensions (M, N, L)
+    q_exp = q_val[:, None, :]
+    t_exp = t_val[None, :, :]
 
-    valid_matches = matches & ~shared_gaps
-    total_comparable = q_arr.shape[1] - np.sum(shared_gaps, axis=2)
+    # 3. Identify gaps (45 is '-', 46 is '.')
+    # By using uint8, we guarantee these integer comparisons are accurate
+    is_gap_q = (q_exp == 45) | (q_exp == 46)
+    is_gap_t = (t_exp == 45) | (t_exp == 46)
+
+    # 4. Define Shared Gaps
+    shared_mask = is_gap_q & is_gap_t
+
+    # 5. Matches: MUST be identical AND MUST NOT be a shared gap
+    # This prevents '-' == '-' from being counted as a match
+    match_mask = (q_exp == t_exp) & ~shared_mask
+    real_match_counts = np.sum(match_mask, axis=2)
+
+    # 6. Comparable positions: Total length - shared gaps
+    total_comparable = q_val.shape[1] - np.sum(shared_mask, axis=2)
     total_comparable = np.maximum(total_comparable, 1)
 
-    identity = np.sum(valid_matches, axis=2) / total_comparable
+    identity = real_match_counts / total_comparable
     return np.clip(1.0 - identity, 0, 1)
 
 
 def _engine_blosum62(
     q_arr: np.ndarray, t_arr: np.ndarray, c2i: np.ndarray, lookup: np.ndarray
 ) -> np.ndarray:
-    """Calculates BLOSUM62 Distance using Gap-Neutralization."""
-    # Short-circuit for empty inputs
+    """Calculates BLOSUM62 Distance with Geometric Mean Normalization."""
     if q_arr.size == 0 or t_arr.size == 0:
         return np.zeros((q_arr.shape[0], t_arr.shape[0]), dtype=np.float64)
-    # Map to integers
+
     q_int = c2i[q_arr.view("uint8")]
     t_int = c2i[t_arr.view("uint8")]
 
+    gap_idx = lookup.shape[0] - 1
     M, L = q_int.shape
     N = t_int.shape[0]
 
-    # Calculate Raw Scores
+    # 1. Vectorized Score Calculation
     total_scores = np.zeros((M, N), dtype=np.float64)
-    for pos in range(L):
-        q_col = q_int[:, pos]
-        t_col = t_int[:, pos]
-        total_scores += lookup[q_col[:, None], t_col[None, :]]
+    for l in range(L):
+        total_scores += lookup[q_int[:, l, None], t_int[None, :, l]]
 
-    # Normalized Distance = 1 - (Score_qt / max(Score_qq, Score_tt))
-    # Pre-calculate self-scores for normalization
-    # We sum the lookup diagonal for the specific indices in each sequence
-    q_self = np.array([lookup[seq, seq].sum() for seq in q_int])
-    t_self = np.array([lookup[seq, seq].sum() for seq in t_int])
+    # 2. Correct Shared Gap Logic for Normalization
+    is_gap_q = q_int == gap_idx
+    is_gap_t = t_int == gap_idx
 
-    max_self = np.maximum.outer(q_self, t_self)
-    max_self = np.maximum(max_self, 1.0)
+    # Use bitwise AND in 3D to find gaps at the same index
+    shared_gap_counts = np.sum(is_gap_q[:, None, :] & is_gap_t[None, :, :], axis=2)
 
-    distance = 1.0 - (total_scores / max_self)
+    # 3. Calculate Normalized Self-Scores
+    diag = np.diag(lookup)
+    gap_self_score = diag[gap_idx]
+
+    q_self_total = np.sum(diag[q_int], axis=1, keepdims=True)
+    t_self_total = np.sum(diag[t_int], axis=1, keepdims=True).T
+
+    # Subtract the self-score contributed by shared gaps
+    q_self_masked = q_self_total - (shared_gap_counts * gap_self_score)
+    t_self_masked = t_self_total - (shared_gap_counts * gap_self_score)
+
+    norm_factor = np.sqrt(np.maximum(q_self_masked * t_self_masked, 1.0))
+    distance = 1.0 - (total_scores / norm_factor)
+
     return np.clip(distance, 0, 1)
 
 
@@ -123,7 +142,7 @@ def _to_byte_array(data: Union[List[str], np.ndarray]) -> np.ndarray:
 
 
 def _get_blosum_params():
-    """Lazy-initialization for BLOSUM parameters with neutralized Gap-vs-Gap."""
+    """Lazy-initialization with relaxed linear gap penalty."""
     if "char_to_int" not in _BLOSUM_CACHE:
         matrix_obj = substitution_matrices.load("BLOSUM62")
         alphabet = str(getattr(matrix_obj, "alphabet", "ARNDCQEGHILKMFPSTWYVBZX*"))
@@ -131,16 +150,19 @@ def _get_blosum_params():
 
         gap_idx = len(alphabet)
 
-        # Default gap penalty for Gap-vs-Residue is -4.0
-        final_lookup = np.full((gap_idx + 1, gap_idx + 1), -4.0, dtype=np.float64)
+        # REFACTORED: Changed from -4.0 to -2.0 to mimic affine extension forgiveness
+        RELAXED_GAP_PENALTY = -2.0
+
+        final_lookup = np.full((gap_idx + 1, gap_idx + 1), RELAXED_GAP_PENALTY, dtype=np.float64)
         final_lookup[:gap_idx, :gap_idx] = lookup_table
 
-        # CRITICAL: Shared gaps are neutral (0.0)
-        final_lookup[gap_idx, gap_idx] = BLOSUM_GAP_TO_GAP
+        # Shared gaps remain neutral
+        final_lookup[gap_idx, gap_idx] = 0.0
 
         char_to_int = np.full(256, gap_idx, dtype=np.int32)
         for i, char in enumerate(alphabet):
-            char_to_int[ord(char)] = i
+            char_to_int[ord(char.upper())] = i
+            char_to_int[ord(char.lower())] = i  # Robustness fix
 
         _BLOSUM_CACHE["char_to_int"] = char_to_int
         _BLOSUM_CACHE["final_lookup"] = final_lookup

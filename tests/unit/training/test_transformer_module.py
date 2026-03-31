@@ -192,6 +192,79 @@ class TestTransformerXLightning(unittest.TestCase):
         row_sums = probs_from_raw.sum(dim=-1)
         self.assertTrue(torch.allclose(row_sums, torch.ones(batch_size)))
 
+    def test_class_weights_registration(self):
+        """Verify that class weights are correctly registered as a buffer."""
+        weights = torch.tensor([0.2, 0.8])
+        model_with_weights = TransformerX(
+            self.cfg,
+            self.num_tokens,
+            self.vocab_size_out,
+            self.length_padded,
+            self.archspecs,
+            self.archspecs2,
+            class_weights=weights,
+        )
+
+        # Check if the buffer exists
+        self.assertTrue(hasattr(model_with_weights, "class_weights"))
+        # Verify the values match
+        self.assertTrue(torch.equal(model_with_weights.class_weights, weights))
+        # Ensure it's in the state_dict (standard for registered buffers)
+        self.assertIn("class_weights", model_with_weights.state_dict())
+
+    def test_class_weights_none(self):
+        """Verify behavior when class_weights is None."""
+        # self.model was initialized with None in setUp
+        self.assertIsNone(self.model.class_weights)
+
+    def test_on_save_checkpoint_strips_keys(self):
+        """Verify that heavy metadata is removed from the checkpoint for space saving."""
+        # 1. Create a mock checkpoint dictionary with 'heavy' data
+        mock_checkpoint = {
+            "state_dict": {"some.weight": torch.randn(1)},
+            "optimizer_states": [{"state": "complex_optimizer_data"}],
+            "lr_schedulers": ["some_scheduler_data"],
+            "loops": {"fit_loop": "data"},
+            "callbacks": {"ModelCheckpoint": "data"},
+            "other_important_data": "keep_me",
+        }
+
+        # 2. Call the hook manually
+        self.model.on_save_checkpoint(mock_checkpoint)
+
+        # 3. Assertions
+        keys_that_should_be_removed = ["optimizer_states", "lr_schedulers", "loops", "callbacks"]
+        for key in keys_that_should_be_removed:
+            self.assertNotIn(key, mock_checkpoint, f"Key '{key}' was not removed from checkpoint!")
+
+        # 4. Ensure important data remains
+        self.assertIn("state_dict", mock_checkpoint)
+        self.assertEqual(mock_checkpoint["other_important_data"], "keep_me")
+
+    def test_init_with_plain_dict(self):
+        """Verify that the module initializes correctly when cfg is a standard dict."""
+        # 1. Convert our OmegaConf to a plain dict (simulating a checkpoint load)
+        plain_dict = OmegaConf.to_container(self.cfg, resolve=True)
+
+        # 2. Initialize the model with the plain dict
+        model_from_dict = TransformerX(
+            cfg=plain_dict,
+            num_tokens=self.num_tokens,
+            vocab_size_out=self.vocab_size_out,
+            length_padded=self.length_padded,
+            archspecs=self.archspecs,
+            archspecs2=self.archspecs2,
+        )
+
+        # 3. Assertions
+        # Ensure it was converted back to a dot-accessible OmegaConf object internally
+        self.assertEqual(model_from_dict.cfg.dim, 8)
+        self.assertEqual(model_from_dict.cfg.archspec, "rope_tt_normpostl_view")
+
+        # Verify the specific attribute assignments derived from the config worked
+        self.assertEqual(model_from_dict.depth, 1)
+        self.assertEqual(model_from_dict.positional_encoding, "rope")
+
 
 if __name__ == "__main__":
     unittest.main()

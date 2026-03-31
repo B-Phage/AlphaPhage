@@ -41,9 +41,8 @@ def run_hmm_worker(
     # Ensure local data lake folder exists for this specific worker
     data_lake.mkdir(parents=True, exist_ok=True)
 
-    summary_csv = outputs[0]
-    summary_csv.parent.mkdir(exist_ok=True, parents=True)
-    csv_file = summary_csv / f"{protein_file.stem}.csv"
+    csv_file = Path(outputs[0])
+    csv_file.parent.mkdir(exist_ok=True, parents=True)
 
     run_hmm_scan_on_file(
         in_fasta=protein_file,
@@ -59,7 +58,7 @@ def run_hmm_worker(
 
 def hmm_output_func(protein_file: Path, result_dir: Path):
     """Output mapping logic at the top level."""
-    return [result_dir]
+    return [result_dir / f"{protein_file.stem}.csv"]
 
 
 # -------------------------------------------------------------

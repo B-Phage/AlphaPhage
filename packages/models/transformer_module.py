@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import utils.consol_log as log
 from models.transformer_classifier import TransformerXClassifier
 from omegaconf import DictConfig, OmegaConf
-from torchmetrics.classification import BinaryRecall, BinarySpecificity
+from torchmetrics.classification import BinaryRecall, BinarySpecificity, BinaryStatScores
 
 logger = log.get_logger(level=log.WARNING)
 
@@ -144,22 +144,32 @@ class TransformerX(pl.LightningModule):
         x, y = batch
         logits = self.forward(x)
 
-        # Cast self.class_weights to torch.Tensor to satisfy Pylance
+        # 1. Standard Loss for tracking
         weights = cast(torch.Tensor, self.class_weights) if self.class_weights is not None else None
-
         val_loss = torch.nn.functional.cross_entropy(logits, y, weight=weights)
 
-        # Update and Log Metrics
-        # Setting prog_bar=True is what makes them appear in your terminal
+        # 2. Calculate Sensitivity (Recall) and Specificity
         preds = torch.argmax(logits, dim=1)
-        acc = (preds == y).float().mean()
-        sens = self.val_sensitivity(preds, y)
-        spec = self.val_specificity(preds, y)
+        # Using stat_scores to get TP, FP, TN, FN
+        stats = BinaryStatScores().to(self.device)(preds, y)
+        tp, fp, tn, fn, _ = stats
 
-        self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("val_acc", acc, on_epoch=True, prog_bar=True)
-        self.log("val/sens", sens, on_epoch=True, prog_bar=True)
-        self.log("val/spec", spec, on_epoch=True, prog_bar=True)
+        sensitivity = tp / (tp + fn + 1e-7)
+        specificity = tn / (tn + fp + 1e-7)
+
+        # 3. Calculate the Balanced Penalty
+        # G-Mean rewards high values that are close together
+        g_mean = torch.sqrt(sensitivity * specificity)
+
+        # We create a 'checkpoint_metric' where lower is better
+        # We add a penalty for the absolute difference (the "deviation")
+        imbalance_penalty = torch.abs(sensitivity - specificity)
+        adjusted_metric = (1 - g_mean) + (0.5 * imbalance_penalty)
+
+        self.log("val_loss", val_loss)
+        self.log("adj_metric", adjusted_metric, prog_bar=True)
+        self.log("sensitivity", sensitivity)
+        self.log("specificity", specificity)
 
         return val_loss
 
@@ -183,7 +193,10 @@ class TransformerX(pl.LightningModule):
         return torch.softmax(logits, dim=-1)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr, weight_decay=0.01)
+
+        # Optional: Add a simple linear warmup if you have access to a scheduler
+        # For now, just lowering the LR and using weight decay will help significantly.
         return optimizer
 
     def on_save_checkpoint(self, checkpoint):

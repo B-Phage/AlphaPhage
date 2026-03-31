@@ -85,7 +85,8 @@ def stress_test_consistency(
 if __name__ == "__main__":
 
     hmm_name = "Wzy_C"
-    gallery_example = f"/Users/tamsen/Code/databases/inference/default_run_ep24_20260325/reference/bac/variant_shards/clusters_16_reduction_false_matrix_blosum62/{hmm_name}.parquet"
+    model = "default_run_ep27_20260331"
+    gallery_example = f"/Users/tamsen/Code/databases/inference/{model}/reference/bac/variant_shards/clusters_16_reduction_false_matrix_blosum62/{hmm_name}.parquet"
     hmm_path = f"/Users/tamsen/Code/databases/hmm/pfam/v38.0/split/{hmm_name}.hmm"
     my_vocab_obj = get_vocab()
 
