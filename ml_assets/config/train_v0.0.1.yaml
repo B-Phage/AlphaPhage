@@ -25,11 +25,11 @@ epochs : 100
 accelerator : "cpu"
 devices : 1
 precision : 32
-batch_size : 100
+batch_size : 256
 save_top_k : 3
 patience : 20
 val_fraction : 0.20
-lr : 0.001
+lr : 0.0001
 
 #hyp:
 archspec : "nope_tt_nonormpostl_cls"
@@ -45,13 +45,22 @@ archspec2 : "L4_bn"
 # mult : 8
 # depth : 8
 
-# Test
-dim : 12
+# Gemini Target
+dim : 128
 lcom : 30
-dim1 : 12
+dim1 : 128
 dim2 : 32
 heads : 4
 mult : 8
-depth : 2
+depth : 4
+
+# # Test
+# dim : 12
+# lcom : 30
+# dim1 : 12
+# dim2 : 32
+# heads : 4
+# mult : 8
+# depth : 2
 
 vocab_size_out : 2
