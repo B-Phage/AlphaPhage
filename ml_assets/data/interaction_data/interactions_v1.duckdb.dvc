@@ -3,3 +3,4 @@ outs:
   size: 10760192
   hash: md5
   path: interactions_v1.duckdb
+  isexec: true

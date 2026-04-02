@@ -21,24 +21,46 @@ num_workers : 0
 experiment_tracker_method : "DVCLiveLogger"
 experiment_tracker_dir : "ml_assets/data/training"
 run_name : "default_run"
-epochs : 5
+epochs : 100
 accelerator : "cpu"
 devices : 1
 precision : 32
-batch_size : 10
+batch_size : 256
 save_top_k : 3
 patience : 20
-val_fraction : 0.15
-lr : 0.001
+val_fraction : 0.20
+lr : 0.0001
 
 #hyp:
 archspec : "nope_tt_nonormpostl_cls"
 archspec2 : "L4_bn"
-dim : 8
+
+
+# # Target
+# dim : 20
+# lcom : 30
+# dim1 : 20
+# dim2 : 32
+# heads : 20
+# mult : 8
+# depth : 8
+
+# Gemini Target
+dim : 128
 lcom : 30
-dim1 : 8
-dim2 : 8
+dim1 : 128
+dim2 : 32
 heads : 4
-mult : 4
-depth : 1
+mult : 8
+depth : 4
+
+# # Test
+# dim : 12
+# lcom : 30
+# dim1 : 12
+# dim2 : 32
+# heads : 4
+# mult : 8
+# depth : 2
+
 vocab_size_out : 2

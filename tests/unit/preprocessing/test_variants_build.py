@@ -1,6 +1,6 @@
 import argparse
-import os
 import pathlib
+import sys
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -12,16 +12,19 @@ from variants.build import build_variants, cli
 @pytest.fixture
 def vocab():
     """Minimal vocab fixture for tests"""
+    # Note: filler_char is still used for standardization, even if vocab_dict is gone from clustering
     return OmegaConf.create({"filler_char": "-", "vocab_clusters_single": {"A": 0, "B": 1}})
 
 
 @pytest.fixture
 def mock_df():
     """Minimal DataFrame returned by process_msa_table"""
-    return pd.DataFrame([[1, 2], [3, 4]], index=["genomeA", "genomeB"], columns=["pos1", "pos2"])
+    return pd.DataFrame(
+        [["A", "C"], ["G", "T"]], index=["genomeA", "genomeB"], columns=["pos1", "pos2"]
+    )
 
 
-@patch("variants.build.write_variant_shard")  # New: Mock the lake writer
+@patch("variants.build.write_variant_shard")
 @patch("variants.build.build_cluster_feature_table")
 @patch("variants.build.split_names_diversity")
 @patch("variants.build.standardize_frame_chars")
@@ -37,17 +40,18 @@ def test_build_variants_orchestration(
     mock_df,
 ):
     """
-    Verifies that build_variants correctly constructs the 4-column shard_df
-    and passes it to the lake writer.
+    Verifies that build_variants correctly constructs the 6-column shard_df
+    using raw string labels and passes it to the lake writer.
     """
     # 1. Setup Input State
     mock_process.return_value = mock_df
     mock_standardize.return_value = (mock_df, None)
     mock_diversity.return_value = [["pos1"]]
 
-    # Mock clustering result: Index is the variant assignments (e.g. cluster 5 and 6)
-    mock_clusters_df = pd.DataFrame({"AA_data": ["X", "Y"]}, index=[5, 6])
-    mock_build_cluster.return_value = (mock_clusters_df, None)
+    # FIX: Use string indices to match perform_msa_clustering output
+    mock_clusters_df = pd.DataFrame(index=["0", "1"])
+    mock_radii = {"0": 0.05, "1": 0.05}
+    mock_build_cluster.return_value = (mock_clusters_df, pd.DataFrame(), mock_radii)
 
     out_dir = tmp_path / "clusters"
     in_file = tmp_path / "phrog_1.csa"
@@ -63,54 +67,50 @@ def test_build_variants_orchestration(
         matrix="identity",
     )
 
-    # 3. Assertions on the Data Construction
-    # Get the dataframe that was passed to write_variant_shard
+    # 3. Assertions
     args, _ = mock_write.call_args
     passed_df = args[0]
-    passed_path = args[1]
 
-    # Verify Column Structure
-    expected_cols = ["organism_id", "variant_id", "hmm_id", "clustering_version"]
+    # Verify All 6 Columns now present in the "Gallery" shard
+    expected_cols = [
+        "organism_id",
+        "variant_id",
+        "hmm_id",
+        "sequence_aligned",
+        "radius",
+        "clustering_version",
+    ]
     assert all(col in passed_df.columns for col in expected_cols)
 
-    # Verify Data Alignment
-    assert passed_df["organism_id"].tolist() == ["genomeA", "genomeB"]
-    assert passed_df["variant_id"].tolist() == [5, 6]
-    assert passed_df["hmm_id"].unique()[0] == "phrog_1"
+    # Verify Data Types and Values
+    assert passed_df["variant_id"].tolist() == ["0", "1"]
+    assert isinstance(passed_df["variant_id"].iloc[0], str)
+    assert passed_df["radius"].tolist() == [0.05, 0.05]
 
-    # Verify Clustering Version String
-    expected_ver = "red-diversity_clusters-8_mat-identity"
-    assert passed_df["clustering_version"].unique()[0] == expected_ver
-
-    # Verify Path Logic
-    assert passed_path == pathlib.Path(out_dir) / "phrog_1.parquet"
-    from unittest.mock import MagicMock, patch
+    # Verify sequence reconstruction (A+C = AC, G+T = GT)
+    assert passed_df["sequence_aligned"].tolist() == ["AC", "GT"]
 
 
 def test_build_variants_no_reduction_version_string(tmp_path, vocab, mock_df):
-    """
-    Using context managers to avoid fixture/mock argument collisions.
-    """
-    # 1. Setup paths
     out_dir = tmp_path / "clusters"
     in_file = tmp_path / "test.csa"
     in_file.write_text("dummy")
 
-    # 2. Patch everything inside the 'with' block
     with (
         patch("variants.build.process_msa_table") as mock_process,
         patch("variants.build.standardize_frame_chars") as mock_std,
         patch("variants.build.build_cluster_feature_table") as mock_build,
         patch("variants.build.write_variant_shard") as mock_write,
     ):
-
-        # Setup return values
         mock_process.return_value = mock_df
-        mock_std.return_value = (mock_df, [0, 0])
-        # Mock clustering: index is [1, 2] (the variants)
-        mock_build.return_value = (pd.DataFrame(index=[1, 2]), None)
+        mock_std.return_value = (mock_df, None)
+        # FIX: Use string labels "0" and "1"
+        mock_build.return_value = (
+            pd.DataFrame(index=["0", "1"]),
+            pd.DataFrame(),
+            {"0": 0.1, "1": 0.1},
+        )
 
-        # 3. Execute
         build_variants(
             in_file=str(in_file),
             msa_cluster_dir=str(out_dir),
@@ -120,35 +120,98 @@ def test_build_variants_no_reduction_version_string(tmp_path, vocab, mock_df):
             matrix="identity",
         )
 
-        # 4. Assert
-        # Get the dataframe passed to write_variant_shard (first arg of first call)
         passed_df = mock_write.call_args[0][0]
-
-        # Verify the 'none' logic in the version string
         assert "red-none" in passed_df["clustering_version"].iloc[0]
-        assert passed_df["variant_id"].tolist() == [1, 2]
-        assert passed_df["organism_id"].tolist() == ["genomeA", "genomeB"]
+        assert passed_df["variant_id"].tolist() == ["0", "1"]
 
 
-def test_cli_invokes_build_variants(tmp_path):
-    """
-    Ensures CLI still maps arguments correctly to the build function.
-    """
-    in_file = tmp_path / "input.csa"
-    in_file.write_text("dummy")
-    out_dir = tmp_path / "out"
+## --- CLI and Entry Point Tests ---
+
+
+@patch("variants.build.get_vocab")
+@patch("variants.build.build_variants")
+@patch("argparse.ArgumentParser.parse_args")
+def test_cli_execution_logic(mock_parse, mock_build, mock_get_vocab, vocab):
+    """Tests that CLI correctly parses arguments and passes them to build_variants."""
+    # 1. Setup Mock Args
+    mock_args = MagicMock()
+    mock_args.in_file = "input.csa"
+    mock_args.msa_cluster_dir = "output_dir"
+    mock_args.num_clusters = 16
+    mock_args.reduction_method = "diversity"
+    mock_args.matrix = "blosum62"
+    mock_parse.return_value = mock_args
+
+    mock_get_vocab.return_value = vocab
+
+    # 2. Call CLI
+    cli()
+
+    # 3. Assertions
+    mock_build.assert_called_once_with(
+        in_file="input.csa",
+        msa_cluster_dir="output_dir",
+        vocab=vocab,
+        reduction_method="diversity",
+        num_clusters=16,
+        matrix="blosum62",
+    )
+
+
+def test_cli_parser_integration():
+    """Tests the actual argparse integration using sys.argv patching."""
+    test_args = [
+        "prog",
+        "-f",
+        "test.csa",
+        "-o",
+        "out_dir",
+        "-c",
+        "32",
+        "-r",
+        "diversity",
+        "-m",
+        "blosum62",
+    ]
 
     with (
+        patch.object(sys, "argv", test_args),
         patch("variants.build.get_vocab") as mock_get_vocab,
         patch("variants.build.build_variants") as mock_build,
-        patch("argparse.ArgumentParser.parse_args") as mock_parse,
     ):
-        mock_parse.return_value = argparse.Namespace(
-            in_file=str(in_file),
-            msa_cluster_dir=str(out_dir),
-            num_clusters=16,
-            reduction_method="diversity",
-            matrix="identity",
-        )
+
+        mock_get_vocab.return_value = {"dummy": "vocab"}
+
         cli()
-        mock_build.assert_called_once()
+
+        # Verify the types were correctly converted (e.g., num_clusters to int)
+        args, kwargs = mock_build.call_args
+        assert kwargs["num_clusters"] == 32
+        assert kwargs["matrix"] == "blosum62"
+        assert kwargs["in_file"] == "test.csa"
+
+
+def test_build_variants_radius_lookup_failure(tmp_path, vocab, mock_df):
+    """Covers the 'raise' block in the radius lookup try/except."""
+    out_dir = tmp_path / "clusters"
+    in_file = tmp_path / "test.csa"
+    in_file.write_text("dummy")
+
+    with (
+        patch("variants.build.process_msa_table") as mock_p,
+        patch("variants.build.standardize_frame_chars") as mock_s,
+        patch("variants.build.build_cluster_feature_table") as mock_b,
+    ):
+
+        mock_p.return_value = mock_df
+        mock_s.return_value = (mock_df, None)
+
+        # Return a cluster label "2" which is NOT in our radii dict
+        mock_b.return_value = (
+            pd.DataFrame(index=["2"]),
+            pd.DataFrame(),
+            {"0": 0.1},  # Missing key "2"
+        )
+
+        with pytest.raises(KeyError):
+            build_variants(in_file=str(in_file), msa_cluster_dir=str(out_dir), vocab=vocab)

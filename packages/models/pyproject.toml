@@ -13,6 +13,6 @@ dependencies = []
 
 [tool.setuptools]
 # leave empty unless needed
-py-modules = ["TransformerX"]
+py-modules = ["inference", "transformer_classifier", "transformer_module", "transformer_archspecs"]
 
 # we use the root level pyproject.toml black and isort

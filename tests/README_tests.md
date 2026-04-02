@@ -1,61 +1,77 @@
-## 1️⃣ Unit tests vs Integration tests
-|Feature | Unit tests | Integration tests
+# 🧪 Testing Framework & Philosophy
+
+This directory contains the verification suites for the AlphaPhage repository. We maintain a strict distinction between exhaustive logic verification (**Unit Tests**) and real-world execution flow (**Integration Tests**).
+
+## 📂 Folder Structure
+
+```
+tests/
+├── unit/                        # 100% Coverage logic tests
+├── integration/                 # Workflow & pipeline validation
+├── utils/                       # Developer toolbelt
+│   ├── inspection/              # Ad-hoc H5/DuckDB data checkers
+│   └── benchmarks/              # Champion vs. Challenger refactor comparisons
+├── run_all_unit_tests.sh        # Entry point: Unit Suite
+└── run_all_integration_tests.sh # Entry point: Integration Suite
+```
+
+## 1️⃣ Test Suite Comparison
+
+| Feature | Unit Tests | Integration Tests |
 | :--- | :--- | :--- |
-|Scope | Single functions, classes, or modules in isolation | Multiple modules / packages working together, or “full workflows” |
-| Dependencies | Mock external calls, binaries, databases, APIs | Use real components where feasible, but may mock heavy dependencies |
-|Goal | Verify logic correctness for each building block | Verify end-to-end behavior of a workflow/pipeline |
-|Coverage target | Ideally 100% for package code | Focus on critical paths, not necessarily 100% of workflow code |
+| **Location** | `tests/unit/` | `tests/integration/` |
+| **Scope** | Single functions or modules in isolation. | Multi-package workflows and “full pipelines.” |
+| **Dependencies** | Mocks external calls, binaries, and APIs. | Uses real tools/binaries where feasible. |
+| **Coverage Goal** | **100%** for all `packages/` code. | Critical paths and execution “happy paths.” |
+| **Execution** | `make test` | `make test-int` |
 
-## 2️⃣ High-level goals for integration tests in a production-grade bioinformatics repo
-1. End-to-end correctness
-   * Run workflows on representative datasets.
-   * Verify outputs exist and have expected structure/content.
-   * Ensure DVC stages or orchestrator stages run as expected.
-2. Environment sanity
-   * Confirm that conda environments, binaries, and external tools (like prodigal-gv) are properly invoked.
-   * Detect missing or misconfigured dependencies.
-3. Config and parameter handling
-   * Validate that workflows correctly consume config files, params.yaml, or command-line options.
-   * Check that changes in configs trigger correct behavior (e.g., re-run or skip stages).
-4. Parallelism / concurrency
-   * Verify that orchestrator or parallel execution works without deadlocks or race conditions.
-   * Ensure outputs are correctly written when running in multiple processes.
-5. Error handling and robustness
-   * Confirm that failures are caught and logged.
-   * Ensure partial runs do not leave inconsistent output.
-   * Test that the workflow can resume from intermediate states if appropriate.
-6. Data integrity
-   * Validate that outputs are consistent with inputs:
-        * Correct file types
-        * Correct number of records
-        * Checksums / hash comparisons where appropriate
-7. Reproducibility
-   * Confirm that repeated runs produce identical outputs if inputs and configs are unchanged.
-   * Optional: verify hash tracking for caching/skip logic (like your Orchestrator or DVC stages).
-8. Minimal necessary coverage
-   * Unlike unit tests, you rarely aim for 100% line coverage in integration tests.
-   * Focus on critical workflows, edge cases, and interaction between modules.
+---
 
-## 3️⃣ Practical test philosophy
-* Unit tests = 100% coverage of package code
-    * Small, fast, deterministic, mock external dependencies
-* Integration tests = high confidence in workflow correctness
-    * Test key pipelines, not every line
-    * Use representative but small datasets to keep runtime reasonable
-    * Test config variations, parallel runs, external tool integration
+## 2️⃣ Quality Aims
 
-**Rule of thumb:**
-Integration tests should focus on _“does the workflow deliver correct results with all dependencies in place?”_ rather than _“does every line of orchestrator code execute?”_
+### End-to-End Correctness
+We run workflows on representative (small) datasets to verify that outputs exist, possess the expected structure, and that DVC/Orchestrator stages transition correctly.
 
-## 4️⃣ Examples of good integration test scenarios for our repo
-1. Small genome → prodigal → proteins
-   * Ensure proteins exist, correct number of sequences, hashes updated
-2. Multiple genomes with different config files
-    * Test per-dataset config handling, multi-output handling, parallel execution
-3. Protein → HMM annotation workflow
-   * Test that HMM outputs are generated correctly and match expectations
-4. Force rerun vs cached run
-    * Confirm that rerun happens when code or config changes
-    * Confirm that skipped when nothing changed
-5. Error simulation
-   * Provide a broken genome file and confirm orchestrator logs error but continues with other genomes
+### Environment & Binary Sanity
+Integration tests confirm that Conda environments, C++ binaries (e.g., `kaptive`), and external tools (e.g., `prodigal-gv`) are correctly invoked and accessible in the path.
+
+### Data Integrity & Reproducibility
+We validate that outputs are consistent with inputs (correct record counts, file types, and checksums). Repeated runs must produce identical outputs if inputs and configs are unchanged.
+
+---
+
+## 3️⃣ Developer Utilities (`tests/utils/`)
+
+These tools are intended for manual execution during development and are not part of the automated CI gatekeeping. They are nested under `utils/` to avoid confusion with the automated test suites.
+
+### 🔍 Inspection (`tests/utils/inspection/`)
+Contains scripts to peek into complex data formats generated by the pipeline.
+* **DuckDB Checkers:** Validate table schemas and row counts.
+* **H5 Inspectors:** Verify tensor shapes and metadata in H5 attributes.
+
+### 📈 Benchmarks (`tests/utils/benchmarks/`)
+Houses "Champion vs. Challenger" tests. These are used when refactoring core algorithms to ensure that the "Challenger" (new code) matches or exceeds the "Champion" (current production code) in performance or accuracy.
+
+---
+
+## 4️⃣ Practical Philosophy
+
+* **Unit tests = Safety Net.** They ensure that when you change a line of code in `packages/utils`, you don't break `packages/models`. If coverage drops below 100%, the PR is rejected.
+* **Integration tests = Reality Check.** They ensure the pipeline actually works on a machine that isn't yours. We prioritize "real-world" integration with limited mocking.
+* **Minimal Datasets.** Always use the smallest possible genomic data for tests to keep the feedback loop fast.
+
+**Rule of Thumb:**
+> Integration tests answer: *"Does the workflow deliver correct results with all dependencies in place?"*
+> Unit tests answer: *"Does this specific building block behave exactly as defined?"*
+
+---
+
+## 🚀 How to Run
+
+### Run Unit Tests (Aggregated Coverage)
+`make test`
+*Executes `tests/run_all_unit_tests.sh`. This combines coverage data from all environments and generates an HTML report in `htmlcov/`.*
+
+### Run Integration Tests
+`make test-int`
+*Executes `tests/run_all_integration_tests.sh`. Focuses on end-to-end pathway validation.*

@@ -19,11 +19,11 @@ ecoli_preprocess_conf:
   runtime: "ml_assets/runtime_configs/bac_preprocessing.yaml" # don't change this, hardcoded in dvc.yaml
 
 serotype_conf:
-  source: "ml_assets/config/kaptive3api_v0.0.1.yaml"
+  source: "ml_assets/config/kaptive3api_v1.0.0.yaml"
   runtime: "ml_assets/runtime_configs/serotype.yaml" # don't change this, hardcoded in dvc.yaml
 
 train_model_conf:
-  source: "ml_assets/config/train_v0.0.1.yaml"
+  source: "ml_assets/config/train_v1.0.0.yaml"
   runtime: "ml_assets/runtime_configs/train.yaml" # don't change this, hardcoded in dvc.yaml
 
 interactions_conf:
@@ -55,7 +55,7 @@ features:
     input_dir: "ml_assets/data/processed/phage/msa_var"
   bacteria:
     table_name: "bacteria_variants_v1"
-    vocab_key: "bacteria_tokens"
+    vocab_key: "vocab_clusters_single"
     input_dir: "ml_assets/data/processed/bacteria/msa_var"
   serotype:
     table_name: "bacteria_serotypes_v1"

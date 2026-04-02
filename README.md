@@ -49,19 +49,28 @@ make test
 conda activate preprocessing
 dvc repro
 ```
+
+Alternatively, run infernence on a downloaded or locally produced snapshot.
+
+```bash
+# Inference Pipeline
+make run-inference
+```
+
 ---
 
 ## 🗂 Repository Structure
 ```
 repo/
 ├── packages/       # Python modules (preprocessing, training, etc.)
-├── ml_assets/      # Data, models, experiments tracked with DVC
+├── ml_assets/      # 📦 Training Space (DVC Tracked)
+├── inference/      # 🚀 Inference Space (Snapshotted / "Make" driven)
 ├── conda_envs/     # Conda environment files
-├── workflows/
+├── workflows/      # Training and infernece workflows
 ├── tests/          # Unit and Integration test
 ├── docs/           # Processes, long-form reference, and cross-cutting guides
-├── dvc.yaml
-└── Makefile # Setup & pipeline commands
+├── dvc.yaml        # Training DVC pipeline file
+└── Makefile        # Setup & pipeline commands
 ```
 
 ## 📦 Packages and Modules
@@ -76,12 +85,39 @@ All production code is located within the `packages/` directory. Each package co
 | `packages/kaptive3api | Kaptive Integration: Specialized API wrapper (runs via osx-64 emulation).	| [Read Package README](packages/kaptive3api/README_kaptive3api.md) |
 | *(... and so on for the rest of our packages)* | | |
 
-## 🚀 Execution & Reproducibility
+## 🚀 Model Lifecycle: From Training to Deployment
+AlphaPhage separates the Controlled Training Environment from the Portable Inference Pipeline to ensure that only "signed-off" models reach production.
 
-AlphaPhage uses **DVC (Data Version Control)** to manage a complex, parallelised DAG.
+## 1. Training & Reproducibility (DVC-Controlled)
+The training DAG is strictly managed by DVC (Data Version Control). This ensures every model is tied to a specific git commit, dataset version, and hyperparameter set.
 
-* **View Pipeline Architecture**: A full visual representation of our processing streams can be found in [docs/PIPELINE.md](docs/PIPELINE.md).
-* **Run the Pipeline**: Use `dvc repro` to execute all out-of-date stages.
-* **Change Experiments**: To swap model architectures, preprocessing logic, or dataset versions, follow the [Experiment Control Guide](docs/PIPELINE.md#️-experiment-control-config-staging).
+- **Immutable Pipeline**: Managed via dvc.yaml. Use dvc repro to execute.
 
-> 💡 **Tip**: All experimental "switches" are managed in the root `params.yaml`. The pipeline automatically handles the staging and path injection for you.
+- **Experiment Control**: All "switches" are managed in the root params.yaml. The pipeline automatically handles config staging and path injection.
+
+- **Architecture**: See [docs/PIPELINE.md](docs/PIPELINE.md) for the full DAG visualization.
+
+## 2. Model Promotion (The Snapshot Bridge)
+Once a training run is complete and verified, you must "promote" the model to the inference space. The Snapshot Utility extracts the weights, configs, and vocabulary from the DVC-tracked `ml_assets/` and freezes them into the untracked inference directory `../databases/inference/<SNAPSHOT_NAME>`.
+```
+Bash
+# Deploys a specific model version to the inference space
+make snapshot MODEL=TransformerX_v1 EPOCH=42
+```
+
+📦 Note: Official snapshots are zipped and hosted in the AlphaPhage Model Zoo (Google Drive). Links are provided in the GitHub Release notes for each version tag.
+
+## 3. Inference Pipeline (Make-Driven)
+The inference pipeline is designed to be lightweight and decoupled from the DVC training overhead. It uses standard make commands to run predictions on new data using the snapshotted model.
+
+- Workflow: Operates independently of the DVC DAG for faster, more flexible deployment.
+
+- Execution:
+```
+bash
+make run-inference  # Executes the snapshotted model
+```
+
+- Detailed Guides: * [docs/RELEASE_MANAGEMENT.md](docs/RELEASE_MANAGEMENT.md): Full specification for Model Sign-off, Deployment Profiles, and the Snapshot process.
+
+  - [inference/README_inf.md](inference/README_inf.md): Technical guide for local CLI usage and variable overrides.

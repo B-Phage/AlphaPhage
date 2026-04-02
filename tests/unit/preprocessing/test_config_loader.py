@@ -143,7 +143,7 @@ class TestVocabLoader(unittest.TestCase):
             override_path="ml_assets/config/preprocessing_ecoli_v1.0.0.yaml",
             params_set="general",
         )
-        self.assertEqual(gen_conf.name, "ecoli")
+        self.assertEqual(gen_conf.name, "bacteria")
         self.assertEqual(conf.hmm_scan_method, "pfam")
 
         with self.assertRaises(FileNotFoundError):

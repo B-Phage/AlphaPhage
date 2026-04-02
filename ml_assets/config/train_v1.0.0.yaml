@@ -1,0 +1,47 @@
+# general:
+code_version :     "v1.0.0"
+run_name : "TransformerX_v1"
+
+seed : 42
+verboselevel : "ERROR"
+debug_mode : false
+
+train_features_path : "ml_assets/data/processed/model_training/x_train_data_v1.h5"
+train_labels_path : "ml_assets/data/processed/model_training/cl_train_data_v1.h5"
+debug_features_path : "ml_assets/data/processed/model_training/x_train_data_v1.h5"
+debug_labels_path : "ml_assets/data/processed/model_training/cl_train_data_v1.h5"
+
+pair_indices_name : "pair_indices"
+dataset_name_host : "host_vec_1"
+dataset_name_phage : "phage_vec_1"
+reader_mode : "binary_pairkey"
+architecture : "TransformerX"
+num_workers : 0
+
+# trainer:
+experiment_tracker_method : "DVCLiveLogger"
+experiment_tracker_dir : "ml_assets/data/training"
+epochs : 100
+accelerator : "cpu"
+devices : 1
+precision : 32
+batch_size : 200
+save_top_k : 3
+patience : 20
+val_fraction : 0.20
+lr : 0.0001
+
+#hyp:
+archspec : "nope_tt_nonormpostl_cls"
+archspec2 : "L4_bn"
+
+# Target
+dim : 20
+lcom : 30
+dim1 : 20
+dim2 : 32
+heads : 20
+mult : 8
+depth : 8
+
+vocab_size_out : 2

@@ -24,7 +24,7 @@ def test_hmm_summary_workflow(tmp_path: Path):
     End-to-end integration test for the HMM summary workflow:
     - Creates fake parquet lake
     - Writes temporary YAML config
-    - Runs main_cli
+    - Runs main
     - Verifies DuckDB summary table and fingerprint
     """
     # ---------------------------
@@ -77,7 +77,7 @@ def test_hmm_summary_workflow(tmp_path: Path):
     # Step 3: run CLI programmatically
     # ---------------------------
     # Import the CLI main function directly
-    from workflows.hmm_parquet_to_summary_tbl import main_cli
+    from workflows.hmm_parquet_to_summary_tbl import main
 
     # Patch sys.argv
     sys_argv_backup = sys.argv
@@ -90,7 +90,7 @@ def test_hmm_summary_workflow(tmp_path: Path):
     ]
 
     try:
-        main_cli()
+        main()
     finally:
         sys.argv = sys_argv_backup
 

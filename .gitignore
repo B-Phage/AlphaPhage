@@ -47,8 +47,7 @@ outputs/*
 dvc_plots/
 
 # Trained model artifacts
-models/
-models/*
+*.ckpt
 
 # Human readable inspection files
 *.csv
@@ -89,3 +88,7 @@ artifacts/
 htmlcov/
 *.svg
 *.xml
+
+# Summary tables from DVC ("duplicated" data not tracked)
+ml_assets/data/processed/duckdb/proteins.duckdb
+ml_assets/data/processed/aggregated/features.db

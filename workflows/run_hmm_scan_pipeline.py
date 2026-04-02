@@ -5,22 +5,29 @@ Tracks per-file outputs in a parquet data lake and summary CSVs.
 """
 
 import argparse
-import hashlib
+import pathlib
 from functools import partial
 from pathlib import Path
 
 import utils.consol_log as log
 from hmm.api import run_hmm_scan_on_file
 from orchestration.orchestrator import Orchestrator
-from utils.config_loader import get_config  # YAML loader
+from utils.config_loader import get_config
 from utils.hash import compute_combined_code_version, create_manifest
 
 logger = log.get_logger()
 
+# --- Path Anchoring ---
+SCRIPT_PATH = pathlib.Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parent.parent
+DEFAULT_RUNTIME_CFG = REPO_ROOT / "ml_assets" / "config" / "runtime.yaml"
+DEFAULT_HASH_DIR = REPO_ROOT / "ml_assets" / "data" / "workflow" / "hashes"
 
-# -----------------------------
-# Top-level worker function
-# -----------------------------
+# -------------------------------------------------------------
+# Top-level worker functions (Pickleable for Multiprocessing)
+# -------------------------------------------------------------
+
+
 def run_hmm_worker(
     protein_file: Path,
     outputs: list,
@@ -30,12 +37,12 @@ def run_hmm_worker(
     method: str,
     data_lake: Path,
 ):
-    # Make sure the data lake folder exists
+    """Worker logic at the top level for pickling."""
+    # Ensure local data lake folder exists for this specific worker
     data_lake.mkdir(parents=True, exist_ok=True)
 
-    summary_csv = outputs[0]
-    summary_csv.parent.mkdir(exist_ok=True, parents=True)
-    csv_file = summary_csv / f"{protein_file.stem}.csv"
+    csv_file = Path(outputs[0])
+    csv_file.parent.mkdir(exist_ok=True, parents=True)
 
     run_hmm_scan_on_file(
         in_fasta=protein_file,
@@ -46,99 +53,69 @@ def run_hmm_worker(
         out_database=data_lake,
     )
 
-    # Return the folder as the "output" for the orchestrator
     return [data_lake]
 
 
-# -----------------------------
-# Top-level output function
-# -----------------------------
 def hmm_output_func(protein_file: Path, result_dir: Path):
-    # All protein files contribute to the same data lake
-    return [result_dir]
+    """Output mapping logic at the top level."""
+    return [result_dir / f"{protein_file.stem}.csv"]
 
 
-# -----------------------------
-# Main entrypoint
-# -----------------------------
-def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Run HMM scan on protein files")
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to the YAML config file for this run",
-    )
-    parser.add_argument(
-        "--code_hash",
-        action="append",
-        type=Path,
-        required=True,
-        help="Path to a hash file (repeatable)",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force rerun all protein files regardless of hash",
-    )
+# -------------------------------------------------------------
+# Workflow Orchestration
+# -------------------------------------------------------------
 
-    args = parser.parse_args(argv)
 
-    # -----------------------------
-    # Load configuration
-    # -----------------------------
-    gen_cfg = get_config(override_path=args.config, params_set="general")
-    run_cfg = get_config(
-        "ml_assets/config/runtime.yaml", params_set="meta"
-    )  # config that does not affect outputs
-    prot_cfg = get_config(override_path=args.config, params_set="prodigal_config")
-    hmm_cfg = get_config(override_path=args.config, params_set="hmm_config")
+def run_workflow(config_path, code_hash_files, hash_store_dir=None, force=False):
+    # 1. Load configuration
+    gen_cfg = get_config(override_path=config_path, params_set="general")
+    run_cfg = get_config(str(DEFAULT_RUNTIME_CFG), params_set="meta")
+    prot_cfg = get_config(override_path=config_path, params_set="prodigal_config")
+    hmm_cfg = get_config(override_path=config_path, params_set="hmm_config")
 
+    # 2. Resolve Paths
     protein_dir = Path(prot_cfg.proteins_dir)
     result_dir = Path(hmm_cfg.hmm_scan_dir)
-    result_dir.mkdir(exist_ok=True, parents=True)
     data_lake = Path(hmm_cfg.data_lake)
-    data_lake.mkdir(parents=True, exist_ok=True)
-    hash_store_dir = Path("ml_assets/data/workflow/hashes")
 
-    # Add code hash to trigger reruns on code or config changes
-    CONF_CODE_VERSION = gen_cfg.code_version
+    # Logic: CLI Argument > Repo Default
+    hash_dir = Path(hash_store_dir) if hash_store_dir else DEFAULT_HASH_DIR
+
+    # 3. Setup Directories
+    result_dir.mkdir(exist_ok=True, parents=True)
+    data_lake.mkdir(parents=True, exist_ok=True)
+
+    # 4. Code Versioning
+    # Combined hash of logic version, config items, and paths
     CODE_VERSION = compute_combined_code_version(
-        base_version=CONF_CODE_VERSION,
-        hash_files=args.code_hash,
+        base_version=gen_cfg.code_version,
+        hash_files=code_hash_files,
         config_items=[gen_cfg.name, hmm_cfg, protein_dir, data_lake],
     )
 
-    # -----------------------------
-    # Resolve input proteins
-    # -----------------------------
+    # 5. Resolve input proteins
     logger.info(f"Protein directory: {protein_dir}")
     if gen_cfg.lst_genomes:
         protein_files = [protein_dir / f"{g}.fa" for g in gen_cfg.lst_genomes]
     else:
         protein_files = sorted(protein_dir.glob("*.fa"))
+    logger.info(f"Protein files found: {len(protein_files)}")
 
-    logger.info(f"Protein files: {protein_files}")
-
-    # -----------------------------
-    # Create pickleable worker/output using functools.partial
-    # -----------------------------
+    # 6. Create pickleable worker/output using functools.partial
     worker_fn = partial(
         run_hmm_worker,
-        hmm=hmm_cfg.hmm_multifile,
-        annotations=hmm_cfg.annotations,
+        hmm=Path(hmm_cfg.hmm_multifile),
+        annotations=Path(hmm_cfg.annotations),
         method=hmm_cfg.hmm_scan_method,
         data_lake=data_lake,
     )
 
     output_fn = partial(hmm_output_func, result_dir=result_dir)
 
-    # -----------------------------
-    # Build orchestrator
-    # -----------------------------
+    # 7. Build and execute orchestrator
     orch = Orchestrator(
         workflow_name=f"hmm_scan_{gen_cfg.get('name', 'test')}",
-        hash_store_dir=hash_store_dir,
+        hash_store_dir=hash_dir,
         logger_name="hmm_scan",
     )
 
@@ -148,19 +125,33 @@ def main(argv: list[str] | None = None) -> None:
         worker=worker_fn,
         code_id=CODE_VERSION,
         parallelism=run_cfg.n_jobs,
-        force=args.force,
+        force=force,
         wipe_dirs=[result_dir, data_lake],
         tqdm_desc=f"HMM scanning ({gen_cfg.get('name', 'test')})",
     )
 
-    # create the manifest file for DVC pipeline tracking
+    # 8. Manifest Generation for DVC/Inference tracking
     parquet_files = list(data_lake.rglob("*.parquet"))
-    MANIFEST_FILE = Path(hmm_cfg.data_lake + "_manifest.json")
-    create_manifest(parquet_files, MANIFEST_FILE)
+    manifest_path = Path(str(hmm_cfg.data_lake) + "_manifest.json")
+    create_manifest(parquet_files, manifest_path)
+    logger.info(f"✅ HMM Scan Complete. Manifest: {manifest_path}")
 
 
 # -----------------------------
-# CLI hook
+# Main CLI Entrypoint
 # -----------------------------
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run HMM scan on protein files")
+    parser.add_argument("--config", required=True, help="Path to YAML config")
+    parser.add_argument("--code_hash", action="append", type=Path, required=True)
+    parser.add_argument("--hash_store", help="Optional override for metadata hashes")
+    parser.add_argument("--force", action="store_true")
+
+    args = parser.parse_args()
+
+    run_workflow(
+        config_path=args.config,
+        code_hash_files=args.code_hash,
+        hash_store_dir=args.hash_store,
+        force=args.force,
+    )

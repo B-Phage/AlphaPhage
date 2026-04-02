@@ -1,13 +1,16 @@
 """TransformerX module for training a Transformer model using PyTorch Lightning."""
 
+from typing import cast
+
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 import utils.consol_log as log
 from models.transformer_classifier import TransformerXClassifier
 from omegaconf import DictConfig, OmegaConf
+from torchmetrics.classification import BinaryRecall, BinarySpecificity, BinaryStatScores
 
-logger = log.get_logger(level=log.WARNING)
+logger = log.get_logger()
 
 
 class TransformerX(pl.LightningModule):
@@ -23,13 +26,30 @@ class TransformerX(pl.LightningModule):
         length_padded: int,
         archspecs: dict,
         archspecs2: dict,
+        class_weights=None,
     ):
         super().__init__()
-        self.cfg = cfg
 
-        # Save hyperparameters as dict
-        hparams = OmegaConf.to_container(cfg, resolve=True)
-        self.save_hyperparameters(hparams)
+        # 1. Resolve the config so paths and variables are absolute strings/ints
+        # If cfg is already a dict (restored from ckpt), don't try to resolve it again
+        if isinstance(cfg, DictConfig):
+            resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
+        else:
+            resolved_cfg = cfg  # It's already a standard dict
+
+        # 2. Save hyperparameters using the plain dict
+        self.save_hyperparameters(
+            {
+                "cfg": resolved_cfg,
+                "num_tokens": int(num_tokens),
+                "vocab_size_out": int(vocab_size_out),
+                "length_padded": int(length_padded),
+            }
+        )
+
+        # 3. CRITICAL: Convert back to a dot-accessible object
+        # This fixes the 'AttributeError: dict object has no attribute'
+        self.cfg = OmegaConf.create(resolved_cfg)
 
         self.archspecs = archspecs
         self.archspecs2 = archspecs2
@@ -94,27 +114,66 @@ class TransformerX(pl.LightningModule):
             length_padded=length_padded,
         )
 
+        # Register the weights so they move to GPU/CPU automatically
+        if class_weights is not None:
+            logger.info(f"TransformerX assigned class weights of: {class_weights}")
+            self.register_buffer("class_weights", class_weights)
+        else:
+            self.register_buffer("class_weights", None)
+
+        # Initialize metrics
+        # We use Binary versions assuming your 80/20 data is a binary classification
+        self.val_sensitivity = BinaryRecall()
+        self.val_specificity = BinarySpecificity()
+
+        # Create the tool once
+        self.stat_scores = BinaryStatScores()
+
     def forward(self, x):
         return self.model(x)  # .logits
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self.forward(x)
-        train_loss = torch.nn.functional.cross_entropy(logits, y)
+
+        # Cast self.class_weights to torch.Tensor to satisfy Pylance
+        weights = cast(torch.Tensor, self.class_weights) if self.class_weights is not None else None
+
+        train_loss = torch.nn.functional.cross_entropy(logits, y, weight=weights)
         self.log("train_loss", train_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return train_loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self.forward(x)
-        val_loss = torch.nn.functional.cross_entropy(logits, y)
 
-        # Calculate accuracy
+        # 1. Standard Loss for tracking
+        weights = cast(torch.Tensor, self.class_weights) if self.class_weights is not None else None
+        val_loss = torch.nn.functional.cross_entropy(logits, y, weight=weights)
+
+        # 2. Calculate Sensitivity (Recall) and Specificity
         preds = torch.argmax(logits, dim=1)
-        acc = (preds == y).float().mean()
+        # Using stat_scores to get TP, FP, TN, FN
+        stats = self.stat_scores.to(self.device)(preds, y)
+        tp, fp, tn, fn, _ = stats
 
-        self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("val_acc", acc, on_epoch=True, prog_bar=True)
+        sensitivity = tp / (tp + fn + 1e-7)
+        specificity = tn / (tn + fp + 1e-7)
+
+        # 3. Calculate the Balanced Penalty
+        # G-Mean rewards high values that are close together
+        g_mean = torch.sqrt(sensitivity * specificity)
+
+        # We create a 'checkpoint_metric' where lower is better
+        # We add a penalty for the absolute difference (the "deviation")
+        imbalance_penalty = torch.abs(sensitivity - specificity)
+        adjusted_metric = (1 - g_mean) + (0.5 * imbalance_penalty)
+
+        self.log("val_loss", val_loss)
+        self.log("adj_metric", adjusted_metric, prog_bar=True)
+        self.log("sensitivity", sensitivity)
+        self.log("specificity", specificity)
+
         return val_loss
 
     def test_step(self, batch, batch_idx):
@@ -137,5 +196,15 @@ class TransformerX(pl.LightningModule):
         return torch.softmax(logits, dim=-1)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr, weight_decay=0.01)
+
+        # Optional: Add a simple linear warmup if you have access to a scheduler
+        # For now, just lowering the LR and using weight decay will help significantly.
         return optimizer
+
+    def on_save_checkpoint(self, checkpoint):
+        # Space saving override
+        # Remove the optimizer states and other heavy metadata
+        keys_to_remove = ["optimizer_states", "lr_schedulers", "loops", "callbacks"]
+        for key in keys_to_remove:
+            checkpoint.pop(key, None)

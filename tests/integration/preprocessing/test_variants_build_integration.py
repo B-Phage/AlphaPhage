@@ -58,7 +58,7 @@ def test_build_variants_basic(tmp_path, vocab):
 
     # Check that cluster assignments are within the expected range
     assert df["variant_id"].nunique() <= 4
-    assert df["variant_id"].dtype == "Int64"  # Per your enforce_schema logic
+    assert df["variant_id"].dtype == "string"  # Per your enforce_schema logic
 
 
 @pytest.mark.integration

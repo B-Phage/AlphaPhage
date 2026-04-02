@@ -6,7 +6,7 @@ import utils.consol_log as log
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, IterableDataset
 
-logger = log.get_logger(level=log.WARNING)
+logger = log.get_logger()
 
 
 def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
@@ -26,21 +26,21 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         Xh5_host = f_x[dataset_name_host]
         Xh5_phage = f_x[dataset_name_phage]
 
-        assert isinstance(Xh5_host, h5py.Dataset)
-        assert isinstance(Xh5_phage, h5py.Dataset)
+        # 1. Get length_padded quickly
+        length_padded = int(Xh5_host.shape[1] + Xh5_phage.shape[1])
 
-        # Just getting length_padded as length of first pair joined
-        length_padded = len(Xh5_host[0]) + len(Xh5_phage[0])
-        logger.info(f"length_padded  : {length_padded}")
+        # 2. Get unique tokens without a massive Python loop
+        # We take a sample or use the whole thing if it fits in RAM.
+        # If the dataset is massive, just getting the max is usually enough.
+        host_max = np.max(Xh5_host[:])
+        phage_max = np.max(Xh5_phage[:])
 
-        tokens_in_data = set({})
-        for i in range(len(Xh5_host)):
-            tokens_in_data.update(set(Xh5_host[i].astype(np.int32)))
-        for i in range(len(Xh5_phage)):
-            tokens_in_data.update(set(Xh5_phage[i].astype(np.int32)))
-        tokens_in_data = list(tokens_in_data)
-        num_tokens = max(tokens_in_data) + 1
-        logger.info(f"num_tokens  : {num_tokens}")
+        num_tokens = int(max(host_max, phage_max) + 1)
+
+        # If you specifically need the LIST of tokens:
+        tokens_in_data = list(range(num_tokens))
+
+        logger.info(f"length_padded: {length_padded} | num_tokens: {num_tokens}")
 
     return length_padded, num_tokens, tokens_in_data
 
@@ -72,12 +72,39 @@ def get_datamodule(cfg: DictConfig):
         raise ValueError(f"Unknown reader_mode: {cfg.reader_mode}")
 
 
-def get_model(cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int):
+def get_model(
+    cfg: DictConfig, num_tokens: int, vocab_size_out: int, length_padded: int, class_weights=None
+):
     # Only TransformerX is implemented.
     if cfg.architecture == "TransformerX":
         from models.transformer_archspecs import archspecs, archspecs2
         from models.transformer_module import TransformerX
 
-        return TransformerX(cfg, num_tokens, vocab_size_out, length_padded, archspecs, archspecs2)
+        return TransformerX(
+            cfg,
+            num_tokens,
+            vocab_size_out,
+            length_padded,
+            archspecs,
+            archspecs2,
+            class_weights=class_weights,
+        )
     else:
         raise ValueError(f"Unknown architecture: {cfg.architecture}")
+
+
+def check_model_size(model):
+    from sys import getsizeof
+
+    logger.warning(f"{'Name':<50} | {'Size (MB)':<10}")
+    logger.warning("-" * 65)
+
+    # Check Parameters
+    for name, param in model.named_parameters():
+        size = param.element_size() * param.nelement() / 1e6
+        logger.warning(f"{name:<50} | {size:>10.2f}")
+
+    # Check Buffers (The likely source of the 300MB)
+    for name, buffer in model.named_buffers():
+        size = buffer.element_size() * buffer.nelement() / 1e6
+        logger.warning(f"{name:<50} | {size:>10.2f}")

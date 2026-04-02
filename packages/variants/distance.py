@@ -1,149 +1,170 @@
-from typing import Union, cast
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from Bio.Align import substitution_matrices
 
+# Global cache for heavy lookup objects
+_BLOSUM_CACHE = {}
+BLOSUM_GAP_TO_GAP = 0.0  # Neutralize shared gaps
 
-def calculate_distance_matrix(alignment: list[str] | np.ndarray, matrix: str | dict) -> np.ndarray:
+
+def calculate_distance_matrix(
+    alignment: Union[List[str], np.ndarray], matrix: str = "identity"
+) -> np.ndarray:
     """
-    Calculate a symmetric distance matrix for a set of aligned sequences.
-
-    Parameters
-    ----------
-    alignment : list of str or np.ndarray
-        Multiple sequence alignment (rows = sequences, columns = positions).
-    matrix : str or dict
-        Distance type. Options:
-        - "identity" : 1 - fraction of identical residues
-        - "blosum62" : normalized BLOSUM62 similarity
-        - dict : custom dict-based substitution scores
-
-    Returns
-    -------
-    np.ndarray
-        Symmetric distance matrix (shape = [num_sequences, num_sequences]).
+    Backwards compatible wrapper for training.
+    Produces a symmetric NxN matrix for a single alignment.
     """
-    if isinstance(matrix, dict):
-        return _distance_matrix_dict(alignment, matrix)
-    elif matrix == "identity":
-        return _distance_matrix_identity_vectorized(alignment)
+    return calculate_distance(query=alignment, target=alignment, matrix=matrix)
+
+
+def calculate_distance(
+    query: Union[List[str], np.ndarray],
+    target: Union[List[str], np.ndarray],
+    matrix: str = "identity",
+) -> np.ndarray:
+    """
+    Universal entry point for both Training (Symmetric) and Inference (Asymmetric).
+
+    If query is target, this produces a symmetric NxN matrix.
+    If query != target, this produces an MxN matrix.
+    """
+    # 1. Standardize Inputs to Byte Arrays
+    q_arr = _to_byte_array(query)
+    t_arr = _to_byte_array(target)
+
+    if matrix == "identity":
+        return _engine_identity(q_arr, t_arr)
     elif matrix == "blosum62":
-        return _distance_matrix_blosum62_vectorized(alignment)
+        c2i, lookup = _get_blosum_params()
+        return _engine_blosum62(q_arr, t_arr, c2i, lookup)
     else:
-        raise ValueError(
-            "Invalid distance matrix type. Choose 'identity', 'blosum62', or provide a dict."
-        )
+        raise ValueError(f"Unsupported matrix: {matrix}")
 
 
-# -------------------------
-# Internal helper functions
-# -------------------------
+# --- Core Engines (Shared by Training & Inference) ---
+def _engine_identity(q_arr: np.ndarray, t_arr: np.ndarray) -> np.ndarray:
+    """Calculates Identity Distance using Pairwise Deletion."""
+    if q_arr.size == 0 or t_arr.size == 0:
+        return np.zeros((q_arr.shape[0], t_arr.shape[0]), dtype=np.float64)
+
+    # 1. Cast to uint8 immediately to ensure integer comparisons work (45, 46)
+    q_val = q_arr.view(np.uint8)
+    t_val = t_arr.view(np.uint8)
+
+    # 2. Expand dimensions (M, N, L)
+    q_exp = q_val[:, None, :]
+    t_exp = t_val[None, :, :]
+
+    # 3. Identify gaps (45 is '-', 46 is '.')
+    # By using uint8, we guarantee these integer comparisons are accurate
+    is_gap_q = (q_exp == 45) | (q_exp == 46)
+    is_gap_t = (t_exp == 45) | (t_exp == 46)
+
+    # 4. Define Shared Gaps
+    shared_mask = is_gap_q & is_gap_t
+
+    # 5. Matches: MUST be identical AND MUST NOT be a shared gap
+    # This prevents '-' == '-' from being counted as a match
+    match_mask = (q_exp == t_exp) & ~shared_mask
+    real_match_counts = np.sum(match_mask, axis=2)
+
+    # 6. Comparable positions: Total length - shared gaps
+    total_comparable = q_val.shape[1] - np.sum(shared_mask, axis=2)
+    total_comparable = np.maximum(total_comparable, 1)
+
+    identity = real_match_counts / total_comparable
+    return np.clip(1.0 - identity, 0, 1)
 
 
-def _distance_matrix_identity_vectorized(alignment: list[str] | np.ndarray) -> np.ndarray:
-    """
-    Calculates identity distance matrix using Numpy broadcasting.
+def _engine_blosum62(
+    q_arr: np.ndarray, t_arr: np.ndarray, c2i: np.ndarray, lookup: np.ndarray
+) -> np.ndarray:
+    """Calculates BLOSUM62 Distance with Geometric Mean Normalization."""
+    if q_arr.size == 0 or t_arr.size == 0:
+        return np.zeros((q_arr.shape[0], t_arr.shape[0]), dtype=np.float64)
 
-    Args:
-        alignment: A 2D numpy array of characters (shape: num_seqs x aln_length)
+    q_int = c2i[q_arr.view("uint8")]
+    t_int = c2i[t_arr.view("uint8")]
 
-    Returns:
-        2D numpy array of distances.
-    """
-    # TODO remove this after cc test
-    # alignment_array = np.array([list(s) for s in alignment], dtype='U1')
-    # np.save("challenging_alignment.npy", alignment_array)
-    if len(alignment) == 0:
-        return np.zeros((0, 0), dtype=np.float64)
+    gap_idx = lookup.shape[0] - 1
+    M, L = q_int.shape
+    N = t_int.shape[0]
 
-    # Convert input to a 2D numpy character array if it isn't one
-    # This ensures broadcasting works
-    if isinstance(alignment, list):
-        # Using dtype='U1' (Unicode 1-char) is memory efficient for alignments
-        arr = np.array([list(s) for s in alignment], dtype="U1")
-    else:
-        arr = np.asarray(alignment)
+    # 1. Vectorized Score Calculation
+    total_scores = np.zeros((M, N), dtype=np.float64)
+    for l in range(L):
+        total_scores += lookup[q_int[:, l, None], t_int[None, :, l]]
 
-    # Broadcasting for pairwise comparison
-    # Resulting shape: (num_seqs, num_seqs, aln_len)
-    matches = arr[:, None, :] == arr[None, :, :]
+    # 2. Correct Shared Gap Logic for Normalization
+    is_gap_q = q_int == gap_idx
+    is_gap_t = t_int == gap_idx
 
-    # Calculate mean across the alignment length axis
-    identity = np.mean(matches, axis=2, dtype=np.float64)
+    # Use bitwise AND in 3D to find gaps at the same index
+    shared_gap_counts = np.sum(is_gap_q[:, None, :] & is_gap_t[None, :, :], axis=2)
 
-    # Explicitly cast back to ndarray to satisfy Pylance/Typing
-    # np.atleast_2d ensures that even a 1x1 result is an array, not a scalar float
-    result = np.atleast_2d(1.0 - identity)
+    # 3. Calculate Normalized Self-Scores
+    diag = np.diag(lookup)
+    gap_self_score = diag[gap_idx]
 
-    return result.astype(np.float64)
+    q_self_total = np.sum(diag[q_int], axis=1, keepdims=True)
+    t_self_total = np.sum(diag[t_int], axis=1, keepdims=True).T
 
+    # Subtract the self-score contributed by shared gaps
+    q_self_masked = q_self_total - (shared_gap_counts * gap_self_score)
+    t_self_masked = t_self_total - (shared_gap_counts * gap_self_score)
 
-def _distance_matrix_dict(alignment: list[str] | np.ndarray, score_dict: dict) -> np.ndarray:
-    """Distance = negative normalized score from a custom dictionary"""
-    n = len(alignment)
-    mat = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            seq1, seq2 = alignment[i], alignment[j]
-            score = sum(score_dict[c1][c2] for c1, c2 in zip(seq1, seq2))
-            distance = -score / len(seq1)
-            mat[i, j] = mat[j, i] = distance
-    return mat
+    norm_factor = np.sqrt(np.maximum(q_self_masked * t_self_masked, 1.0))
+    distance = 1.0 - (total_scores / norm_factor)
+
+    return np.clip(distance, 0, 1)
 
 
-def _distance_matrix_blosum62_vectorized(alignment: Union[list[str], np.ndarray]) -> np.ndarray:
-    """Vectorized BLOSUM62 distance calculation.
+# --- Utilities ---
 
-    Assumes alignment is standardized: residues are uppercase,
-    stops/gaps/dots are all '-' (gaps).
-    """
-    if len(alignment) == 0:
-        return np.zeros((0, 0), dtype=np.float64)
 
-    # 1. Convert to 2D numpy array of characters (if not already)
-    arr = np.asarray([list(s) for s in alignment] if isinstance(alignment, list) else alignment)
-    n_seqs, aln_len = arr.shape
+def _to_byte_array(data: Union[List[str], np.ndarray]) -> np.ndarray:
+    """Standardizes input to a 2D byte array (|S1)."""
+    if isinstance(data, list):
+        if not data:
+            return np.zeros((0, 0), dtype="|S1")
+        return np.array([list(s) for s in data], dtype="|S1")
 
-    # 2. Prepare the substitution matrix and alphabet
-    matrix_obj = substitution_matrices.load("BLOSUM62")
-    # Biopython's BLOSUM62 alphabet usually includes 'X' and '*'
-    alphabet = str(getattr(matrix_obj, "alphabet", "ARNDCQEGHILKMFPSTWYVBZX*"))
-    lookup_table = np.array(matrix_obj)
+    # Handle Numpy Array inputs
+    if data.size == 0:
+        return np.zeros((0, 0), dtype="|S1")
 
-    # 3. Handle the Gap '-'
-    # Standard BLOSUM doesn't usually include '-', so we add a row/col for it.
-    gap_idx = len(alphabet)
-    final_lookup = np.full((gap_idx + 1, gap_idx + 1), -4.0, dtype=np.float64)
-    final_lookup[:gap_idx, :gap_idx] = lookup_table
+    if data.ndim == 1:
+        # For 1D array of strings, convert to 2D char array
+        return np.array([list(s) for s in data], dtype="|S1")
 
-    # Optional: If two gaps align, some people prefer a score of 0 or +1.
-    # Here we stick to -4 to match your previous iterative implementation.
-    # final_lookup[gap_idx, gap_idx] = 1.0
+    return data.astype("|S1")
 
-    # 4. Fast Integer Mapping
-    char_to_int = np.full(256, gap_idx)  # Default everything unknown to Gap index
-    for i, char in enumerate(alphabet):
-        char_to_int[ord(char)] = i
 
-    # Convert characters to integers via ASCII view
-    int_aln = char_to_int[arr.view("uint32")]
+def _get_blosum_params():
+    """Lazy-initialization with relaxed linear gap penalty."""
+    if "char_to_int" not in _BLOSUM_CACHE:
+        matrix_obj = substitution_matrices.load("BLOSUM62")
+        alphabet = str(getattr(matrix_obj, "alphabet", "ARNDCQEGHILKMFPSTWYVBZX*"))
+        lookup_table = np.array(matrix_obj)
 
-    # 5. Calculate Scores (Looping over positions to save memory)
-    total_scores = np.zeros((n_seqs, n_seqs), dtype=np.float64)
-    for pos in range(aln_len):
-        col = int_aln[:, pos]
-        total_scores += final_lookup[col[:, None], col[None, :]]
+        gap_idx = len(alphabet)
 
-    # 6. Normalization (Self-Score similarity to distance)
-    # Distance = 1 - (Score_ij / max(Score_ii, Score_jj))
-    self_scores = np.diag(total_scores)
-    max_self_scores = np.maximum.outer(self_scores, self_scores)
+        # REFACTORED: Changed from -4.0 to -2.0 to mimic affine extension forgiveness
+        RELAXED_GAP_PENALTY = -2.0
 
-    # Safety against division by zero (e.g., all-gap sequences)
-    max_self_scores[max_self_scores <= 0] = 1.0
+        final_lookup = np.full((gap_idx + 1, gap_idx + 1), RELAXED_GAP_PENALTY, dtype=np.float64)
+        final_lookup[:gap_idx, :gap_idx] = lookup_table
 
-    distance_matrix = 1.0 - (total_scores / max_self_scores)
+        # Shared gaps remain neutral
+        final_lookup[gap_idx, gap_idx] = 0.0
 
-    # Force range and symmetry
-    distance_matrix = np.clip(distance_matrix, 0, 1)
-    return (distance_matrix + distance_matrix.T) / 2
+        char_to_int = np.full(256, gap_idx, dtype=np.int32)
+        for i, char in enumerate(alphabet):
+            char_to_int[ord(char.upper())] = i
+            char_to_int[ord(char.lower())] = i  # Robustness fix
+
+        _BLOSUM_CACHE["char_to_int"] = char_to_int
+        _BLOSUM_CACHE["final_lookup"] = final_lookup
+
+    return _BLOSUM_CACHE["char_to_int"], _BLOSUM_CACHE["final_lookup"]

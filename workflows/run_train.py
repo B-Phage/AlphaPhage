@@ -26,6 +26,7 @@ from omegaconf import DictConfig, OmegaConf
 from orchestration.orchestrator import Orchestrator
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from training.train_utils import (
+    check_model_size,
     get_datamodule,
     get_experiment_tracker_method,
     get_model,
@@ -34,7 +35,7 @@ from training.train_utils import (
 from utils.config_loader import get_config_generic
 from utils.hash import compute_combined_code_version, create_manifest
 
-logger = log.get_logger(level=log.ERROR)
+logger = log.get_logger()
 
 
 # -----------------------------
@@ -84,12 +85,18 @@ def run_trainer(input_path: Path, outputs: list):
     # ----------------------------------------------------
     # C. Initialize Components
     # ----------------------------------------------------
+    cfg.train_features_path = str(Path(cfg.train_features_path).resolve())
+    logger.error(f"The train_features_path is: {cfg.train_features_path}")
+
+    datamodule = get_datamodule(cfg)
+    datamodule.setup(stage="fit")  # Required to define train_idx
+    weights = datamodule.get_class_weights()
+
     length_padded, num_tokens, tokens_in_data = get_token_basics(
         cfg.train_features_path, cfg.dataset_name_host, cfg.dataset_name_phage
     )
-    datamodule = get_datamodule(cfg)
-
-    model = get_model(cfg, num_tokens, cfg.vocab_size_out, length_padded)
+    model = get_model(cfg, num_tokens, cfg.vocab_size_out, length_padded, class_weights=weights)
+    check_model_size(model)  # Check for data leaks
 
     experiment_tracker_dir = os.path.join(output_dir, "tracker")
     experiment_tracker = get_experiment_tracker_method(cfg, experiment_tracker_dir)
@@ -105,7 +112,7 @@ def run_trainer(input_path: Path, outputs: list):
         callbacks=[checkpoint_callback, early_stop_callback],
         precision=cfg.precision,
         enable_progress_bar=True,
-        profiler="advanced",
+        profiler="advanced" if cfg.get("debug_mode", False) else None,
     )
 
     # ----------------------------------------------------
@@ -183,7 +190,7 @@ if __name__ == "__main__":
 
     EXP_TRACK_DIR = cfg.experiment_tracker_dir
     RUN_NAME = cfg.get("run_name", "default_run")
-    N_JOBS = run_cfg.n_jobs
+    N_JOBS = 1  # run_cfg.n_jobs
     CONF_CODE_VERSION = cfg.code_version
     HASH_STORE_DIR = Path("ml_assets/data/workflow/hashes")
 

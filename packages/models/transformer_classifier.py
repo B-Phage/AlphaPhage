@@ -97,8 +97,9 @@ class TransformerXClassifier(nn.Module):
                 d_model=self.dim1,
                 nhead=self.heads,
                 dim_feedforward=self.dim1 * self.mult,
-                dropout=0,
+                dropout=0.0,
                 batch_first=True,
+                norm_first=True,
             )
             self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=self.depth)
 

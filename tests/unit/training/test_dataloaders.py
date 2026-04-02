@@ -208,6 +208,106 @@ class TestBinaryPairkeyDataModule(unittest.TestCase):
         # In PyTorch, a non-shuffled DataLoader uses a SequentialSampler
         self.assertIsInstance(p_loader.sampler, torch.utils.data.SequentialSampler)
 
+    def test_get_class_weights(self):
+        """Verifies class weight calculation: total / (num_classes * counts)."""
+        # Create a specific labels file with imbalanced classes: 8 zeros, 2 ones
+        imbalanced_lab = os.path.join(self.test_dir.name, "imbalanced_labels.h5")
+        with h5py.File(imbalanced_lab, "w") as f:
+            # 10 samples total
+            f.create_dataset("data", data=np.array([0, 0, 0, 0, 0, 0, 0, 0, 1, 1]))
+
+        self.cfg.train_labels_path = imbalanced_lab
+        dm = BinaryPairkeyDataModule(self.cfg)
+
+        # Setup 'fit' to populate train_idx (needed for get_class_weights)
+        dm.setup(stage="fit")
+
+        # Manually override train_idx to use all 10 samples for predictable math
+        dm.train_idx = list(range(10))
+
+        weights = dm.get_class_weights()
+
+        # Math:
+        # Total = 10, Classes = 2
+        # Count0 = 8, Count1 = 2
+        # Weight0 = 10 / (2 * 8) = 0.625
+        # Weight1 = 10 / (2 * 2) = 2.5
+        self.assertEqual(weights[0], 0.625)
+        self.assertEqual(weights[1], 2.5)
+        self.assertIsInstance(weights, torch.Tensor)
+
+    def test_get_class_weights_missing_dataset(self):
+        """Covers the ValueError when 'data' key is missing in H5."""
+        bad_lab = os.path.join(self.test_dir.name, "bad_labels.h5")
+        with h5py.File(bad_lab, "w") as f:
+            f.create_dataset("not_data", data=np.zeros(5))
+
+        self.cfg.train_labels_path = bad_lab
+        dm = BinaryPairkeyDataModule(self.cfg)
+        dm.setup(stage="fit")
+
+        with self.assertRaisesRegex(ValueError, "Dataset 'data' not found"):
+            dm.get_class_weights()
+
+    def test_dataset_inference_mode_identical_paths(self):
+        """
+        Covers:
+        - if self.labels_path == self.features_path: self.is_inference = True
+        - self.total_size = len(f_x[self.pair_indices_name])
+        - self.Ynp = None
+        - __getitem__ label_val = 0.0
+        """
+        # Use the features path for BOTH features and labels to trigger the identical check
+        dataset = BinaryPairkeyFeatureDataset(self.cfg, self.feat_path, self.feat_path)
+
+        self.assertTrue(dataset.is_inference)
+        self.assertIsNone(dataset.Ynp)
+        self.assertEqual(dataset.total_size, 10)  # From pair_indices length
+
+        # Check __getitem__ returns 0.0 for label
+        x, y = dataset[0]
+        self.assertEqual(y.item(), 0)  # torch.tensor(0.0).long() is 0
+
+    def test_dataset_inference_fallback_empty_label_file(self):
+        """
+        Covers the fallback logic:
+        - else: fallback if label file exists but is empty/inference-only
+        """
+        empty_lab = os.path.join(self.test_dir.name, "empty_labels.h5")
+        with h5py.File(empty_lab, "w") as f:
+            # Create a file WITHOUT the "data" key
+            f.create_dataset("something_else", data=[1])
+
+        dataset = BinaryPairkeyFeatureDataset(self.cfg, self.feat_path, empty_lab)
+
+        self.assertTrue(dataset.is_inference)
+        self.assertEqual(dataset.total_size, 10)
+
+        # Verify __getitem__ still works
+        _, y = dataset[0]
+        self.assertEqual(y.item(), 0)
+
+    def test_sampler_permutation(self):
+        """Covers permutate() and __iter__ logic."""
+        indices = [0, 1, 2, 3, 4]
+        sampler = IndexBatchSampler(indices, batch_size=2)
+
+        # Calling __iter__ triggers permutate()
+        it = iter(sampler)
+        batch1 = next(it)
+
+        self.assertEqual(len(batch1), 2)
+        self.assertEqual(len(sampler.index_groups), 3)  # splits 5 into groups of 2 -> 3 groups
+
+    def test_datamodule_predict_path_fallbacks(self):
+        """Covers lines 218-220: fallback to features_path if predict_features_path is missing."""
+        # Config WITHOUT predict_features_path
+        dm = BinaryPairkeyDataModule(self.cfg)
+
+        # Should fall back to self.cfg.train_features_path
+        dm.setup(stage="predict")
+        self.assertEqual(dm.predict_dataset.features_path, self.feat_path)
+
 
 if __name__ == "__main__":
     unittest.main()

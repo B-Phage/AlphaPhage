@@ -160,5 +160,40 @@ class TestGetDatamodule(unittest.TestCase):
             get_datamodule(empty_cfg)
 
 
+class TestCheckModelSize(unittest.TestCase):
+    """Test the check_model_size utility function."""
+
+    def test_check_model_size_calls_logger(self):
+        """Verify check_model_size iterates over params and buffers and logs them."""
+        import torch
+        import torch.nn as nn
+        from training.train_utils import check_model_size
+
+        # 1. Create a dummy model with one parameter and one buffer
+        class DummyModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.param = nn.Parameter(torch.randn(10, 10))  # A parameter
+                self.register_buffer("buf", torch.randn(5, 5))  # A buffer
+
+        model = DummyModel()
+
+        # 2. Patch the logger in the train_utils module
+        with patch("training.train_utils.logger") as mock_logger:
+            check_model_size(model)
+
+            # 3. Assertions
+            # Header (2 calls) + Parameter (1 call) + Buffer (1 call) = 4 minimum calls
+            # We check if warning was called
+            self.assertTrue(mock_logger.warning.called)
+
+            # Verify specific strings were logged (Optional but good for coverage)
+            # Check if it logged the parameter name
+            calls = [call.args[0] for call in mock_logger.warning.call_args_list]
+            self.assertTrue(any("param" in c for c in calls))
+            self.assertTrue(any("buf" in c for c in calls))
+            self.assertTrue(any("Name" in c for c in calls))  # Header check
+
+
 if __name__ == "__main__":
     unittest.main()
