@@ -308,6 +308,39 @@ class TestBinaryPairkeyDataModule(unittest.TestCase):
         dm.setup(stage="predict")
         self.assertEqual(dm.predict_dataset.features_path, self.feat_path)
 
+    def test_open_h5_shared_file_handle(self):
+        """
+        Tests the logic where labels and features are in the same file,
+        but it is NOT an inference task (labels are present).
+        Covers lines:
+        if not self.is_inference and not hasattr(self, "f_y"):
+            if self.labels_path == self.features_path:
+                self.f_y = self.f_x
+        """
+        # 1. Create a single file containing BOTH features and labels
+        shared_path = os.path.join(self.test_dir.name, "shared_data.h5")
+        with h5py.File(shared_path, "w") as f:
+            f.create_dataset("host_vec_1", data=np.zeros((5, 128)))
+            f.create_dataset("phage_vec_1", data=np.zeros((5, 128)))
+            f.create_dataset("pair_indices", data=np.array([[0, 0]]))
+            # Adding the labels key ensures is_inference becomes False
+            f.create_dataset("data", data=np.array([1]))
+
+        # 2. Initialize dataset with identical paths
+        # We use a mock or a fresh init to ensure open_h5 is called
+        dataset = BinaryPairkeyFeatureDataset(self.cfg, shared_path, shared_path)
+
+        # 3. Assertions
+        # Ensure it correctly identified that labels exist
+        self.assertFalse(dataset.is_inference)
+
+        # Verify that f_y is exactly the same object (handle) as f_x
+        self.assertIs(dataset.f_y, dataset.f_x)
+
+        # Verify the dataset is actually functional
+        x, y = dataset[0]
+        self.assertEqual(y.item(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

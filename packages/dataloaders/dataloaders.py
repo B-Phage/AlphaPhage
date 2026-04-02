@@ -98,10 +98,6 @@ class BinaryPairkeyFeatureDataset(Dataset):
     """
 
     def __init__(self, cfg, features_path, labels_path):
-
-        # If true, replaces h5 read for dict read for unit testing. Overridden
-        # to True by Mocking in unit tests.
-
         self.features_path = features_path
         self.labels_path = labels_path
         self.batch_size = cfg.batch_size
@@ -109,35 +105,32 @@ class BinaryPairkeyFeatureDataset(Dataset):
         # Initialize Data Contract
         self.keys = H5DataKeys()
 
-        # --- INFERENCE MODE DETECTION ---
-        # Determine if we are running in inference (labels missing)
-        self.is_inference = False
-        if self.labels_path == self.features_path:
-            self.is_inference = True
-
-        # Pre-calculate length
+        # 1. Determine Inference Mode and Total Size
+        # We open the files temporarily to check schema and length
         with h5py.File(self.features_path, "r") as f_x:
-            if self.is_inference:
-                # Use interaction pairs to define size if labels aren't available
-                self.total_size = len(f_x[self.keys.PAIR_INDICES])
-            else:
-                with h5py.File(self.labels_path, "r") as f_y:
-                    if self.keys.LABELS in f_y:
-                        self.total_size = len(f_y[self.keys.LABELS])
-                    else:
-                        # Fallback if label file exists but is empty/inference-only
-                        self.is_inference = True
-                        self.total_size = len(f_x[self.keys.PAIR_INDICES])
+            # We assume labels are in labels_path
+            with h5py.File(self.labels_path, "r") as f_y:
 
-        ## workers must == 0
+                # Check if the labels key exists in the labels file
+                if self.keys.LABELS in f_y:
+                    self.is_inference = False
+                    self.total_size = len(f_y[self.keys.LABELS])
+                else:
+                    # If labels are missing, we are in inference mode
+                    self.is_inference = True
+                    # In inference, size is determined by the number of pairs to predict
+                    self.total_size = len(f_x[self.keys.PAIR_INDICES])
+
+        # 2. Open persistent handles
+        # This calls the open_h5 method you wanted to test
         self.open_h5()
 
-        # Map the datasets to the persistent file handles using H5DataKeys contract
+        # 3. Map the datasets to the persistent file handles
         self.Xh5_host = self.f_x[self.keys.HOST_VEC]
         self.Xh5_phage = self.f_x[self.keys.PHAGE_VEC]
         self.pair_indices = self.f_x[self.keys.PAIR_INDICES]
 
-        # Handle label mapping safely
+        # Handle label mapping safely based on the mode detected above
         if self.is_inference:
             self.Ynp = None
         else:
