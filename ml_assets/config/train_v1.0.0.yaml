@@ -8,8 +8,8 @@ debug_mode : false
 
 train_features_path : "ml_assets/data/processed/model_training/x_train_data_v1.h5"
 train_labels_path : "ml_assets/data/processed/model_training/cl_train_data_v1.h5"
-debug_features_path : ""
-debug_labels_path : ""
+debug_features_path : "ml_assets/data/processed/model_training/x_train_data_v1.h5"
+debug_labels_path : "ml_assets/data/processed/model_training/cl_train_data_v1.h5"
 
 pair_indices_name : "pair_indices"
 dataset_name_host : "host_vec_1"
@@ -25,7 +25,7 @@ epochs : 100
 accelerator : "cpu"
 devices : 1
 precision : 32
-batch_size : 150
+batch_size : 200
 save_top_k : 3
 patience : 20
 val_fraction : 0.20
@@ -35,13 +35,13 @@ lr : 0.0001
 archspec : "nope_tt_nonormpostl_cls"
 archspec2 : "L4_bn"
 
-# Gemini Target
-dim : 128
+# Target
+dim : 20
 lcom : 30
-dim1 : 128
+dim1 : 20
 dim2 : 32
-heads : 4
+heads : 20
 mult : 8
-depth : 4
+depth : 8
 
 vocab_size_out : 2

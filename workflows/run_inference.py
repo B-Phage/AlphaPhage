@@ -32,13 +32,18 @@ def main():
     print(f"🚀 Running inference on {args.features}...")
     probabilities = inferencer.predict(features_path=args.features, labels_path=args.features)
 
-    # 4. Extract Pair Keys for mapping
     print("🔗 Mapping probabilities to interaction keys...")
     with h5py.File(args.features, "r") as f:
-        # We assume pair_keys contains strings/bytes of HostID_PhageID
         raw_keys = f[keys.PAIR_KEYS][:]
-        # Convert bytes to string if necessary
-        pair_ids = [k.decode("utf-8") if isinstance(k, bytes) else str(k) for k in raw_keys]
+
+        pair_ids = []
+        for row in raw_keys:
+            # row[0] is Host, row[1] is Phage
+            h_id = row[0].decode("utf-8") if isinstance(row[0], bytes) else str(row[0])
+            p_id = row[1].decode("utf-8") if isinstance(row[1], bytes) else str(row[1])
+
+            # Create a clean string for the CSV 'interaction_id' column
+            pair_ids.append(f"{h_id}__{p_id}")
 
     # 5. Build and Save Dataframe
     # Probabilities shape is usually [N, 2] for binary classification

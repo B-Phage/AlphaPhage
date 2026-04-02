@@ -59,15 +59,15 @@ cd inference
 make all
 ```
 ### Step 4: Merge & Tag
-# 1. Create a Pull Request from dev to main.
-# 2. PR Requirement: Explicitly state the Deployment Profile and metrics.
-# 3. Once merged, tag the main branch:
+- 1. Create a Pull Request from dev to main.
+- 2. PR Requirement: Explicitly state the Deployment Profile and metrics.
+- 3. Once merged, tag the main branch:
 ```
 git tag -a v1.2.0 -m "Release v1.2.0: High-Sensitivity screen for Group B"
 git push origin v1.2.0
 ```
 ## 📦 4. Artifact Storage (Google Drive)
-1. Compress: Zip the generated snapshot folder found in databases/inference/.
+1. Compress: Zip the generated snapshot folder found in `../databases/inference/`.
 2. Upload: Store the zip in the official AlphaPhage Model Zoo on Google Drive.
 3. Link: Add the direct download link to the GitHub Release Notes for the tag.
 

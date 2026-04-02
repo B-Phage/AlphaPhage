@@ -1,6 +1,6 @@
 outs:
-- md5: a74991f36ef2d2a3564a34ae8f9bd2b9.dir
-  size: 2486695227
-  nfiles: 488
+- md5: 8e78db25e4642e64033481952fb6357c.dir
+  size: 2506476219
+  nfiles: 493
   hash: md5
   path: bacteria

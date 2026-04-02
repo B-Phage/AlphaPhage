@@ -10,7 +10,7 @@ from models.transformer_classifier import TransformerXClassifier
 from omegaconf import DictConfig, OmegaConf
 from torchmetrics.classification import BinaryRecall, BinarySpecificity, BinaryStatScores
 
-logger = log.get_logger(level=log.WARNING)
+logger = log.get_logger()
 
 
 class TransformerX(pl.LightningModule):
@@ -126,6 +126,9 @@ class TransformerX(pl.LightningModule):
         self.val_sensitivity = BinaryRecall()
         self.val_specificity = BinarySpecificity()
 
+        # Create the tool once
+        self.stat_scores = BinaryStatScores()
+
     def forward(self, x):
         return self.model(x)  # .logits
 
@@ -151,7 +154,7 @@ class TransformerX(pl.LightningModule):
         # 2. Calculate Sensitivity (Recall) and Specificity
         preds = torch.argmax(logits, dim=1)
         # Using stat_scores to get TP, FP, TN, FN
-        stats = BinaryStatScores().to(self.device)(preds, y)
+        stats = self.stat_scores.to(self.device)(preds, y)
         tp, fp, tn, fn, _ = stats
 
         sensitivity = tp / (tp + fn + 1e-7)

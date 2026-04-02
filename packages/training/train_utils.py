@@ -26,21 +26,21 @@ def get_token_basics(features_path, dataset_name_host, dataset_name_phage):
         Xh5_host = f_x[dataset_name_host]
         Xh5_phage = f_x[dataset_name_phage]
 
-        assert isinstance(Xh5_host, h5py.Dataset)
-        assert isinstance(Xh5_phage, h5py.Dataset)
+        # 1. Get length_padded quickly
+        length_padded = int(Xh5_host.shape[1] + Xh5_phage.shape[1])
 
-        # Just getting length_padded as length of first pair joined
-        length_padded = int(len(Xh5_host[0]) + len(Xh5_phage[0]))
-        logger.info(f"length_padded  : {length_padded}")
+        # 2. Get unique tokens without a massive Python loop
+        # We take a sample or use the whole thing if it fits in RAM.
+        # If the dataset is massive, just getting the max is usually enough.
+        host_max = np.max(Xh5_host[:])
+        phage_max = np.max(Xh5_phage[:])
 
-        tokens_in_data = set({})
-        for i in range(len(Xh5_host)):
-            tokens_in_data.update(set(Xh5_host[i].astype(np.int32)))
-        for i in range(len(Xh5_phage)):
-            tokens_in_data.update(set(Xh5_phage[i].astype(np.int32)))
-        tokens_in_data = list(tokens_in_data)
-        num_tokens = int(max(tokens_in_data) + 1)
-        logger.info(f"num_tokens  : {num_tokens}")
+        num_tokens = int(max(host_max, phage_max) + 1)
+
+        # If you specifically need the LIST of tokens:
+        tokens_in_data = list(range(num_tokens))
+
+        logger.info(f"length_padded: {length_padded} | num_tokens: {num_tokens}")
 
     return length_padded, num_tokens, tokens_in_data
 

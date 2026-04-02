@@ -142,7 +142,7 @@ clean:
 # INFERENCE SNAPSHOT
 # =====================
 
-MODEL ?= default_run
+MODEL ?= TransformerX_v1
 EPOCH ?= 50
 NAME  ?= snapshot_$(shell date +%Y%m%d_%H%M)
 

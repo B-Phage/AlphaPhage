@@ -225,7 +225,7 @@ def build_model_data(
     p_idx = np.asarray(data["phage"].map(p_map), dtype="int32")
 
     # Use a list of explicit ndarrays
-    pair_indices = np.stack([h_idx, p_idx], axis=1)
+    pair_indices = np.stack([h_idx, p_idx], axis=1)  # [host, phage]
 
     # 5. Write HDF5
     out_path = Path(output_dir)
@@ -238,7 +238,7 @@ def build_model_data(
         phage_vecs=np.asarray(phage_df[p_cols], dtype="int32"),
         host_vecs=np.asarray(host_df[h_cols], dtype="int32"),
         pair_indices=pair_indices,
-        pair_keys=np.asarray(data[["phage", "host"]], dtype="S100"),
+        pair_keys=np.asarray(data[["host", "phage"]], dtype="S100"),
         labels=np.asarray(data["label"], dtype="int32"),
         phage_info=MetadataManager.build_info_array(p_cols, p_meta),
         host_info=MetadataManager.build_info_array(h_cols, h_meta),
