@@ -379,14 +379,14 @@ stages:
       nfiles: 10
     - path: ml_assets/runtime_configs/train.yaml
       hash: md5
-      md5: 2a15dbf426b5468a926f30223481eb3a
-      size: 969
+      md5: 09421851e86b4225ae04b69d474b4ca7
+      size: 970
     outs:
     - path: ml_assets/data/training
       hash: md5
-      md5: e00bee31549a95a517a2999666cb75dd.dir
-      size: 983034241
-      nfiles: 16
+      md5: 79deb8dd8798ac033295ede002dd84c2.dir
+      size: 1965977471
+      nfiles: 19
     - path: ml_assets/data/training_manifest.json
       hash: md5
       md5: 99914b932bd37a50b983c5e7c90ae93b
