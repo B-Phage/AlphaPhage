@@ -1,26 +1,25 @@
+export ROOT_DIR := $(strip $(CURDIR))
+
 # =====================
 # Variables
 # =====================
-
-# Root folder for conda environments
-CONDA_ROOT = conda_envs
-
-# List of packages and their environments
-# TODO: add the rest of the packages here
-PACKAGES = utils orchestration preprocessing #feature_engineering training inference
-
 # Mapping environment names
-ENV_PREPROCESSING = preprocessing
-ENV_FE = feature_engineering
+ENV_PREPROC = preprocessing
 ENV_TRAINING = training
-ENV_INFERENCE = inference
-ENV_DEV = root_dev
+ENV_KAPTIVE = kaptive3api
 
-# Define the config file path
+# Define your inference path
+INF_DATA_ROOT := $(abspath $(ROOT_DIR)/../databases/inference)
+
+# Unique environments for cleanup and hooks
+UNIQUE_ENVS = $(ENV_PREPROC) $(ENV_TRAINING) $(ENV_KAPTIVE)
+
+# DVC Config
 DVC_CONFIG_LOCAL = .dvc/config.local
 
-# TODO: update this list as the packages are implemented
-ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFERENCE)
+# External Data Configs
+HMM_YAML := ml_assets/config/hmm_data_v1.0.0.setup.yaml
+KAPTIVE_YAML := ml_assets/config/kaptive3api_v1.0.0.setup.yaml
 
 # =====================
 # Help
@@ -28,171 +27,139 @@ ENV_LIST = $(ENV_DEV) $(ENV_PREPROCESSING) #$(ENV_FE) $(ENV_TRAINING) $(ENV_INFE
 .PHONY: help
 help:
 	@echo "Usage:"
-	@echo "  make setup-all       		- Setup all environments, install packages, and setup hooks"
-	@echo "  make setup-<pkg>     		- Setup a single package environment and install it"
-	@echo "  make check-dvc-config     	- Check the dvc OAuth"
-	@echo "  make hooks           		- Install pre-commit hooks in the current environment"
-	@echo "  make secrets-cli     		- Installing detect-secrets CLI tool"
-	@echo "  make secrets-baseline      - Scanning repository and generating .secrets.baseline file..."
-	@echo "  make hooks-update    		- Update pre-commit hooks and reinstall"
-	@echo "  make dvc-<target>    		- Run DVC commands (pull, repro, push, dag, clean)"
-	@echo "  make clean           		- Remove all conda environments"
+	@echo "  make setup-all             - Setup all environments, packages, hooks, and data"
+	@echo "  make hooks                 - Install pre-commit/push hooks in all environments"
+	@echo "  make secrets-init          - Install detect-secrets and generate baseline"
+	@echo "  make test                  - Run unit tests via shell script"
+	@echo "  make clean                 - Remove all project conda environments"
 
 # =====================
-# Helper: Ensure conda env exists (create/update)
+# Helpers
 # =====================
+
+# Helper to run conda commands with the correct architecture architecture
+# Usage: $(call conda_run,env_name,command)
+# If the environment is kaptive, it uses osx-64 (Rosetta); otherwise, it uses native arm64.
+define conda_run
+    CONDA_SUBDIR=$(if $(filter $(ENV_KAPTIVE),$1),osx-64,osx-arm64) \
+    conda run -n $1 $2
+endef
+
+# Force native arm64 for standard envs
 define ensure_env
-	@if conda env list | grep -q "^$1"; then \
-		echo "=== Conda env '$1' exists, updating ==="; \
-		conda env update -f conda_envs/$1.yml -n $1; \
-	else \
-		echo "=== Creating conda env '$1' ==="; \
-		conda env create -f conda_envs/$1.yml -n $1; \
-	fi
+	@echo "Ensuring $1 is Native (arm64)..."
+	CONDA_SUBDIR=osx-arm64 conda env update -f conda_envs/$1.yml -n $1
+	CONDA_SUBDIR=osx-arm64 conda run -n $1 conda config --env --set subdir osx-arm64
+endef
+
+# Force x86_64 for emulated envs
+define ensure_env_mac_emul
+	@echo "Ensuring $1 is Emulated (x86_64)..."
+	CONDA_SUBDIR=osx-64 conda env update -f conda_envs/$1.yml -n $1
+	CONDA_SUBDIR=osx-64 conda run -n $1 conda config --env --set subdir osx-64
 endef
 
 # =====================
 # Main Setup
 # =====================
 .PHONY: setup-all
-setup-all: $(foreach pkg,$(PACKAGES),setup-$(pkg)) hooks check-dvc-config dvc-pull
-	@echo "All environments, packages, hooks, and DVC data are ready."
+setup-all: setup-preproc-pkgs setup-training-pkgs setup-kaptive-pkgs hooks setup-external-data check-dvc-config dvc-pull
+
+.PHONY: setup-preproc-pkgs
+setup-preproc-pkgs:
+	$(call ensure_env,$(ENV_PREPROC))
+	@for pkg in utils orchestration variants representation hmm external_db_provisioning storage_io; do \
+		$(call conda_run,$(ENV_PREPROC),pip install -e packages/$$pkg); \
+	done
+
+.PHONY: setup-training-pkgs
+setup-training-pkgs:
+	$(call ensure_env,$(ENV_TRAINING))
+	@for pkg in training dataloaders models; do \
+		$(call conda_run,$(ENV_TRAINING),pip install -e packages/$$pkg); \
+	done
+
+.PHONY: setup-kaptive-pkgs
+setup-kaptive-pkgs:
+	$(call ensure_env_mac_emul,$(ENV_KAPTIVE))
+	$(call conda_run,$(ENV_KAPTIVE),pip install -e packages/kaptive3api)
 
 # =====================
-# Package-specific setups
-# =====================
-.PHONY: setup-utils
-setup-utils:
-	$(call ensure_env,$(ENV_DEV))
-	@echo "=== Installing utils package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/utils
-
-.PHONY: setup-orchestration
-setup-orchestration:
-	$(call ensure_env,$(ENV_DEV))
-	@echo "=== Installing orchestration package ==="
-	conda run -n $(ENV_DEV) pip install -e packages/orchestration
-
-# TODO: Implement the remaining packages
-# manual conda env creation:
-#conda env create -f conda_envs/preprocessing.yml -n preprocessing
-# or
-#conda env update -f conda_envs/preprocessing.yml -n preprocessing
-.PHONY: setup-preprocessing
-setup-preprocessing:
-	$(call ensure_env,$(ENV_PREPROCESSING))
-	@echo "=== Installing preprocessing package ==="
-	conda run -n $(ENV_PREPROCESSING) pip install -e packages/preprocessing
-
-.PHONY: setup-feature_engineering
-setup-feature_engineering:
-# 	$(call ensure_env,$(ENV_FE))
-	@echo "=== Installing feature_engineering package ==="
-# 	conda run -n $(ENV_FE) pip install -e packages/feature_engineering
-
-.PHONY: setup-training
-setup-training:
-# 	$(call ensure_env,$(ENV_TRAINING))
-	@echo "=== Installing training package ==="
-# 	conda run -n $(ENV_TRAINING) pip install -e packages/training
-
-.PHONY: setup-inference
-setup-inference:
-# 	$(call ensure_env,$(ENV_INFERENCE))
-	@echo "=== Installing inference package ==="
-# 	conda run -n $(ENV_INFERENCE) pip install -e packages/inference
-
-# =====================
-# Pre-commit hooks
+# Hooks & Secrets
 # =====================
 .PHONY: hooks
 hooks:
-	@echo "=== Installing pre-commit hooks in all environments ==="
-	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
-	@echo "Pre-commit hooks installed successfully."
+	@$(foreach env,$(UNIQUE_ENVS), \
+		echo "Installing hooks in $(env)..."; \
+		$(call conda_run,$(env),pre-commit install); \
+		$(call conda_run,$(env),pre-commit install --hook-type pre-push); \
+	)
 
-.PHONY: hooks-update
-hooks-update:
-	@echo "=== Updating pre-commit hooks in all environments ==="
-	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit autoupdate;)
-	$(foreach env,$(ENV_LIST),conda run -n $(env) pre-commit install;)
-	@echo "Pre-commit hooks updated successfully."
-
-# =====================
-# Detect secrets
-# =====================
-.PHONY: secrets-cli
-install-secrets-cli:
-	@echo "Installing detect-secrets CLI in $(ENV_DEV)..."
-	conda run -n $(ENV_DEV) pip install detect-secrets
-
-.PHONY: secrets-baseline
-init-secrets-baseline: install-secrets-cli
-	@echo "Generating .secrets.baseline..."
-	conda run -n $(ENV_DEV) detect-secrets scan > .secrets.baseline
-	@echo "Baseline created. Add and commit .secrets.baseline"
+.PHONY: secrets-init
+secrets-init:
+	$(call conda_run,$(ENV_PREPROC),pip install detect-secrets)
+	$(call conda_run,$(ENV_PREPROC),detect-secrets scan > .secrets.baseline)
 
 # =====================
-# DVC targets
+# Data & DVC
 # =====================
+.PHONY: setup-external-data
+setup-external-data:
+	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_PREPROC),python -m external_db_provisioning.hmm_data_setup --config $(HMM_YAML))
+	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_PREPROC),python -m external_db_provisioning.kaptive_data_setup --config $(KAPTIVE_YAML))
 
-# Target to check the DVC authentication config
 .PHONY: check-dvc-config
 check-dvc-config:
-	@echo "Checking local DVC config..."
-	@if [ ! -f "$(DVC_CONFIG_LOCAL)" ]; then \
-		echo "ERROR: $(DVC_CONFIG_LOCAL) does not exist."; \
-		echo "Please create it and add your:"; \
-		echo "		gdrive_client_id"; \
-		echo "		gdrive_client_secret"; \
-		echo "See CONTRIBUTING.md -> 2.3. Configure DVC Data Authentication"; \
+	@if [ ! -f "$(DVC_CONFIG_LOCAL)" ] || ! grep -q "gdrive_client_id" "$(DVC_CONFIG_LOCAL)"; then \
+		echo "ERROR: Missing $(DVC_CONFIG_LOCAL) or OAuth credentials."; \
 		exit 1; \
 	fi
-	@if ! grep -q "gdrive_client_id" "$(DVC_CONFIG_LOCAL)" || ! grep -q "gdrive_client_secret" "$(DVC_CONFIG_LOCAL)"; then \
-		echo "ERROR: $(DVC_CONFIG_LOCAL) is missing gdrive_client_id or gdrive_client_secret."; \
-		echo "Please add your OAuth client credentials to the file."; \
-		exit 1; \
-	fi
-	@echo "Local DVC config looks OK."
 
 .PHONY: dvc-pull
 dvc-pull:
-	@echo "=== Pulling all DVC-tracked data and models ==="
-	dvc pull
-
-.PHONY: dvc-repro
-dvc-repro:
-	@echo "=== Reproducing DVC pipeline ==="
-	dvc repro
-
-.PHONY: dvc-graph
-dvc-graph:
-	@echo "=== Showing DVC pipeline graph ==="
-	dvc dag
-
-.PHONY: dvc-push
-dvc-push:
-	@echo "=== Pushing outputs to remote ==="
-	dvc push
-
-.PHONY: dvc-clean
-dvc-clean:
-	@echo "=== Cleaning untracked outputs ==="
-	dvc gc -w
+	$(call conda_run,$(ENV_PREPROC),dvc pull)
 
 # =====================
-# Tests
+# Tests & Cleanup
 # =====================
-.PHONY: test
+.PHONY: test test-int test-all
+test:
+	@bash tests/run_all_unit_tests.sh
 
-test: ## Run unit tests with correct path
-	PYTHONPATH=./packages pytest tests/
+test-int:
+	@bash tests/run_all_integration_tests.sh
 
-# =====================
-# Cleanup
-# =====================
+test-all: test test-int
+
 .PHONY: clean
 clean:
-	@echo "=== Removing all conda environments ==="
-	$(foreach env,$(PACKAGES),conda env remove -n $(env) -y;)
-	@echo "Cleanup complete."
+	@$(foreach env,$(UNIQUE_ENVS), \
+		echo "Removing $(env)..."; \
+		conda env remove -n $(env) -y; \
+	)
+
+# =====================
+# INFERENCE SNAPSHOT
+# =====================
+
+MODEL ?= TransformerX_v1
+EPOCH ?= 50
+NAME  ?= snapshot_$(shell date +%Y%m%d_%H%M)
+
+.PHONY: snapshot
+snapshot:
+	@echo "🚀 Initiating snapshot for Model: $(MODEL), Epoch: $(EPOCH)"
+	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_TRAINING),python packages/utils/scripts/snapshot_inference.py --model $(MODEL) --epoch $(EPOCH))
+
+# =====================
+# Inference Run
+# =====================
+
+.PHONY: run-inference
+run-inference:
+	@if [ ! -d "$(INF_DATA_ROOT)" ]; then \
+		echo "ERROR: Inference directory not found at $(INF_DATA_ROOT)"; \
+		exit 1; \
+	fi
+	@echo ">>> Starting Inference Pipeline..."
+	@$(MAKE) -C inference all

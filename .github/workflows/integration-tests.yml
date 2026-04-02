@@ -1,4 +1,4 @@
-name: 🪡 🚨 Integration Tests
+name: 🪡 🚨 Parallel Integration Tests
 
 on:
   push:
@@ -6,40 +6,109 @@ on:
       - "workflows/**"
       - "packages/**"
       - "tests/integration/**"
-      - ".github/workflows/integration-tests.yml"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: training
+            env_file: conda_envs/training.yml
+            install_packages: "training dataloaders models utils"
+            # We track the whole source so the final report knows what we missed
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/training"
 
+          - env_name: preprocessing
+            env_file: conda_envs/preprocessing.yml
+            install_packages: "utils orchestration hmm storage_io external_db_provisioning"
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/preprocessing"
+
+
+          - env_name: kaptive3api
+            env_file: conda_envs/kaptive3api.yml
+            install_packages: "kaptive3api"
+            cov_source: "packages,workflows"
+            test_files: "tests/integration/kaptive3api"
+
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: ${{ matrix.env_file }}
+          environment-name: ${{ matrix.env_name }}
+          cache-environment: true
+
+      - name: 🛠️ Install Packages
+        shell: bash -l {0}
+        run: |
+          for pkg in ${{ matrix.install_packages }}; do
+            pip install -e ./packages/$pkg
+          done
+
+      - name: 🧪 Run Tests
+        shell: bash -l {0}
+        run: |
+          set -e  # Fail immediately if any command fails
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+          export KMP_DUPLICATE_LIB_OK=TRUE
+
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
+
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
+
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
+          coverage combine
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
+
+      - name: 📤 Upload Coverage Piece
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-data-${{ matrix.env_name }}
+          path: coverage_data_${{ matrix.env_name }}
+          retention-days: 1
+
+  coverage-report:
+    needs: integration-tests
+    runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache conda packages
-        uses: actions/cache@v4
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
         with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ hashFiles('conda_envs/preprocessing.yml') }}
+          python-version: '3.10'
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
+      - name: 📥 Download All Coverage Data
+        uses: actions/download-artifact@v4
         with:
-          python-version: 3.11                     # or your required version
-          environment-file: conda_envs/preprocessing.yml
-          activate-environment: preprocessing      # name of the env
+          pattern: coverage-data-*
+          merge-multiple: true
 
-      - name: 🐍 Install additional Python deps (pytest, etc.)
+      - name: 📊 Combine & Report
         run: |
-          conda activate preprocessing
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
+          # The [toml] extra is required to read pyproject.toml
+          pip install "coverage[toml]"
 
-      - name: 🏃 Run integration tests
-        run: |
-          conda activate preprocessing
-          PYTHONPATH=.:./packages pytest tests/integration/test_run_prodigal_integration.py -v
+          # Merges .coverage.training and .coverage.preprocessing
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            echo "--- FINAL COMBINED INTEGRATION COVERAGE ---"
+            coverage report -m
+          else
+            echo "⚠️ No coverage fragments found."
+          fi

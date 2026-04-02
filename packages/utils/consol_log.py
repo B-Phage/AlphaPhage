@@ -26,7 +26,7 @@ LogHandler = Union[FileHandler, StreamHandler]
 
 
 def get_logger(
-    level: int = INFO,
+    level: Optional[int] = None,
     name: Optional[str] = None,
     log_file: Optional[str] = None,
     alt_stream: Optional[TextIO] = None,
@@ -48,6 +48,17 @@ def get_logger(
     # create logger
     logging.setLoggerClass(LoggerWithPrint)  # added for printing
     logger = logging.getLogger(name)
+    if level is None:
+        try:
+            from utils.config_loader import get_config  # Local import to avoid circularity
+
+            cfg = get_config("ml_assets/config/runtime.yml")
+            # Convert string "DEBUG" from YAML to logging.DEBUG (10)
+            level_name = cfg.get("logging", {}).get("level", "INFO").upper()
+            level = _nameToLevel.get(level_name, INFO)
+        except Exception:
+            level = INFO
+
     logger.setLevel(level)
 
     # create console handler and set level to debug

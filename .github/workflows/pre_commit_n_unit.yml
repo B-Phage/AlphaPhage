@@ -1,127 +1,184 @@
 name: 🧩🚨 Unit Tests & Pre-Commit Checks
 
 on:
-  # Run on every push to a branch
+    # Run on every push to a branch
   push:
     # Use branches-ignore to exclude specific branches
     branches-ignore:
-      - 'archive'          # Example: Ignore a specific archive branch
+      - 'archive'           # Example: Ignore a specific archive branch
       - 'badges2'           # Tests should never be merged into badges anyway
   # Run when a Pull Request is opened or updated
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write  # needed to push to badges branch
 
 jobs:
-  pre-commit:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 🏃 Run Pre-Commit Checks
+        uses: pre-commit/action@v3.0.1
+        id: run_hooks
+        continue-on-error: true
+
+      - name: ❌🪲 Show Modified Files and Differences
+        if: steps.run_hooks.outcome == 'failure'
+        run: |
+          echo "Hooks failed because they modified these files:"
+          git status --porcelain
+          echo "--- Full Git Diff ---"
+          git diff
+
+      - name: ☠️ Check (Fail Job if Hooks Modified Files)
+        if: steps.run_hooks.outcome == 'failure'
+        run: |
+          echo "Failing job because pre-commit checks failed or modified files."
+          exit 1
+
+  # parallel, but with a more structured matrix to handle multiple packages and their specific test files
+  test:
+    needs: linting
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: training
+            env_file: conda_envs/training.yml
+            cov_source: "packages"
+            # List of folders in ./packages/ to pip install
+            install_packages: "training dataloaders models utils"
+            test_files: "tests/unit/training"
+
+          - env_name: preprocessing
+            env_file: conda_envs/preprocessing.yml
+            cov_source: "packages"
+            install_packages: "utils orchestration hmm storage_io external_db_provisioning"
+            test_files: "tests/unit/preprocessing"
+
+          - env_name: kaptive3api
+            env_file: conda_envs/kaptive3api.yml
+            cov_source: "packages"
+            install_packages: "kaptive3api"
+            test_files: "tests/unit/kaptive3api"
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: ${{ matrix.env_file }}
+          environment-name: ${{ matrix.env_name }}
+          cache-environment: true
+
+      - name: 🧪 Run Tests
+        shell: bash -l {0}
+        run: |
+          set -e  # Fail immediately if any command fails
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/workflows:$(pwd)/packages
+          export KMP_DUPLICATE_LIB_OK=TRUE
+
+          export COVERAGE_FILE=.coverage.${{ matrix.env_name }}
+
+          # Use --parallel-mode to capture all those PID-suffixed files
+          coverage run --parallel-mode --source=${{ matrix.cov_source }} \
+            -m pytest -v -p no:cov -o "addopts=" ${{ matrix.test_files }}
+
+          # IMPORTANT: Combine the fragments (.coverage.env.hostname.pid) into one file
+          coverage combine
+
+          # Rename the hidden file to a standard name for easier uploading
+          mv .coverage.${{ matrix.env_name }} coverage_data_${{ matrix.env_name }}
+
+      - name: 📤 Upload Coverage Piece
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-data-${{ matrix.env_name }}
+          # Use the new non-hidden filename
+          path: coverage_data_${{ matrix.env_name }}
+          retention-days: 1
+
+  coverage-summary:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
-        # Need to fetch history to allow hooks like commit-msg or detect-secrets to work correctly
-        with:
-          fetch-depth: 0
 
-      - name: 🐍 Set up Python Environment
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
+
+      - name: 📥 Download All Data
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.10' # Match your target Python version
+          pattern: coverage-data-*
+          merge-multiple: true
 
-      - name: Install Dependencies
+      - name: 📊 Combine & Enforcement
+        id: final_cov
+        continue-on-error: true  # <- allows badge generation even if combining fails
         run: |
-          python -m pip install --upgrade pip
-          # Install your main package in editable mode, including test dependencies
-          pip install pytest pre_commit omegaconf coverage pytest-cov tqdm colorlog
-          pip install -e ./packages/utils
-          pip install -e ./packages/orchestration
-          pip install -e ./packages/preprocessing
+          pip install "coverage[toml]"
 
-      - name: 🏃 Run Pre-Commit Checks
-        uses: pre-commit/action@v3.0.1 # Use the official action
-        # The official action automatically handles:
-        # 1. Installing 'pre-commit'
-        # 2. Caching the hook environments
-        # 3. Running 'pre-commit run --all-files'
-        # It will fail the job if any hook fails.
-        id: run_hooks # Give the step an ID
-        continue-on-error: true
+          # Initialize default value
+          echo "TOTAL_COV=0" >> $GITHUB_OUTPUT
 
-      # Debugging Steps
-      - name: ❌🪲 Show Modified Files and Differences
-        # We only run this debugging step if the previous step actually failed (i.e., modified files)
-        if: ${{ steps.run_hooks.outcome == 'failure' }}
+          # Combine renamed files
+          if ls coverage_data_* 1> /dev/null 2>&1; then
+            coverage combine coverage_data_*
+            coverage report -m
+
+            # Extract number
+            PERCENT=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+            echo "TOTAL_COV=$PERCENT" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No coverage fragments found."
+          fi
+
+      - name: 🎖️ Generate Combined Badge
+        if: always() # Run even if 'Combine' failed
         run: |
-          echo "Hooks failed because they modified these files:"
-          git status --porcelain # Shows list of modified files (in a machine-readable format)
-          echo "--- Full Git Diff ---"
-          git diff # Shows exactly what changes were made (missing newlines)
-
-      # FAILURE STEP (Optional, but good practice)
-      # If the debugging step passed, but the hooks failed, we fail the job here.
-      # You can skip this if you want the action to just run the hooks and always pass.
-      - name: ☠️ Check (Fail Job if Hooks Modified Files)
-        if: ${{ steps.run_hooks.outcome == 'failure' }}
-        run: |
-          echo "Failing job because pre-commit checks modified files."
-          exit 1
-
-     # Unit tests
-      - name: 🧪 Run Unit Tests
-        run: |
-          PYTHONPATH=./packages pytest tests/unit/ --cov=packages --cov-report=xml --cov-report=term --cov-report=html
-          coverage json -o coverage.json
-        # You could also use an 'id' and 'continue-on-error' if you want
-        # to guarantee the test run even if other steps failed,
-        # but generally, if linting fails, tests shouldn't run.
-
-      - name: 💯 Extract total coverage
-        id: extract
-        run: |
-          COV=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-          echo "coverage=$COV" >> $GITHUB_OUTPUT
-
-      - name: 🎖️ Generate SVG badge
-        run: |
-          # 1. Setup
           mkdir -p badges
-
-          # Change the path to the bash script
-          BASH_SCRIPT_PATH="tests/utils/create_badge.sh"
-
-          # Make sure the script is executable
+          BASH_SCRIPT_PATH="packages/utils/scripts/create_badge.sh"
           chmod +x "$BASH_SCRIPT_PATH"
-
-          # 2. Determine safe branch name
           BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           BRANCH_SAFE="${BRANCH_SAFE//\//_}"
 
-          # 3. Get Coverage value
-          COV="${{ steps.extract.outputs.coverage }}"
+          # Use the output, or default to 0 if the previous step failed/was skipped
+          COV_VAL="${{ steps.final_cov.outputs.TOTAL_COV }}"
+          if [ -z "$COV_VAL" ]; then COV_VAL=0; fi
 
-          # 4. Define the output file path
-          BADGE_FILE="badges/coverage-${BRANCH_SAFE}.svg"
-
-          # 5. Call the bash interface using its full relative path
-          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV" "$BADGE_FILE"
+          "$BASH_SCRIPT_PATH" "coverage" "$BRANCH_SAFE" "$COV_VAL" "badges/coverage-${BRANCH_SAFE}.svg"
 
       - name: ⬆️ Commit and push SVG badge
+        if: always() # Ensure the 0% badge actually makes it to the repo
         run: |
-          BRANCH_SAFE="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          BRANCH_SAFE="${BRANCH_SAFE//\//_}"  # replace slashes with underscores
-          BADGE_FILE="coverage-${BRANCH_SAFE}.svg"
-
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git fetch origin badges2
-          git checkout badges2
-          git reset --hard origin/badges2
+          git checkout badges2 || git checkout -b badges2
+          cp badges/*.svg .
+          git add *.svg
+          git commit -m "Update coverage badge [${{ steps.final_cov.outputs.TOTAL_COV || 0 }}%]" || echo "No changes"
+          git push origin badges2
 
-          cp badges/${BADGE_FILE} .
-
-          git add ${BADGE_FILE}
-          git commit -m "Update coverage badge for branch ${BRANCH_SAFE}: ${{ steps.extract.outputs.coverage }}%" || echo "No changes"
-          git push origin badges2 --force
+      - name: 🚨 Final Gate
+        run: |
+          # Now we fail the workflow if the percentage was insufficient
+          if [ "${{ steps.final_cov.outputs.TOTAL_COV }}" -lt 90 ]; then
+            exit 1
+          fi

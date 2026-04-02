@@ -1,0 +1,22 @@
+# Config for defining which interactions are used in the model training data set
+
+self_path: "ml_assets/config/interactions_v1.0.0.yaml"
+
+data_intake:
+  source_db: "ml_assets/data/interaction_data/interactions_v1.duckdb"
+  table_name: "interactions"
+  output_matrix: "ml_assets/data/processed/interactions/interaction_matrix.tsv"
+  trusted_sources: [ "Norm_Filippov_95_Shigella_2025.tsv",
+    "Norm_Damien_ECOR_VHRdb_2019.tsv",
+    "Norm_Debarbieux_CrRp_VHRdb_2020.tsv",
+    "Norm_Debarbieux_mt1b1_VHRdb_2020.tsv",
+    "Norm_Filippov_95_Shigella_2025.tsv",
+    "Norm_Gaborieau2024_Nature.tsv",
+    "Norm_Galtier_LF82_VHRdb_2020.tsv",
+    ]
+
+
+  # Future work
+  excluded_hosts:
+    - "ECOR-01"
+    - "Bad_Sample_X"

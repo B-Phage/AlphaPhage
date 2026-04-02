@@ -1,0 +1,30 @@
+###############################################################################
+# RUNTIME CONFIGURATION (DVC-EXEMPT)
+#
+# PURPOSE:
+# This file contains environment-specific settings that control HOW the
+# pipeline runs, but do not affect the mathematical integrity or
+# reproducibility of the results.
+#
+# DVC USAGE:
+# - DO NOT list this file in the 'deps' or 'params' section of dvc.yaml.
+# - Changes to this file will NOT trigger a rerun of DVC stages.
+#
+# EXAMPLES OF INCLUDED SETTINGS:
+# - Resource allocation (n_jobs, workers, GPU IDs)
+# - Logging levels and verbosity
+# - Infrastructure paths (local temp directories, cache locations)
+# - External integration toggles (WandB/MLflow project names, Slack alerts)
+#
+# CAUTION:
+# If a parameter affects the final output (e.g., random seeds, hyperparams,
+# data split ratios), it MUST be moved to 'params.yaml' instead.
+###############################################################################
+
+meta:
+  n_jobs:           3
+  log_level:        'WARNING'
+
+  # These could come in later:
+  # device: "cuda:0" # for the model training
+  # temp_dir: "/tmp/dvc_scratch" # for untracked temporary files

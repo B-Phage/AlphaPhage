@@ -1,0 +1,36 @@
+self_path: "ml_assets/config/preprocessing_ecoli_v1.0.0.yaml"
+
+general:
+  lst_genomes:      [] #['AL505','370D', 'AL505', 'ECOR-09']   #["ATCC12022", "ATCC25931", "Shigella-flexneri-2457T-2a"] #['AL505','370D', 'AL505', 'ECOR-09']        # optional whitelist of genomes
+  code_version:     "v1.0.2"
+  name:             "bacteria" # Don't change this, it is used for domain logic
+
+prodigal_config:
+  checkpoint:       null
+  genome_dir:       "ml_assets/data/sequence_data/bacteria"
+  proteins_dir:     "ml_assets/data/processed/bacteria/proteins"
+
+hmm_config:
+  hmm_multifile:    "../databases/hmm/pfam/v38.0/Pfam-A.hmm"
+  annotations:      "../databases/hmm/pfam/v38.0/Pfam-A.hmm.dat"
+  hmm_scan_method:  "pfam"
+  sql_tbl_sufix:    ""
+  min_bit_score:    50
+
+  hmm_scan_dir:     "ml_assets/data/processed/bacteria/hmm_scan"
+  data_lake:        "ml_assets/data/processed/bacteria/hmm_scan_lake"
+  duckdb:           "ml_assets/data/processed/duckdb/proteins.duckdb"
+  db_fingerprint:   "ml_assets/data/artifacts/hmm_pfam_summary.fingerprint"
+  summary_tbl:      "hmm_pfam_summary"
+
+  hmm_fasta_dir:    "ml_assets/data/processed/bacteria/hmm_fasta"
+
+msa_config:
+  split_hmm_dir:    "../databases/hmm/pfam/v38.0/split"
+  msa_csa_dir:      "ml_assets/data/processed/bacteria/msa_csa"
+
+msa_var:
+  msa_variant_dir:  "ml_assets/data/processed/bacteria/msa_var"
+  msa_cluster_name: "clusters_16_reduction_false_matrix_blosum62"
+  cluster_method:   16
+  dis_mat_method:   'blosum62' # either 'identity' or 'blosum62'

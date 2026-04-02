@@ -2,24 +2,35 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.pytestArgs": [
-        "tests",
-        "--rootdir",
-        "."
+        "tests"
     ],
-    // *** CRITICAL STEP: Add the PYTHONPATH needed for discovery ***
-    "terminal.integrated.env.osx": {
-        "PYTHONPATH": "./packages"
-    },
+
     "python.envFile": "${workspaceFolder}/.env",
-    // Tell Pylance where to find the source code for your packages
+
+    // This helps Pylance/Intellisense find your modules
     "python.analysis.extraPaths": [
-        "./packages"
+        "${workspaceFolder}/packages"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/packages"
     ],
 
-    // Special file formats
-    "files.associations": {
-    "*.dvc": "yaml",
-    ".dvc/config": "ini"
+    // This injects PYTHONPATH into the terminal when you hit "Run"
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/packages:${env:PYTHONPATH}"
+    },
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/packages:${env:PYTHONPATH}"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/packages;${env:PYTHONPATH}"
     },
 
+    "files.associations": {
+        "*.dvc": "yaml",
+        ".dvc/config": "ini"
+    },
+    "python.analysis.typeCheckingMode": "basic",
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
 }

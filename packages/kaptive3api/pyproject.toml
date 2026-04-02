@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kaptive3api"
+version = "0.0.1"
+description = "kaptive3api module for host."
+readme = "README_kaptive3api.md"
+license = "LicenseRef-Proprietary"
+requires-python = ">=3.10,<3.13"
+dependencies = []
+
+[tool.setuptools]
+# leave empty unless needed
+py-modules = []
+
+# we use the root level pyproject.toml black and isort

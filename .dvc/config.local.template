@@ -1,3 +1,7 @@
+# IMPORTANT:
+# Keep this file in the repository.
+# It provides a template for new contributors to set up their workspace.
+
 ['remote "gdrive_remote"']
     gdrive_client_id = <YOUR_CLIENT_ID>
     gdrive_client_secret = <YOUR_CLIENT_SECRET>

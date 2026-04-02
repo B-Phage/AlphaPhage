@@ -1,0 +1,32 @@
+name: training
+channels:
+  - pytorch         # Added for official torch binaries
+  - nvidia          # Added for CUDA support
+  - conda-forge
+  - bioconda
+dependencies:
+  # Core Binaries via Conda (Faster/More stable)
+  - python=3.10
+  - pip
+  - pytest
+  - coverage
+  - pytest-cov
+  - pre-commit
+  - h5py
+  - colorlog
+  - scikit-learn
+  - numpy
+  - pytables
+  - duckdb
+  # ML Frameworks via Pip (Better for Lightning compatibility)
+  - pip:
+      - torch
+      - torchvision
+      - pytorch-lightning
+      - torchmetrics
+      - hydra-core
+      - mlflow
+      - wandb
+      - tensorboardX
+      - "dvclive[lightning]"
+      - dvc-gdrive

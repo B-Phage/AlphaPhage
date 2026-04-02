@@ -3,9 +3,10 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.13
   - prodigal
   - prodigal-gv
+  - pyhmmer
   - tqdm
   - omegaconf
   - pre_commit
@@ -17,3 +18,11 @@ dependencies:
   - "dvc[gdrive]"
   - dvc-gdrive
   - funcy
+  - "duckdb>=1.1.0"
+  - pandas
+  - pyarrow # Essential for high-performance Parquet handling (duckdb)
+  - types-PyYAML # for pylance and YAML
+  - scikit-learn
+  - biopython
+  - responses
+  - types-requests

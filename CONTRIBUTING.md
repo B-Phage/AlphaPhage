@@ -92,7 +92,7 @@ This command will:
 ```bash
 conda activate conda_envs/<environment_name>
 ```
-Replace `<environment_name>` with preprocessing, feature_engineering, training, or inference.
+Replace `<environment_name>` with preprocessing, training, or kaptive3api.
 
 ## 3. Repository Structure
 ```
@@ -101,7 +101,6 @@ repo/
 │   ├── utils/             # Core utility functions (e.g., logging, common data manipulation).
 │   ├── orchestration/     # Custom mini-scheduler logic for sample discovery, parallel execution, and partial reruns.
 │   ├── preprocessing/     # Scripts for data cleaning and initial transformation.
-│   ├── feature_engineering/ # Logic for creating and selecting model features.
 │   ├── training/          # Model training, validation, and serialization logic.
 │   └── inference/         # Code for loading models and making predictions.
 ├── ml_assets/             # Storage for Data Version Control (DVC) tracked files.
@@ -124,7 +123,7 @@ Place new code in _packages/<module_name>/_.
 
 Track datasets and models with DVC under _ml_assets/_.
 
-Add environment dependencies to _envs/<module>.yml_.
+Add environment dependencies to _conda_envs/<module_name>.yml_.
 
 ## 4. Coding Standards
 
@@ -201,12 +200,33 @@ Integration tests should cover full pipeline stages with small test datasets.
 
 * Push outputs to remote: `make dvc-push`
 
-* View pipeline graph: `make dvc-dag`
+* View pipeline graph:
+  ```
+    dvc dag --dot > pipeline.dot
+    dot -Tpng pipeline.dot -o pipeline.png
+  ```
+  Then open `pipeline.png`
 
 * Clean untracked outputs: `make dvc-clean`
 
 DVCLive metrics:
 All metric logging must go to ml_assets/experiments/ as configured in each pipeline stage.
+
+### 7.1. Critical Rules for DVC & Git Coexistence
+To prevent data loss and broken pointers, strictly follow these rules:
+
+* *Never manually ignore* `ml_assets/data/` or `ml_assets/models/` in the root `.gitignore`. DVC creates its own internal `.gitignore` files to handle the raw data.
+  * If you ignore the entire directory in Git, you will accidentally delete the `.dvc` metadata files from source control, making it impossible for others to pull the data.
+
+* *The `.dvc` files are code.* Treat them like `.py` files. They must be committed to Git so the repo knows which version of the data matches which version of the code.
+
+* *Post-Merge Workflow:* After every `git pull` or `git merge`, you must run `make dvc-pull`. Git updates the pointers; DVC updates the actual files.
+
+| Asset Type | Stored In | Tracked By |
+| :--- | :--- | :--- |
+| **Source Code** (`.py`, `.yml`) | GitHub | **Git** |
+| **Metadata Pointers** (`.dvc`) | GitHub | **Git** |
+| **Large Datasets / Weights** | Google Drive | **DVC** |
 
 ## 8. Adding New Packages / Modules
 
@@ -233,13 +253,13 @@ setup-<module>:
 
 * The CI workflow includes:
 
-* Unit and integration tests
+  * Unit and integration tests
 
-* Code coverage
+  * Code coverage
 
-* Pre-commit hook validation
+  * Pre-commit hook validation
 
-* DVC reproducibility check
+  * DVC reproducibility check
 
 ## 10. References & Resources
 
@@ -267,3 +287,11 @@ Thank you for contributing to AlphaPhage! Your work helps maintain a robust, rel
 pip install -e ./packages/utils
 pip install -e ./packages/preprocessing
 ```
+
+## Versioning & Releases
+
+We follow (Semantic Versioning)[https://semver.org/].
+All changes must go through reviewed Pull Requests.
+
+For details on how releases are prepared and tagged, see:
+docs/releasing.md

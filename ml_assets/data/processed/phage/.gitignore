@@ -1,1 +1,11 @@
 /proteins
+/hmm_scan
+/hmm_scan_lake
+/hmm_fasta
+/msa_csa
+/msa_var
+/proteins_manifest.json
+/hmm_scan_lake_manifest.json
+/hmm_fasta_manifest.json
+/msa_csa_manifest.json
+/var.db

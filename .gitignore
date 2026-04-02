@@ -42,12 +42,20 @@ Thumbs.db        # Windows
 # ----------------------------------------------------------------------
 
 # Data folders
-# data/
-# data/*
+outputs/
+outputs/*
+dvc_plots/
 
 # Trained model artifacts
-models/
-models/*
+*.ckpt
+
+# Human readable inspection files
+*.csv
+
+# Large workflow hashes
+ml_assets/data/workflow/hashes/*
+ml_assets/data/training
+ml_assets/data/training/*
 
 # ----------------------------------------------------------------------
 # 4. EXPERIMENTS, CACHING, AND RESULTS
@@ -56,8 +64,15 @@ models/*
 # Ignore temporary DVC cache folders (local-only storage)
 .dvc/cache
 
+# Ignore personal .dcv config file
+# NB. We leave the template in the repo so new developers see a reference
+.dvc/config.local
+
 # Ignore DVCLive internal state folder (often used for plotting)
 .dvclive/
+
+# DVC DAG
+*.dot
 
 # Temporary log files, results, and profiling data
 *.log
@@ -65,8 +80,15 @@ models/*
 results/
 artifacts/
 
+# ignore all .hmm_id files anywhere, these are temporary DVC files
+*.hmm_id
+
 # Testing and Coverage
-.coverage
+.coverage*
 htmlcov/
 *.svg
 *.xml
+
+# Summary tables from DVC ("duplicated" data not tracked)
+ml_assets/data/processed/duckdb/proteins.duckdb
+ml_assets/data/processed/aggregated/features.db
