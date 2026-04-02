@@ -88,3 +88,7 @@ artifacts/
 htmlcov/
 *.svg
 *.xml
+
+# Summary tables from DVC ("duplicated" data not tracked)
+ml_assets/data/processed/duckdb/proteins.duckdb
+ml_assets/data/processed/aggregated/features.db
