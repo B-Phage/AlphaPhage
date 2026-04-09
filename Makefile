@@ -10,7 +10,7 @@ UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_S),Linux)
     CONDA_PLATFORM = linux-64
     CONDA_PLATFORM_EMUL =
-    CONDA_EXE = mamba
+    CONDA_EXE := $(shell command -v mamba >/dev/null 2>&1 && echo mamba || echo conda)
 else ifeq ($(UNAME_S),Darwin)
     ifeq ($(UNAME_M),arm64)
         CONDA_PLATFORM = osx-arm64
