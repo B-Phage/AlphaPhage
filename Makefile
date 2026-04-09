@@ -71,8 +71,13 @@ endef
 # Create/update env
 define ensure_env
 	@echo "Ensuring $1 environment ($(call get_platform,$1))..."
-	@CONDA_SUBDIR=$(call get_platform,$1) \
-	$(CONDA_EXE) env create -f conda_envs/$1.yml -n $1
+	@if conda env list | awk '{print $$1}' | grep -qx "$1"; then \
+		echo "$1 exists → updating"; \
+		$(CONDA_EXE) env update -f conda_envs/$1.yml -n $1; \
+	else \
+		echo "$1 missing → creating"; \
+		$(CONDA_EXE) env create -f conda_envs/$1.yml -n $1; \
+	fi
 endef
 
 # =====================
