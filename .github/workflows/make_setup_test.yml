@@ -18,24 +18,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mamba
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda install -n base -c conda-forge mamba
-
-      - name: Run Makefile on Ubuntu
+      - name: Setup Conda + Mamba
         run: |
           set -e
 
           sudo apt-get update
           sudo apt-get install -y make curl git
 
+          echo "--- Installing Miniconda ---"
           curl -sSLo miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
           bash miniconda.sh -b -p $HOME/miniconda
+
           source $HOME/miniconda/etc/profile.d/conda.sh
 
           conda config --set always_yes yes
           conda update -n base -c defaults conda
+
+          echo "--- Installing mamba ---"
+          conda install -n base -c conda-forge mamba
+
+          echo "--- Verifying tools ---"
+          conda --version
+          mamba --version
+
+      - name: Run Makefile on Ubuntu
+        run: |
+          set -e
+
+          source $HOME/miniconda/etc/profile.d/conda.sh
 
           if grep -q osx-arm64 Makefile; then
             sed -i 's/osx-arm64/linux-64/g' Makefile
@@ -50,7 +60,6 @@ jobs:
   # =========================
   # 🪟 MAIN → Windows + WSL
   # =========================
-  # Time consuming CI but the more likely deployment case
   test-wsl:
     runs-on: windows-latest
     if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
@@ -70,12 +79,21 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y make curl git
 
+            echo '--- Installing Miniconda ---'
             curl -sSLo miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
             bash miniconda.sh -b -p \$HOME/miniconda
+
             source \$HOME/miniconda/etc/profile.d/conda.sh
 
             conda config --set always_yes yes
             conda update -n base -c defaults conda
+
+            echo '--- Installing mamba ---'
+            conda install -n base -c conda-forge mamba
+
+            echo '--- Verifying tools ---'
+            conda --version
+            mamba --version
 
             if grep -q osx-arm64 Makefile; then
               sed -i 's/osx-arm64/linux-64/g' Makefile
