@@ -1,23 +1,44 @@
 export ROOT_DIR := $(strip $(CURDIR))
 
 # =====================
+# OS Detection
+# =====================
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+# Platform defaults
+ifeq ($(UNAME_S),Linux)
+    CONDA_PLATFORM = linux-64
+    CONDA_PLATFORM_EMUL =
+    CONDA_EXE = mamba
+else ifeq ($(UNAME_S),Darwin)
+    ifeq ($(UNAME_M),arm64)
+        CONDA_PLATFORM = osx-arm64
+        CONDA_PLATFORM_EMUL = osx-64
+    else
+        CONDA_PLATFORM = osx-64
+        CONDA_PLATFORM_EMUL =
+    endif
+    CONDA_EXE = conda
+else
+    CONDA_PLATFORM = linux-64
+    CONDA_PLATFORM_EMUL =
+    CONDA_EXE = conda
+endif
+
+# =====================
 # Variables
 # =====================
-# Mapping environment names
 ENV_PREPROC = preprocessing
 ENV_TRAINING = training
 ENV_KAPTIVE = kaptive3api
 
-# Define your inference path
 INF_DATA_ROOT := $(abspath $(ROOT_DIR)/../databases/inference)
 
-# Unique environments for cleanup and hooks
 UNIQUE_ENVS = $(ENV_PREPROC) $(ENV_TRAINING) $(ENV_KAPTIVE)
 
-# DVC Config
 DVC_CONFIG_LOCAL = .dvc/config.local
 
-# External Data Configs
 HMM_YAML := ml_assets/config/hmm_data_v1.0.0.setup.yaml
 KAPTIVE_YAML := ml_assets/config/kaptive3api_v1.0.0.setup.yaml
 
@@ -27,36 +48,31 @@ KAPTIVE_YAML := ml_assets/config/kaptive3api_v1.0.0.setup.yaml
 .PHONY: help
 help:
 	@echo "Usage:"
-	@echo "  make setup-all             - Setup all environments, packages, hooks, and data"
-	@echo "  make hooks                 - Install pre-commit/push hooks in all environments"
-	@echo "  make secrets-init          - Install detect-secrets and generate baseline"
-	@echo "  make test                  - Run unit tests via shell script"
-	@echo "  make clean                 - Remove all project conda environments"
+	@echo "  make setup-all"
+	@echo "  make hooks"
+	@echo "  make test"
+	@echo "  make clean"
 
 # =====================
 # Helpers
 # =====================
 
-# Helper to run conda commands with the correct architecture architecture
-# Usage: $(call conda_run,env_name,command)
-# If the environment is kaptive, it uses osx-64 (Rosetta); otherwise, it uses native arm64.
+# Choose platform (handle kaptive emulation only on mac)
+define get_platform
+$(if $(and $(filter $(ENV_KAPTIVE),$1),$(CONDA_PLATFORM_EMUL)),$(CONDA_PLATFORM_EMUL),$(CONDA_PLATFORM))
+endef
+
+# Run inside env
 define conda_run
-    CONDA_SUBDIR=$(if $(filter $(ENV_KAPTIVE),$1),osx-64,osx-arm64) \
-    conda run -n $1 $2
+	CONDA_SUBDIR=$(call get_platform,$1) \
+	conda run -n $1 $2
 endef
 
-# Force native arm64 for standard envs
+# Create/update env
 define ensure_env
-	@echo "Ensuring $1 is Native (arm64)..."
-	CONDA_SUBDIR=osx-arm64 conda env update -f conda_envs/$1.yml -n $1
-	CONDA_SUBDIR=osx-arm64 conda run -n $1 conda config --env --set subdir osx-arm64
-endef
-
-# Force x86_64 for emulated envs
-define ensure_env_mac_emul
-	@echo "Ensuring $1 is Emulated (x86_64)..."
-	CONDA_SUBDIR=osx-64 conda env update -f conda_envs/$1.yml -n $1
-	CONDA_SUBDIR=osx-64 conda run -n $1 conda config --env --set subdir osx-64
+	@echo "Ensuring $1 environment ($(call get_platform,$1))..."
+	CONDA_SUBDIR=$(call get_platform,$1) \
+	$(CONDA_EXE) env update -f conda_envs/$1.yml -n $1
 endef
 
 # =====================
@@ -81,7 +97,7 @@ setup-training-pkgs:
 
 .PHONY: setup-kaptive-pkgs
 setup-kaptive-pkgs:
-	$(call ensure_env_mac_emul,$(ENV_KAPTIVE))
+	$(call ensure_env,$(ENV_KAPTIVE))
 	$(call conda_run,$(ENV_KAPTIVE),pip install -e packages/kaptive3api)
 
 # =====================
@@ -139,27 +155,34 @@ clean:
 	)
 
 # =====================
-# INFERENCE SNAPSHOT
+# Snapshot
 # =====================
-
 MODEL ?= TransformerX_v1
 EPOCH ?= 50
-NAME  ?= snapshot_$(shell date +%Y%m%d_%H%M)
 
 .PHONY: snapshot
 snapshot:
-	@echo "🚀 Initiating snapshot for Model: $(MODEL), Epoch: $(EPOCH)"
+	@echo "🚀 Snapshot: $(MODEL) @ $(EPOCH)"
 	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_TRAINING),python packages/utils/scripts/snapshot_inference.py --model $(MODEL) --epoch $(EPOCH))
 
 # =====================
-# Inference Run
+# Inference
 # =====================
-
 .PHONY: run-inference
 run-inference:
 	@if [ ! -d "$(INF_DATA_ROOT)" ]; then \
 		echo "ERROR: Inference directory not found at $(INF_DATA_ROOT)"; \
 		exit 1; \
 	fi
-	@echo ">>> Starting Inference Pipeline..."
 	@$(MAKE) -C inference all
+
+# =====================
+# Debug
+# =====================
+.PHONY: debug-platform
+debug-platform:
+	@echo "OS: $(UNAME_S)"
+	@echo "ARCH: $(UNAME_M)"
+	@echo "CONDA_PLATFORM: $(CONDA_PLATFORM)"
+	@echo "CONDA_PLATFORM_EMUL: $(CONDA_PLATFORM_EMUL)"
+	@echo "CONDA_EXE: $(CONDA_EXE)"
