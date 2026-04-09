@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install mamba
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          conda install -n base -c conda-forge mamba
+
       - name: Run Makefile on Ubuntu
         run: |
           set -e
