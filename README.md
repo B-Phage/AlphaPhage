@@ -39,7 +39,7 @@ Follow the instructions in **[CONTRIBUTING.md](CONTRIBUTING.md)**, Section 2.3, 
 ```bash
 git clone <repo>
 cd <repo>
-# 1. Setup environments, packages, and pull DVC data
+# 1. Setup environments, packages, and pull DVC data and runtime configs
 make setup-all
 
 # 2. Run the unit tests (automatically handles env switching)
@@ -47,7 +47,7 @@ make test
 
 # 3. Execute the pipeline (requires an active environment)
 conda activate preprocessing
-dvc repro
+dvc repro # relies on `dvc pull` which was run as part of `make setup-all`
 ```
 
 Alternatively, run infernence on a downloaded or locally produced snapshot.

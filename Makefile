@@ -122,7 +122,7 @@ secrets-init:
 	$(call conda_run,$(ENV_PREPROC),detect-secrets scan > .secrets.baseline)
 
 # =====================
-# Data & DVC
+# Data & DVC (DVC Data and Runtime Configs)
 # =====================
 .PHONY: setup-external-data
 setup-external-data:

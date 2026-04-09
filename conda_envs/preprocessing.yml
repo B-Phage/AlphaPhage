@@ -7,7 +7,6 @@ dependencies:
   - prodigal
   - prodigal-gv
   - pyhmmer
-  - tqdm
   - omegaconf
   - pre_commit
   - pytest
