@@ -69,6 +69,7 @@ repo/
 ├── workflows/      # Training and infernece workflows
 ├── tests/          # Unit and Integration test
 ├── docs/           # Processes, long-form reference, and cross-cutting guides
+├── docker/         # Dockerfiles for Docker image based deployment
 ├── dvc.yaml        # Training DVC pipeline file
 └── Makefile        # Setup & pipeline commands
 ```
