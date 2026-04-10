@@ -68,6 +68,9 @@ RUN apt-get update && apt-get install -y \
 RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 RUN mv bin/micromamba /usr/local/bin/micromamba
 
+# Make micromamba available as "conda" for Makefile compatibility
+RUN ln -s /usr/local/bin/micromamba /usr/local/bin/conda
+
 ENV MAMBA_ROOT_PREFIX=/opt/conda
 ENV PATH=$MAMBA_ROOT_PREFIX/bin:$PATH
 
