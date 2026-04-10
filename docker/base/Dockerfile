@@ -71,13 +71,11 @@ RUN mv bin/micromamba /usr/local/bin/micromamba
 ENV MAMBA_ROOT_PREFIX=/opt/conda
 ENV PATH=$MAMBA_ROOT_PREFIX/bin:$PATH
 
-RUN micromamba shell init -s bash -p $MAMBA_ROOT_PREFIX
-
 WORKDIR /app
 COPY . /app
 
-# Provide conda alias
-RUN ln -s /usr/local/bin/micromamba /usr/local/bin/conda
+# Tell Makefile to use micromamba
+ENV CONDA_EXE=micromamba
 
 # Build environments + install packages
 RUN make setup-preproc-pkgs setup-training-pkgs setup-kaptive-pkgs
