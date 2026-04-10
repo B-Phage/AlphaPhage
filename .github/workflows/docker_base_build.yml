@@ -1,0 +1,38 @@
+name: 🐳 Build Docker image
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐳 Build Docker image
+        run: |
+          docker build -t myproject:ci -f docker/base/Dockerfile .
+
+      # Run unit tests inside container
+      - name: 🧪 Run unit tests
+        run: |
+          docker run --rm myproject:ci make test
+
+      # Run integration tests inside container
+      - name: 🧪 Run integration tests
+        run: |
+          docker run --rm myproject:ci make test-int
+
+      # Save image as artifact
+      - name: 📦 Save Docker image
+        run: |
+          docker save myproject:ci -o myproject_ci.tar
+
+      - name: ⬆️ Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: myproject_ci.tar
