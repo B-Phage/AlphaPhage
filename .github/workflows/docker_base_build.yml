@@ -27,12 +27,27 @@ jobs:
           docker run --rm myproject:ci make test-int
 
       # Save image as artifact
-      - name: 📦 Save Docker image
-        run: |
-          docker save myproject:ci -o myproject_ci.tar
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: ⬆️ Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: myproject_ci.tar
+      - name: Tag Docker image
+        run: |
+          # Immutable tag (exact build)
+          docker tag myproject:ci ghcr.io/${{ github.repository }}:ci-${{ github.sha }}
+
+          # Human-readable rolling tag
+          docker tag myproject:ci ghcr.io/${{ github.repository }}:ci-latest
+
+          # Optional: PR-specific tag (only if PR event exists)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            docker tag myproject:ci ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+          fi
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}:ci-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository }}:ci-latest
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            docker push ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+          fi
