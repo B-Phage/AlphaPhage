@@ -80,3 +80,11 @@ git push origin v1.2.0
 Post-release, a "Pre-flight" check confirms that the snapshotted model,
 when running in the inference 'make' environment, reproduces the
 metrics reported during the DVC training phase.
+
+---
+
+## 🐳 Docker-Based Deployment
+
+For containerized inference deployment (CI-built images, model packaging, and distribution), see:
+
+👉 `docs/DEPLOYMENT_DOCKER.md`

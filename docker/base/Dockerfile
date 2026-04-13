@@ -74,8 +74,11 @@ RUN ln -s /usr/local/bin/micromamba /usr/local/bin/conda
 ENV MAMBA_ROOT_PREFIX=/opt/conda
 ENV PATH=$MAMBA_ROOT_PREFIX/bin:$PATH
 
-WORKDIR /app
-COPY . /app
+# Create a parent directory so that ../databases works relative to the code
+WORKDIR /app/code
+COPY . /app/code
+# We need to add databases later via another Dockerfile or a mount:
+# They will live in /app/databases
 
 # Tell Makefile to use micromamba
 ENV CONDA_EXE=micromamba
