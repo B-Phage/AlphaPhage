@@ -18,6 +18,9 @@ dependencies:
   - numpy
   - pytables
   - duckdb
+  - "dvclive[lightning]"
+  - dvc-gdrive
+  - pandas
   # ML Frameworks via Pip (Better for Lightning compatibility)
   - pip:
       - torch
@@ -25,8 +28,5 @@ dependencies:
       - pytorch-lightning
       - torchmetrics
       - hydra-core
-      - mlflow
       - wandb
       - tensorboardX
-      - "dvclive[lightning]"
-      - dvc-gdrive
