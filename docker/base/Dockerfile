@@ -1,58 +1,30 @@
 # =============================================================================
 # Docker Image: myproject (CI / Reproducible Runtime)
 #
-# This image is built in CI and is intended to provide a fully reproducible
-# runtime environment for development, testing, and downstream packaging.
+# This image uses a multi-stage build to balance CI testing with small
+# distribution sizes.
+#
+# 1. Stage 'skeleton':
+#    - Minimal footprint (Ubuntu + micromamba + code)
+#    - Intended for distribution/shipping.
+#    - User runs `make setup-...` on their own hardware to build envs.
+#
+# 2. Stage 'tester':
+#    - Heavy footprint (Includes all conda environments)
+#    - Used by GitHub Actions to verify code and reproducibility.
 #
 # What this image includes:
-#
-#   ✅ Base OS:
-#      - Ubuntu (latest)
-#
-#   ✅ Package Management:
-#      - micromamba (lightweight conda-compatible package manager)
-#
-#   ✅ Project Code:
-#      - Entire repository copied into /app
-#
-#   ✅ Conda Environments (via Makefile):
-#      - preprocessing
-#      - training
-#      - kaptive3api
-#
-#   ✅ Installed Python Packages:
-#      - Editable installs of all internal packages under /packages
-#      - Installed via `make setup-*-pkgs`
-#
-#   ✅ System Dependencies:
-#      - build-essential, curl, git, etc.
-#
-#   ✅ Test Capability:
-#      - Image is capable of running:
-#            make test
-#            make test-int
-#
-# What this image does NOT include:
-#
-#   ❌ External databases (provisioned separately)
-#   ❌ DVC-tracked data (requires credentials and runtime pull)
-#   ❌ Model snapshots (added later or mounted at runtime)
+#   ✅ Base OS: Ubuntu (latest)
+#   ✅ Package Management: micromamba
+#   ✅ Project Code: Entire repository copied into /app/code
 #
 # Intended usage:
-#
-#   - CI validation of environments and code
-#   - Base image for downstream builds (e.g. adding DBs or models)
-#   - Portable runtime for inference workflows
-#
-# Notes:
-#
-#   - Conda environments are baked into the image under /opt/conda/envs
-#   - The Makefile is used as the single source of truth for environment setup
-#   - This image may be large due to multiple conda environments
-#
+#   - Base image for downstream builds or portable inference workflows.
 # =============================================================================
 
-FROM ubuntu:latest
+# STAGE 1: Skeleton (The "Shipping" Image)
+# -----------------------------------------------------------------------------
+FROM ubuntu:latest AS skeleton
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -73,17 +45,28 @@ RUN ln -s /usr/local/bin/micromamba /usr/local/bin/conda
 
 ENV MAMBA_ROOT_PREFIX=/opt/conda
 ENV PATH=$MAMBA_ROOT_PREFIX/bin:$PATH
+ENV CONDA_EXE=micromamba
 
 # Create a parent directory so that ../databases works relative to the code
 WORKDIR /app/code
 COPY . /app/code
-# We need to add databases later via another Dockerfile or a mount:
-# They will live in /app/databases
 
-# Tell Makefile to use micromamba
-ENV CONDA_EXE=micromamba
+# Note: In this stage, environments are NOT yet built to keep size small.
+CMD ["bash"]
 
-# Build environments + install packages
+
+# STAGE 2: Tester (The "CI Verification" Image)
+# -----------------------------------------------------------------------------
+FROM skeleton AS tester
+
+# ✅ Conda Environments (via Makefile):
+#    - preprocessing, training, kaptive3api
+# ✅ Installed Python Packages:
+#    - Editable installs of all internal packages under /packages
+#
+# This stage is large and intended for CI testing only.
 RUN make setup-preproc-pkgs setup-training-pkgs setup-kaptive-pkgs
 
-CMD ["bash"]
+# Intended for running:
+# make test
+# make test-int

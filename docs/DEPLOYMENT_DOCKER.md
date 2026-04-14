@@ -61,7 +61,6 @@ docker login ghcr.io -u <YOUR_USERNAME> -p <YOUR_TOKEN>
 
 Run this locally.
 
-
 ```bash
 docker pull ghcr.io/b-phage/alphaphage::ci-<sha>
 ```
@@ -77,18 +76,9 @@ Replace <sha> with the relevant SHA from the most recent CI run log. For example
 
 ### Step 4: Create Deployment Image
 
-Create/ update a Dockerfile in "docker/inf":
+There is a dockerfile in "docker/inf" which takes the base image you downloaded in step 3 and adds in the required databases and inference snapshot. Read through the file and update the snapshot and databases if required. This is not fully automated by the snpashot process.
 
-```dockerfile
-FROM ghcr.io/b-phage/alphaphage::ci-<sha>
-
-WORKDIR /app
-
-# Copy from local file system to image file system
-COPY databases/ /app/../databases/
-COPY inference/TransformerX_v1_ep27_20260401/ /app/../inference/TransformerX_v1_ep27_20260401
-```
-Open bash and `cd` to the parent directory where
+Then open bash and `cd` to the parent directory where
 `
 ├── AlphaPhage/
 ├── databases/

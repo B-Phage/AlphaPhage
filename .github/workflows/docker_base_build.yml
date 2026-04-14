@@ -1,76 +1,81 @@
-name: 🐳 Build Docker image
+name: 🐳 Build and Verify Docker Image
 
 on:
   pull_request:
     branches: [main, dev]
+  push:
+    branches: [main] # Also build on merge to keep ci-latest up to date
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build-test-image:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v4
 
-      - name: 🐳 Build Docker image
+      # 1. Build the "Skeleton" stage first.
+      # This is the small image (~300MB) we actually want to ship to users.
+      - name: 🐳 Build Skeleton Image
         run: |
-          docker build -t myproject:ci -f docker/base/Dockerfile .
+          docker build \
+            --target skeleton \
+            -t myproject:skeleton \
+            -f docker/base/Dockerfile .
 
-      # Run unit tests inside container
-      - name: 🧪 Run unit tests
+      # 2. Build the "Tester" stage.
+      # This inherits from skeleton and runs 'make setup-*-pkgs'.
+      # If this step fails, it means your environment.yml or Makefile is broken.
+      - name: 🏗️ Build Tester Image (Heavy)
         run: |
-          docker run --rm myproject:ci make test
+          docker build \
+            --target tester \
+            -t myproject:tester \
+            -f docker/base/Dockerfile .
 
-      # Run integration tests inside container
-      - name: 🧪 Run integration tests
+      # 3. Run Verification Tests inside the heavy tester image.
+      - name: 🧪 Run Unit & Integration Tests
         run: |
-          docker run --rm myproject:ci make test-int
+          docker run --rm myproject:tester make test
+          docker run --rm myproject:tester make test-int
 
-      # Save image as artifact
-      - name: Set image variables
+      # 4. Prepare Naming Variables for GHCR
+      - name: 🏷️ Set image variables
         run: |
-          # Lowercase repo name for GHCR
           IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
-
-          # Full SHA
-          FULL_SHA=${{ github.sha }}
-
-          # Short SHA (first 7 chars)
-          SHORT_SHA=$(echo $FULL_SHA | cut -c1-7)
-
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-          echo "FULL_SHA=$FULL_SHA" >> $GITHUB_ENV
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "FULL_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      # 5. Log in to GitHub Container Registry
+      - name: 🔑 Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag Docker image
+      # 6. Tag and Push ONLY the Skeleton image.
+      # We do NOT push the 'tester' image to save space and bandwidth.
+      - name: 🚀 Push Skeleton Image to GHCR
         run: |
-          # Full SHA (immutable, exact)
-          docker tag myproject:ci ghcr.io/${IMAGE_NAME}:ci-${FULL_SHA}
+          # Use the skeleton image as the source for all tags
+          IMAGE_PATH="ghcr.io/${{ env.IMAGE_NAME }}"
 
-          # Short SHA (human-friendly)
-          docker tag myproject:ci ghcr.io/${IMAGE_NAME}:ci-${SHORT_SHA}
+          docker tag myproject:skeleton ${IMAGE_PATH}:ci-${{ env.FULL_SHA }}
+          docker tag myproject:skeleton ${IMAGE_PATH}:ci-${{ env.SHORT_SHA }}
+          docker tag myproject:skeleton ${IMAGE_PATH}:ci-latest
 
-          # Rolling tag
-          docker tag myproject:ci ghcr.io/${IMAGE_NAME}:ci-latest
+          docker push ${IMAGE_PATH}:ci-${{ env.FULL_SHA }}
+          docker push ${IMAGE_PATH}:ci-${{ env.SHORT_SHA }}
+          docker push ${IMAGE_PATH}:ci-latest
 
-          # PR tag (if applicable)
+          # Special tag for PRs
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            docker tag myproject:ci ghcr.io/${IMAGE_NAME}:pr-${{ github.event.pull_request.number }}
-          fi
-
-      - name: Push Docker image
-        run: |
-          docker push ghcr.io/${IMAGE_NAME}:ci-${FULL_SHA}
-          docker push ghcr.io/${IMAGE_NAME}:ci-${SHORT_SHA}
-          docker push ghcr.io/${IMAGE_NAME}:ci-latest
-
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            docker push ghcr.io/${IMAGE_NAME}:pr-${{ github.event.pull_request.number }}
+            docker tag myproject:skeleton ${IMAGE_PATH}:pr-${{ github.event.pull_request.number }}
+            docker push ${IMAGE_PATH}:pr-${{ github.event.pull_request.number }}
           fi
