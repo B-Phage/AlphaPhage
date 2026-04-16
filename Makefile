@@ -6,23 +6,19 @@ export ROOT_DIR := $(strip $(CURDIR))
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
-# Platform defaults
+# Platform defaults - Emulation removed as Kaptive is now native
 ifeq ($(UNAME_S),Linux)
     CONDA_PLATFORM = linux-64
-    CONDA_PLATFORM_EMUL =
     CONDA_EXE := $(shell command -v mamba >/dev/null 2>&1 && echo mamba || echo conda)
 else ifeq ($(UNAME_S),Darwin)
     ifeq ($(UNAME_M),arm64)
         CONDA_PLATFORM = osx-arm64
-        CONDA_PLATFORM_EMUL = osx-64
     else
         CONDA_PLATFORM = osx-64
-        CONDA_PLATFORM_EMUL =
     endif
     CONDA_EXE = conda
 else
     CONDA_PLATFORM = linux-64
-    CONDA_PLATFORM_EMUL =
     CONDA_EXE = conda
 endif
 
@@ -57,20 +53,15 @@ help:
 # Helpers
 # =====================
 
-# Choose platform (handle kaptive emulation only on mac)
-define get_platform
-$(if $(and $(filter $(ENV_KAPTIVE),$1),$(CONDA_PLATFORM_EMUL)),$(CONDA_PLATFORM_EMUL),$(CONDA_PLATFORM))
-endef
-
-# Run inside env
+# Run inside env - CONDA_SUBDIR now consistent for all envs
 define conda_run
-	CONDA_SUBDIR=$(call get_platform,$1) \
+	CONDA_SUBDIR=$(CONDA_PLATFORM) \
 	conda run -n $1 $2
 endef
 
 # Create/update env
 define ensure_env
-	@echo "Ensuring $1 environment ($(call get_platform,$1))..."
+	@echo "Ensuring $1 environment ($(CONDA_PLATFORM))..."
 	@if conda env list | awk '{print $$1}' | grep -qx "$1"; then \
 		echo "$1 exists → updating"; \
 		$(CONDA_EXE) env update -f conda_envs/$1.yml -n $1; \
@@ -189,5 +180,4 @@ debug-platform:
 	@echo "OS: $(UNAME_S)"
 	@echo "ARCH: $(UNAME_M)"
 	@echo "CONDA_PLATFORM: $(CONDA_PLATFORM)"
-	@echo "CONDA_PLATFORM_EMUL: $(CONDA_PLATFORM_EMUL)"
 	@echo "CONDA_EXE: $(CONDA_EXE)"
