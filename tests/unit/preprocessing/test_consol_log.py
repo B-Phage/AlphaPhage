@@ -229,7 +229,7 @@ class TestConsolLog(unittest.TestCase):
     def test_logger_uses_explicit_argument(self, mock_get_config):
         """Should prioritize the 'level' argument over the YAML config."""
         # Setup: YAML says INFO, but we pass DEBUG
-        mock_get_config.return_value = {"logging": {"level": "INFO"}}
+        mock_get_config.return_value = {"logging": {"log_level": "INFO"}}
 
         logger = log.get_logger(level=log.DEBUG, name="test_explicit")
 
@@ -239,7 +239,7 @@ class TestConsolLog(unittest.TestCase):
     def test_logger_falls_back_to_yaml(self, mock_get_config):
         """Should pull from YAML if no level is passed to log.get_logger."""
         # Setup: YAML says ERROR, we pass None
-        mock_get_config.return_value = {"logging": {"level": "ERROR"}}
+        mock_get_config.return_value = {"logging": {"log_level": "ERROR"}}
 
         # Ensure level=None triggers the lookup logic
         logger = log.get_logger(level=None, name="test_yaml_fallback")
@@ -259,7 +259,7 @@ class TestConsolLog(unittest.TestCase):
     @patch("utils.config_loader.get_config")
     def test_logger_handles_lowercase_yaml(self, mock_get_config):
         """Should handle 'debug' (lowercase) from YAML correctly."""
-        mock_get_config.return_value = {"logging": {"level": "debug"}}
+        mock_get_config.return_value = {"logging": {"log_level": "debug"}}
 
         logger = log.get_logger(level=None, name="test_lowercase")
 

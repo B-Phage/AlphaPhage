@@ -1,0 +1,12 @@
+target_zip: "../databases_snapshot_backup.zip"
+
+# Format: SOURCE_PATH: TARGET_PATH_INSIDE_ZIP
+mappings:
+  - "../databases/hmm_inf": "databases/hmm"
+  - "../databases/EC-K-typing": "databases/EC-K-typing"
+  - "../databases/inference/TransformerX_v1_ep27_20260401": "databases/inference/TransformerX_v1_ep27_20260401"
+  - "./ml_assets/config/runtime.yaml": "databases/inference/runtime.yaml"
+  - "../databases/inference/code_hash.txt": "databases/inference/code_hash.txt"
+  - "../databases/inference/data/sequence_data/bacteria/ECOR-01.fasta": "databases/inference/data/sequence_data/bacteria/ECOR-01.fasta"
+  - "../databases/inference/data/sequence_data/phage/CrRp3.fasta": "databases/inference/data/sequence_data/phage/CrRp3.fasta"
+  - "./docker/release/docker-compose.yml": "docker-compose.yml"

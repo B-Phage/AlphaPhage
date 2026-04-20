@@ -15,6 +15,7 @@ import yaml
 from data_contracts.h5_schema import H5DataKeys
 from omegaconf import DictConfig, OmegaConf
 from utils.scripts.create_inference_config import generate_inference_block
+from utils.scripts.hmm_snapshot import snapshot_hmm_db
 
 logger = log.get_logger()
 
@@ -303,6 +304,9 @@ def snapshot(model_name, epoch, buffer_factor=1.1):
         logger.info(f"🧠 Model:    {ckpt_src.name}")
         logger.info(f"🔗 Git:      {git_sha[:7]} [{git_branch}]")
         logger.info("-" * 30)
+
+        snapshot_hmm_db(snapshot=label, new_hmm_db_name="/hmm_inf/")
+        logger.info(f"🐳 HMM subset saved to 'databases/hmm_inf' for docker image")
 
     except Exception as e:
         logger.error(f"❌ Aborted: {e}")

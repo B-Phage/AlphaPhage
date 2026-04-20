@@ -159,7 +159,7 @@ EPOCH ?= 50
 .PHONY: snapshot
 snapshot:
 	@echo "🚀 Snapshot: $(MODEL) @ $(EPOCH)"
-	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_TRAINING),python packages/utils/scripts/snapshot_inference.py --model $(MODEL) --epoch $(EPOCH))
+	PYTHONPATH=$(shell pwd)/packages $(call conda_run,$(ENV_PREPROC),python packages/utils/scripts/snapshot_inference.py --model $(MODEL) --epoch $(EPOCH))
 
 # =====================
 # Inference

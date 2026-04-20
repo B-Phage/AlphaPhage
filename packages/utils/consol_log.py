@@ -54,7 +54,7 @@ def get_logger(
 
             cfg = get_config("ml_assets/config/runtime.yml")
             # Convert string "DEBUG" from YAML to logging.DEBUG (10)
-            level_name = cfg.get("logging", {}).get("level", "INFO").upper()
+            level_name = cfg.get("logging", {}).get("log_level", "INFO").upper()
             level = _nameToLevel.get(level_name, INFO)
         except Exception:
             level = INFO

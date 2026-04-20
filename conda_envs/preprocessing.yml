@@ -25,3 +25,4 @@ dependencies:
   - biopython
   - responses
   - types-requests
+  - h5py
