@@ -4,29 +4,11 @@ services:
     platform: linux/amd64
     container_name: alphaphage_demo
     volumes:
-      # This maps the local folder to the container folder
-      # assuming run from inside of the Code directory
-      # Format: HOST_PATH : CONTAINER_PATH
-      # The ':ro' flag prevents the container from modifying these
-      - ./databases/hmm:/app/databases/hmm
-      - ./databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk:/app/databases/EC-K-typing/EC-K-typing_group2and3_v3.0.0.gbk
-      - ./databases/inference/TransformerX_v1_ep27_20260401:/app/databases/inference/TransformerX_v1_ep27_20260401
-      - ./databases/inference/code_hash.txt:/app/databases/inference/code_hash.txt
+      # Map the entire local database directory to the container
+      - ./databases:/app/databases
 
-      # This is where the user drops their input files
-      - ./databases/inference/data/sequence_data:/app/databases/inference/data/sequence_data
-
-      # This is where the user gets the results
-      - ./databases/inference/output:/app/databases/inference/output
-
-
-      # --- THE RUNTIME HACK ---
-      # This masks the baked-in DVC config with your local, resource-friendly version
-      - ./databases/inference/runtime.yaml:/app/ml_assets/config/runtime.yaml:ro
-
-      # --- PERSISTENCE (Read-Write) ---
-      # Stores the mamba env so it doesn't need to be rebuilt every time
-      # Remove the './' so it becomes a named volume
+      # Keep these as they are specific overrides or named volumes
+      - ./databases/inference/runtime.yaml:/app/ml_assets/config/runtime.yaml
       - mamba_envs:/opt/conda/envs
 
     deploy:
