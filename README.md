@@ -96,7 +96,7 @@ The training DAG is strictly managed by DVC (Data Version Control). This ensures
 
 - **Experiment Control**: All "switches" are managed in the root params.yaml. The pipeline automatically handles config staging and path injection.
 
-- **Architecture**: See [docs/PIPELINE.md](docs/PIPELINE.md) for the full DAG visualization.
+- **Architecture**: See [docs/TRAINING_PIPELINE.md](docs/TRAINING_PIPELINE.md) for the full DAG visualization.
 
 ## 2. Model Promotion (The Snapshot Bridge)
 Once a training run is complete and verified, you must "promote" the model to the inference space. The Snapshot Utility extracts the weights, configs, and vocabulary from the DVC-tracked `ml_assets/` and freezes them into the untracked inference directory `../databases/inference/<SNAPSHOT_NAME>`.
@@ -112,13 +112,13 @@ make snapshot MODEL=TransformerX_v1 EPOCH=42
 The inference pipeline is designed to be lightweight and decoupled from the DVC training overhead. It uses standard make commands to run predictions on new data using the snapshotted model.
 
 - Workflow: Operates independently of the DVC DAG for faster, more flexible deployment.
-
 - Execution:
 ```
 bash
 make run-inference  # Executes the snapshotted model
 ```
 
-- Detailed Guides: * [docs/RELEASE_MANAGEMENT.md](docs/RELEASE_MANAGEMENT.md): Full specification for Model Sign-off, Deployment Profiles, and the Snapshot process.
-
-  - [inference/README_inf.md](inference/README_inf.md): Technical guide for local CLI usage and variable overrides.
+**Detailed Guides: **
+- [docs/RELEASE_MANAGEMENT.md](docs/RELEASE_MANAGEMENT.md): Full specification for Model Sign-off, Deployment Profiles, and the Snapshot process.
+- [inference/README_inf.md](inference/README_inf.md): Technical guide for local CLI usage and variable overrides.
+- [docs/RUN_INFERENCE.md](docs/RUN_INFERENCE.md): Docker based inference deployment guide. Replicated to [AlphaPhage Inference Setup Guide](https://docs.google.com/document/d/1K4BDhR39tbJjtIqWIwpMZlBT-YHwz3NOnNQ20cR6jbw/edit?usp=drive_link)
