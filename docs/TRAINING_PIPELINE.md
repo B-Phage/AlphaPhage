@@ -15,7 +15,6 @@ The pipeline follows a **Data Lake to Feature Store** pattern. Genomic sequences
 * **Phenotypic Data**: Interaction labels are extracted from `ml_assets/data/interaction_data/interactions_v1.duckdb`.
 * **Remote Storage**: All raw assets are backed up to [Google Drive](https://drive.google.com/drive/folders/1pZeochptPcfzRrc_n76bh0CG-4fjqlvX). Use `dvc pull` to retrieve them.
 
-n
 ---
 
 ## 🕹️ Experiment Control (Config Staging)

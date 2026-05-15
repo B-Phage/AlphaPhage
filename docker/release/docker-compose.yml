@@ -1,0 +1,29 @@
+services:
+  alphaphage:
+    image: ghcr.io/b-phage/alphaphage:ci-latest
+    platform: linux/amd64
+    container_name: alphaphage_demo
+    volumes:
+      # Map the entire local database directory to the container
+      - ./databases:/app/databases
+
+      # Keep these as they are specific overrides or named volumes
+      - ./databases/inference/runtime.yaml:/app/ml_assets/config/runtime.yaml
+      - mamba_envs:/opt/conda/envs
+
+    deploy:
+      resources:
+        limits:
+          cpus: '4'         # Max number of CPU cores the container can use
+          memory: 5G        # Max RAM the container can grab
+        reservations:
+          memory: 2G        # Minimum RAM guaranteed to the container
+
+    stdin_open: true
+    tty: true
+    working_dir: /app/code
+    entrypoint: /bin/bash
+
+volumes:
+  mamba_envs:
+    name: alphaphage_persistent_envs

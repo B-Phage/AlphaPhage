@@ -2,7 +2,6 @@ name: kaptive3api
 channels:
   - conda-forge
   - bioconda
-  - defaults
 dependencies:
   - coverage
   - pytest-cov
@@ -12,14 +11,11 @@ dependencies:
   - kaptive
   - mash
   - pandas
-  - pulp=2.7.0
-  - h5py
+  - pulp>=2.7.0
   - sh
   - scikit-learn
   - datasets
   - colorlog
   - torchmetrics
-  - pip
   - pre_commit
-  - pip:
-    - omegaconf
+  - omegaconf

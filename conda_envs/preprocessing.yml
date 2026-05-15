@@ -7,7 +7,6 @@ dependencies:
   - prodigal
   - prodigal-gv
   - pyhmmer
-  - tqdm
   - omegaconf
   - pre_commit
   - pytest
@@ -26,3 +25,4 @@ dependencies:
   - biopython
   - responses
   - types-requests
+  - h5py

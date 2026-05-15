@@ -133,6 +133,64 @@ def validate_schema(client: DuckDBClient, table_name: str, contract: Interaction
             )
 
 
+def extract_filtered_interactions(
+    source_db_path: str,
+    output_tsv: str,
+    phage_list: List[str] | None = None,
+    host_list: List[str] | None = None,
+    table_name: str | None = None,
+):
+    """
+    Extracts raw interaction records filtered by specific phages and/or hosts.
+    If a list is not provided, all organisms for that category are included.
+    """
+    contract = InteractionTableContract()
+    tbl = table_name or contract.TABLE_NAME
+
+    # Initialize query components
+    where_clauses = []
+
+    # Handle Phage Filtering
+    if phage_list:
+        phages_str = "', '".join(phage_list)
+        where_clauses.append(f"{contract.PHAGE} IN ('{phages_str}')")
+
+    # Handle Host Filtering
+    if host_list:
+        hosts_str = "', '".join(host_list)
+        where_clauses.append(f"{contract.HOST} IN ('{hosts_str}')")
+
+    # Build the WHERE string
+    where_sql = ""
+    if where_clauses:
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+    query = f"""
+        SELECT
+            {contract.HOST},
+            {contract.PHAGE},
+            {contract.INTERACTION},
+            {contract.SOURCE}
+        FROM {tbl}
+        {where_sql}
+    """
+
+    with DuckDBClient(source_db_path, read_only=True) as client:
+        validate_schema(client, tbl, contract)
+        results_df = client.execute(query).df()
+
+    if results_df.empty:
+        logger.info("⚠️ No interactions found for the specified filters.")
+        return
+
+    # Ensure output directory exists and save
+    Path(output_tsv).parent.mkdir(parents=True, exist_ok=True)
+    results_df.to_csv(output_tsv, sep="\t", index=False)
+
+    logger.info(f"✅ Filtered interactions saved to {output_tsv}")
+    logger.info(f"📊 Total records: {len(results_df)}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract interaction matrix from DuckDB.")
     parser.add_argument("-c", "--config", help="Path to params.yaml or override config")

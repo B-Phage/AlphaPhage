@@ -53,11 +53,15 @@ make snapshot MODEL=phage_group_B_v4 EPOCH=latest NAME=v1.2.0_groupB
 ### Step 3: Local Integration Check
 Ensure the snapshotted model resolves correctly in the inference environment before merging. This verifies that the newly promoted assets are compatible with the current codebase.
 
-```bash
-cd inference
-# Update common.mk SNAPSHOT_NAME := v1.2.0_groupB
-make all
-```
+- ` #Update inference/common.mk SNAPSHOT_NAME := <new model name>`
+- add a known set of sequences to `../databases/inference/data/sequence_data`
+- then run
+        ```terminal
+        make run-inference
+        ```
+- check `../databases/inference/output/final_predictions.csv` has the expected results
+  - suggest an output coparison validation script against actuals and a sequence set that was trained on
+
 ### Step 4: Merge & Tag
 - 1. Create a Pull Request from dev to main.
 - 2. PR Requirement: Explicitly state the Deployment Profile and metrics.
@@ -68,8 +72,11 @@ git push origin v1.2.0
 ```
 ## 📦 4. Artifact Storage (Google Drive)
 1. Compress: Zip the generated snapshot folder found in `../databases/inference/`.
-2. Upload: Store the zip in the official AlphaPhage Model Zoo on Google Drive.
-3. Link: Add the direct download link to the GitHub Release Notes for the tag.
+   1. Update `/packages/utils/scripts/snap_db_zip_conf.yaml`
+   2. run `/packages/utils/scripts/zip_snapshot.yaml`
+2. Upload: Store the zip in the official AlphaPhage [Model Zoo](https://drive.google.com/drive/u/0/folders/1NvwLZgrRJt85ukkmf1USgLVbbYgiV97Y) on Google Drive.
+3. Update the Inference Setup Guide in the Model Zoo folder if something has changed.
+4. Link: Add the direct download link to the GitHub Release Notes for the tag.
 
 ## 🛠 5. Branching Model
 * main: Production-ready code. Every commit represents a "signed-off" Snapshot.
@@ -80,3 +87,11 @@ git push origin v1.2.0
 Post-release, a "Pre-flight" check confirms that the snapshotted model,
 when running in the inference 'make' environment, reproduces the
 metrics reported during the DVC training phase.
+
+---
+
+## 🐳 Docker-Based Deployment
+
+For containerised inference deployment (CI-built images, model packaging, and distribution), see:
+
+👉 `docs/RUN_INFERENCE.md`
