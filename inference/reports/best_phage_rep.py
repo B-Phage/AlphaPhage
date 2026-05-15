@@ -2,15 +2,36 @@ import pandas as pd
 
 
 def generate_host_report(csv_path, output_html, top_phage_num=3, threshold=0.1):
+    """
+    Identifies and reports the most likely phages to infect a given list of hosts
+    based on model prediction probabilities.
+
+    This function acts as a filtering and visualization layer for model inference
+    results. It allows the user to define the stringency of the report by setting
+    an infectivity threshold and limits the output to a user-specified number of
+    top phage candidates per host.
+
+    Args:
+        csv_path (str): Path to the CSV containing model predictions. Expected
+            to have 'interaction_id' (host__phage) and 'probability_pos'.
+        output_html (str): The file path for the generated HTML summary.
+        top_phage_num (int, optional): The maximum number of phage candidates
+            the user is willing to include in the report for each host.
+            Defaults to 3.
+        threshold (float, optional): The minimum infectivity probability
+            score "good enough" to be considered a valid match.
+            Defaults to 0.1.
+
+    Returns:
+        None: Saves a styled HTML table to the specified output path.
+    """
     # 1. Load the data
     df = pd.read_csv(csv_path)
 
     # 2. Parse the interaction_id: 'host__phage'
-    # Based on: Host name followed by "__" followed by the phage name
     df[["host", "phage"]] = df["interaction_id"].str.split("__", expand=True)
 
     # 3. Process the data
-    # Sort by host alphabetically, then by probability_pos descending
     df_sorted = df.sort_values(by=["host", "probability_pos"], ascending=[True, False])
 
     report_data = []
@@ -22,7 +43,6 @@ def generate_host_report(csv_path, output_html, top_phage_num=3, threshold=0.1):
         # Filter by threshold and take top N phages
         top_matches = host_subset[host_subset["probability_pos"] >= threshold].head(top_phage_num)
 
-        # Extract phage names
         phages = top_matches["phage"].tolist()
 
         # Pad with empty strings if fewer than top_phage_num matches found
@@ -31,12 +51,11 @@ def generate_host_report(csv_path, output_html, top_phage_num=3, threshold=0.1):
 
         report_data.append([host] + phages)
 
-    # 4. Create the final DataFrame for the report
-    # Columns are named "Phage a", "Phage b", etc.
+    # 4. Create the final DataFrame
     column_names = ["Host"] + [f"Phage {chr(97 + i)}" for i in range(top_phage_num)]
     report_df = pd.DataFrame(report_data, columns=column_names)
 
-    # 5. Generate HTML with improved styling
+    # 5. Generate HTML
     html_content = f"""
     <html>
     <head>
@@ -66,16 +85,13 @@ def generate_host_report(csv_path, output_html, top_phage_num=3, threshold=0.1):
     print(f"Report successfully generated: {output_html}")
 
 
-# --- Configuration ---
 if __name__ == "__main__":
-    # Path to your CSV file
     input_csv = "../databases/inference/output/final_predictions.csv"
-
     output_file = "../databases/host_top_phages_report.html"
 
     generate_host_report(
         csv_path=input_csv,
         output_html=output_file,
-        top_phage_num=3,  # Set how many phage columns you want (a, b, c...)
-        threshold=0.6,  # Minimum probability_pos to be included
+        top_phage_num=3,
+        threshold=0.6,
     )

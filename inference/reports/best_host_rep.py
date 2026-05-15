@@ -77,5 +77,5 @@ if __name__ == "__main__":
         csv_path=input_csv,
         output_html=output_file,
         top_host_num=3,  # Configurable number of host columns
-        threshold=0.05,  # Probability threshold
+        threshold=0.5,  # Probability threshold
     )
